@@ -1,0 +1,8 @@
+{
+  "id": "adventureitemnames:hoe",
+  "applies_to": "minecraft:hoes",
+  "tiers": {
+    "plain": "adventureitemnames:weapon_name_short",
+    "enchanted": "adventureitemnames:weapon_name_full"
+  }
+}

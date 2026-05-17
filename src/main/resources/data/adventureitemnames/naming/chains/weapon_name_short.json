@@ -1,0 +1,13 @@
+{
+  "id": "adventureitemnames:weapon_name_short",
+  "segments": [
+    {
+      "refs": [
+        { "ref": "adventureitemnames:title_combinations", "weight": 1.0 }
+      ],
+      "chance": 1.0,
+      "connection": "",
+      "newline": false
+    }
+  ]
+}

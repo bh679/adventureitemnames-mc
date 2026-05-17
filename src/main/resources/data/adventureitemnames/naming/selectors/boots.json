@@ -1,0 +1,8 @@
+{
+  "id": "adventureitemnames:boots",
+  "applies_to": "minecraft:foot_armor",
+  "tiers": {
+    "plain": "adventureitemnames:weapon_name_short",
+    "enchanted": "adventureitemnames:weapon_name_full"
+  }
+}

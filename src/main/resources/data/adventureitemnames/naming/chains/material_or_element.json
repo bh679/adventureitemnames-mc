@@ -1,0 +1,14 @@
+{
+  "id": "adventureitemnames:material_or_element",
+  "segments": [
+    {
+      "refs": [
+        { "ref": "adventureitemnames:context/item_material", "weight": 0.5 },
+        { "ref": "adventureitemnames:elements",              "weight": 0.5 }
+      ],
+      "chance": 1.0,
+      "connection": "",
+      "newline": false
+    }
+  ]
+}
