@@ -128,14 +128,18 @@ cp "$ARCH_FILE" "$WIKI_DIR/Downloads-Archive.md"
 
 cd "$WIKI_DIR"
 
-if git diff --quiet -- Downloads.md Downloads-Archive.md; then
+# `git diff` alone wouldn't see new files since they're untracked after `cp`.
+# Stage first, then compare the index against HEAD so both "new file" and
+# "modified" cases are detected.
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git add Downloads.md Downloads-Archive.md
+
+if git diff --quiet --cached -- Downloads.md Downloads-Archive.md; then
   echo "Wiki Downloads pages already match rendered output for $RELEASE_TAG; nothing to push."
   exit 0
 fi
 
-git config user.name "github-actions[bot]"
-git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add Downloads.md Downloads-Archive.md
 git commit -m "docs: auto-publish Downloads pages for $RELEASE_TAG"
 git push origin HEAD
 
