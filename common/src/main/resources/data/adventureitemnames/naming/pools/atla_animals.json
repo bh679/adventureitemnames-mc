@@ -1,0 +1,29 @@
+{
+  "id": "adventureitemnames:atla_animals",
+  "entries": [
+    { "text": "Appa" },
+    { "text": "Momo" },
+    { "text": "Naga" },
+    { "text": "Hawky" },
+    { "text": "Bosco" },
+    { "text": "Pabu" },
+    { "text": "Flopsie" },
+    { "text": "Foo Foo Cuddlypoops" },
+    { "text": "the Lion Turtle" },
+    { "text": "the Sky Bison" },
+    { "text": "the Badgermole" },
+    { "text": "the Catgator" },
+    { "text": "the Polar Bear Dog" },
+    { "text": "the Saber-Tooth Moose-Lion" },
+    { "text": "the Komodo Rhino" },
+    { "text": "the Flying Lemur" },
+    { "text": "the Dragon Moose" },
+    { "text": "the Hippo-Cow" },
+    { "text": "the Cabbage-Slug" },
+    { "text": "the Buzzard-Wasp" },
+    { "text": "the Platypus-Bear" },
+    { "text": "the Wolfbat" },
+    { "text": "the Spirit Dragon" },
+    { "text": "the Unagi" }
+  ]
+}
