@@ -36,10 +36,11 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         UserConfigLoader.reload();
 
         ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
-        rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));
-        rh.registerReloadListener(wrap(NameRegistry.chainListener(),    "chains"));
-        rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
-        rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
+        rh.registerReloadListener(wrap(NameRegistry.poolListener(),      "pools"));
+        rh.registerReloadListener(wrap(NameRegistry.chainListener(),     "chains"));
+        rh.registerReloadListener(wrap(NameRegistry.extensionListener(), "chain_extensions"));
+        rh.registerReloadListener(wrap(NameRegistry.selectorListener(),  "selectors"));
+        rh.registerReloadListener(wrap(NameRegistry.configListener(),    "disabled"));
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {

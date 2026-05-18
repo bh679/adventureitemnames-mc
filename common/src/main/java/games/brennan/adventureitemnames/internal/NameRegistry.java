@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NameChain;
+import games.brennan.adventureitemnames.api.NameChainExtension;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.core.registries.Registries;
@@ -32,10 +33,16 @@ import java.util.Optional;
  *
  * <p>This class is loader-neutral. Each loader's entrypoint calls
  * {@link #poolListener()}, {@link #chainListener()},
- * {@link #selectorListener()} to obtain listener instances and registers
- * them via the loader's native resource-manager API (NeoForge:
- * {@code AddReloadListenerEvent}; Forge: {@code AddReloadListenerEvent};
- * Fabric: {@code ResourceManagerHelper}).</p>
+ * {@link #extensionListener()}, {@link #selectorListener()} to obtain
+ * listener instances and registers them via the loader's native
+ * resource-manager API (NeoForge: {@code AddReloadListenerEvent}; Forge:
+ * {@code AddReloadListenerEvent}; Fabric: {@code ResourceManagerHelper}).</p>
+ *
+ * <p>Chains and chain-extensions are reloaded independently, so the
+ * {@link #MERGED_CHAINS} cache is rebuilt by whichever of the two
+ * listeners fires — final state is identical regardless of order.
+ * {@link #chain(ResourceLocation)} always returns from the merged cache,
+ * not the raw {@link #CHAINS} map.</p>
  */
 public final class NameRegistry {
 
@@ -44,21 +51,24 @@ public final class NameRegistry {
 
     private static final Map<ResourceLocation, NamePool> POOLS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, NameChain> CHAINS = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, NameChainExtension> EXTENSIONS = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, NameChain> MERGED_CHAINS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, NameSelector> SELECTORS = new LinkedHashMap<>();
 
     private NameRegistry() {}
 
-    public static SimpleJsonResourceReloadListener poolListener()     { return new PoolListener(); }
-    public static SimpleJsonResourceReloadListener chainListener()    { return new ChainListener(); }
-    public static SimpleJsonResourceReloadListener selectorListener() { return new SelectorListener(); }
-    public static SimpleJsonResourceReloadListener configListener()   { return new ConfigListener(); }
+    public static SimpleJsonResourceReloadListener poolListener()      { return new PoolListener(); }
+    public static SimpleJsonResourceReloadListener chainListener()     { return new ChainListener(); }
+    public static SimpleJsonResourceReloadListener extensionListener() { return new ExtensionListener(); }
+    public static SimpleJsonResourceReloadListener selectorListener()  { return new SelectorListener(); }
+    public static SimpleJsonResourceReloadListener configListener()    { return new ConfigListener(); }
 
     public static synchronized Optional<NamePool> pool(ResourceLocation id) {
         return Optional.ofNullable(POOLS.get(id));
     }
 
     public static synchronized Optional<NameChain> chain(ResourceLocation id) {
-        return Optional.ofNullable(CHAINS.get(id));
+        return Optional.ofNullable(MERGED_CHAINS.get(id));
     }
 
     /**
@@ -85,7 +95,20 @@ public final class NameRegistry {
     private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next) {
         CHAINS.clear();
         CHAINS.putAll(next);
+        rebuildMergedChains();
         LOGGER.info("[AdventureItemNames] chains reloaded — {}", CHAINS.size());
+    }
+
+    private static synchronized void replaceExtensions(Map<ResourceLocation, NameChainExtension> next) {
+        EXTENSIONS.clear();
+        EXTENSIONS.putAll(next);
+        rebuildMergedChains();
+        LOGGER.info("[AdventureItemNames] chain extensions reloaded — {}", EXTENSIONS.size());
+    }
+
+    private static void rebuildMergedChains() {
+        MERGED_CHAINS.clear();
+        MERGED_CHAINS.putAll(ChainMerger.merge(CHAINS, EXTENSIONS));
     }
 
     private static synchronized void replaceSelectors(Map<ResourceLocation, NameSelector> next) {
@@ -133,6 +156,27 @@ public final class NameRegistry {
                 }
             }
             replaceChains(out);
+        }
+    }
+
+    private static final class ExtensionListener extends SimpleJsonResourceReloadListener {
+        ExtensionListener() { super(GSON, "naming/chain_extensions"); }
+
+        @Override
+        protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
+            Map<ResourceLocation, NameChainExtension> out = new LinkedHashMap<>();
+            for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
+                ResourceLocation fileId = e.getKey();
+                ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
+                    fileId.getNamespace(), fileId.getPath());
+                try {
+                    NameChainExtension ext = NameCodec.parseChainExtension(e.getValue(), id);
+                    out.put(ext.id(), ext);
+                } catch (NameCodec.NameParseException ex) {
+                    LOGGER.error("[AdventureItemNames] chain extension {} failed to parse — {}", fileId, ex.getMessage());
+                }
+            }
+            replaceExtensions(out);
         }
     }
 

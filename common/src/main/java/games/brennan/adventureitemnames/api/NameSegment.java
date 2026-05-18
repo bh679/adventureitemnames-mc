@@ -12,8 +12,14 @@ import java.util.List;
  * <p>Each weighted choice can point at either a {@link NamePool} or
  * another {@link NameChain} so multi-level composition ("Title Prefix +
  * of + Title Combinations") stays expressible in JSON.</p>
+ *
+ * <p>{@code name} is an optional stable identifier used by
+ * {@code data/<ns>/naming/chain_extensions/} entries to target this
+ * segment regardless of its position in the chain. Empty string means
+ * anonymous — extensions can still target it by integer index.</p>
  */
 public record NameSegment(
+    String name,
     List<WeightedRef> refs,
     float chance,
     String connection,

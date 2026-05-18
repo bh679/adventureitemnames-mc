@@ -32,6 +32,7 @@ public final class AdventureItemNamesNeoForge {
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
         event.addListener(NameRegistry.poolListener());
         event.addListener(NameRegistry.chainListener());
+        event.addListener(NameRegistry.extensionListener());
         event.addListener(NameRegistry.selectorListener());
         event.addListener(NameRegistry.configListener());
     }

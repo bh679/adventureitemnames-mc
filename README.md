@@ -116,6 +116,62 @@ and prepends `connection` to the accumulated output.
 Selectors are matched by `applies_to` against the item's vanilla item
 tags. The first registered selector that matches an item wins.
 
+### Chain extension — extend a chain additively from another pack
+
+Overriding a chain file is last-write-wins — two packs can't both add
+refs to the same chain that way. Drop a **chain extension** into
+`data/<your_namespace>/naming/chain_extensions/<name>.json` instead and
+the registry merges it into the target chain at load time. Multiple
+packs can extend the same chain without conflicting:
+
+```json
+{
+  "id": "yourpack:my_extension",
+  "target": "adventureitemnames:title_combinations",
+  "operations": [
+    {
+      "type": "add_refs",
+      "segment": "noun_pool",
+      "refs": [
+        { "ref": "yourpack:my_pool",       "weight": 0.030 },
+        { "ref": "yourpack:my_other_pool", "weight": 0.020 }
+      ]
+    },
+    {
+      "type": "add_segment",
+      "at": "end",
+      "segment": {
+        "name": "yourpack_epithet",
+        "refs": [{ "ref": "yourpack:epithets", "weight": 1.0 }],
+        "chance": 0.1,
+        "connection": " — ",
+        "newline": false
+      }
+    }
+  ]
+}
+```
+
+| Op | What it does |
+|---|---|
+| `add_refs` | Appends weighted refs to a target segment's `refs[]`. Use this for "add my pack's pool to the existing noun choices." Order-independent. |
+| `add_segment` | Inserts an entirely new segment at `at`: `"start"`, `"end"`, or an integer index. Use this to add a new naming stage (e.g. a trailing epithet). |
+
+**Segment targeting.** `"segment"` accepts either a string (matches the
+segment's `name` field) or an integer (zero-based index). **Use names
+when possible** — index targeting silently breaks if the base mod
+reorders segments. The two base segments of
+`adventureitemnames:title_combinations` are named `"prefix"` (the
+prefix word) and `"noun_pool"` (the central noun).
+
+**Merge order.** Extensions are sorted by full namespaced id before
+being applied, so output is deterministic regardless of pack load
+order. Missing target chains, missing target segments, and unknown op
+types are logged and skipped — one bad extension never blocks others.
+
+The mod's own ATLA pack is a real working example — see
+`data/adventureitemnames/naming/chain_extensions/atla.json`.
+
 ### Context refs
 
 The composer recognises one virtual ref that reads from the item stack

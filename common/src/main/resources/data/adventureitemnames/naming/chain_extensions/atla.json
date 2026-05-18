@@ -1,0 +1,17 @@
+{
+  "id": "adventureitemnames:atla",
+  "target": "adventureitemnames:title_combinations",
+  "operations": [
+    {
+      "type": "add_refs",
+      "segment": "noun_pool",
+      "refs": [
+        { "ref": "adventureitemnames:atla_characters", "weight": 0.030 },
+        { "ref": "adventureitemnames:atla_places",     "weight": 0.025 },
+        { "ref": "adventureitemnames:atla_animals",    "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_elements",   "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_titles",     "weight": 0.020 }
+      ]
+    }
+  ]
+}
