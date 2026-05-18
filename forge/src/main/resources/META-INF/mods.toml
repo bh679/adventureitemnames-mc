@@ -16,14 +16,14 @@ config="adventureitemnames.mixins.json"
 
 [[dependencies.adventureitemnames]]
     modId="forge"
-    type="required"
-    versionRange="[${forge_version},)"
+    mandatory=true
+    versionRange="[51,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.adventureitemnames]]
     modId="minecraft"
-    type="required"
+    mandatory=true
     versionRange="[1.21.1]"
     ordering="NONE"
     side="BOTH"

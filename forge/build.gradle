@@ -21,6 +21,14 @@ configurations {
     developmentForge.extendsFrom common
 }
 
+// Architectury Loom 1.13's Forge dev launch pulls in net.fabricmc:fabric-log4j-util
+// (a shaded copy of terminalconsoleappender) via dev-launch-injector. Forge already
+// bundles terminalconsoleappender, so both modules end up on the module path and
+// JPMS rejects the configuration. Exclude the Fabric copy.
+configurations.all {
+    exclude group: 'net.fabricmc', module: 'fabric-log4j-util'
+}
+
 dependencies {
     forge "net.minecraftforge:forge:${rootProject.forge_version}"
 
