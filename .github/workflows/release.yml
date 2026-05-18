@@ -12,6 +12,11 @@ on:
         description: "Tag to create + release (e.g. v0.2.0). Will be created from main HEAD — must NOT already exist."
         required: true
         type: string
+      notify_discord:
+        description: "Force a Discord announcement. Otherwise Discord only fires on a MAJOR bump (X.0.0)."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -57,6 +62,9 @@ jobs:
         run: |
           TAG_NUMERIC="${RELEASE_TAG#v}"
           MAJOR="${TAG_NUMERIC%%.*}"
+          REST="${TAG_NUMERIC#*.}"
+          MINOR="${REST%%.*}"
+          PATCH="${REST#*.}"
           if [ "$MAJOR" -gt 0 ] 2>/dev/null; then
             echo "type=release" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
@@ -65,6 +73,13 @@ jobs:
             echo "type=beta" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
             echo "Release type: beta (tag $RELEASE_TAG, MAJOR=$MAJOR — pre-1.0)"
+          fi
+          if [ "$MAJOR" -gt 0 ] 2>/dev/null && [ "$MINOR" = "0" ] && [ "$PATCH" = "0" ]; then
+            echo "major_bump=true" >> "$GITHUB_OUTPUT"
+            echo "Major bump detected ($RELEASE_TAG) — Discord will fire."
+          else
+            echo "major_bump=false" >> "$GITHUB_OUTPUT"
+            echo "Not a major bump ($RELEASE_TAG) — Discord only fires if notify_discord=true."
           fi
 
       - run: ./gradlew build --no-daemon
@@ -218,11 +233,13 @@ jobs:
             echo "::warning::DISCORD_WEBHOOK_URL secret not set — skipping Discord notification."
           fi
 
-      # always() so partial-failure releases still notify (with ⚠️ markers
-      # on the platforms that didn't get the upload). RELEASE_TAG guard
-      # suppresses notify if the workflow exploded before tag verification.
+      # Discord is opt-in: fires on MAJOR bumps (X.0.0) or when notify_discord
+      # is ticked at dispatch time. always() so partial-failure releases still
+      # notify (with ⚠️ markers on platforms that didn't get the upload).
+      # RELEASE_TAG guard suppresses notify if the workflow exploded before
+      # tag verification.
       - name: Notify Discord
-        if: ${{ always() && steps.discord_check.outputs.ready == 'true' && env.RELEASE_TAG != '' }}
+        if: ${{ always() && steps.discord_check.outputs.ready == 'true' && env.RELEASE_TAG != '' && (inputs.notify_discord || steps.release_type.outputs.major_bump == 'true') }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
