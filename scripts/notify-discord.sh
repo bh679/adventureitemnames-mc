@@ -38,7 +38,7 @@ fi
 # First ~500 chars of the GitHub release notes, used as the embed body.
 NOTES=$(gh release view "$RELEASE_TAG" --repo "$REPO" --json body --jq '.body[:500]' 2>/dev/null || echo "")
 
-LOGO_URL="https://raw.githubusercontent.com/$REPO/main/src/main/resources/logo.png"
+LOGO_URL="https://raw.githubusercontent.com/$REPO/main/common/src/main/resources/logo.png"
 LANDING_URL="https://github.com/$REPO/wiki/Downloads"
 GH_RELEASE_URL="https://github.com/$REPO/releases/tag/$RELEASE_TAG"
 MODRINTH_URL="https://modrinth.com/mod/adventureitemnames/version/$RELEASE_TAG"

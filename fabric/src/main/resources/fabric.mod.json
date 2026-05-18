@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "adventureitemnames",
+  "version": "${version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": ["${mod_authors}"],
+  "contact": {
+    "homepage": "https://github.com/bh679/adventureitemnames-mc",
+    "sources": "https://github.com/bh679/adventureitemnames-mc",
+    "issues": "https://github.com/bh679/adventureitemnames-mc/issues"
+  },
+  "license": "${mod_license}",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["games.brennan.adventureitemnames.fabric.AdventureItemNamesFabric"]
+  },
+  "mixins": [
+    "adventureitemnames.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

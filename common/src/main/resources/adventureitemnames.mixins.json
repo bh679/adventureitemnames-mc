@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "games.brennan.adventureitemnames.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "LootTableMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
