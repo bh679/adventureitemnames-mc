@@ -7,6 +7,14 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ambient.AmbientCreature;
+import net.minecraft.world.entity.animal.AbstractGolem;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.animal.WaterAnimal;
+import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
@@ -44,12 +52,20 @@ public final class NameComposer {
     /** Naming probability for enchanted items that match a selector. */
     private static final float CHANCE_ENCHANTED = 0.50f;
 
+    /** Naming probability for non-aggressive mobs (Animal, WaterAnimal, AmbientCreature, AbstractGolem, Allay). */
+    private static final float CHANCE_MOB_PASSIVE = 0.05f;
+    /** Naming probability for villagers (AbstractVillager — Villager + WanderingTrader). */
+    private static final float CHANCE_MOB_VILLAGER = 1.00f;
+
     /** Virtual ref resolved from the stack's item id rather than a JSON pool. */
     public static final ResourceLocation REF_ITEM_MATERIAL =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/item_material");
 
     private static final ResourceLocation POOL_TYPE_SYNONYMS =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "type_synonyms");
+
+    private static final ResourceLocation CHAIN_MOB_NAME =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
 
     private NameComposer() {}
 
@@ -78,6 +94,55 @@ public final class NameComposer {
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+    }
+
+    /**
+     * Generate a name for a freshly-spawned {@link Mob} and apply it as
+     * the vanilla {@code CustomName}. Intended to be called from a mixin
+     * on {@code Mob.finalizeSpawn(...)} so it fires exactly once per
+     * fresh spawn (never on chunk reload).
+     *
+     * <p>Probability:
+     * <ul>
+     *   <li>{@link AbstractVillager} (Villager + WanderingTrader): 100%, name
+     *       <em>hover-only</em> (every villager is named — floating plates
+     *       would clutter a village).</li>
+     *   <li>{@link Animal} / {@link WaterAnimal} / {@link AmbientCreature} /
+     *       {@link AbstractGolem} / {@link Allay} that are <em>not</em>
+     *       {@link Enemy}: 5%, name <em>always visible</em> (rare → stand out).</li>
+     *   <li>All other mobs: no-op.</li>
+     * </ul>
+     *
+     * <p>Pre-existing {@code CustomName} (e.g. from {@code /summon …
+     * {CustomName:'"Bessie"'}}) is respected — we early-return.</p>
+     */
+    public static void applyMobName(Mob mob, RandomSource rng) {
+        if (mob.getCustomName() != null) return;
+
+        float chance;
+        boolean nameVisible;
+        if (mob instanceof AbstractVillager) {
+            chance = CHANCE_MOB_VILLAGER;
+            nameVisible = false;
+        } else if ((mob instanceof Animal
+                 || mob instanceof WaterAnimal
+                 || mob instanceof AmbientCreature
+                 || mob instanceof AbstractGolem
+                 || mob instanceof Allay)
+                && !(mob instanceof Enemy)) {
+            chance = CHANCE_MOB_PASSIVE;
+            nameVisible = true;
+        } else {
+            return;
+        }
+
+        if (rng.nextFloat() >= chance) return;
+
+        String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0);
+        if (name == null || name.isBlank()) return;
+
+        mob.setCustomName(Component.literal(name));
+        mob.setCustomNameVisible(nameVisible);
     }
 
     /**
