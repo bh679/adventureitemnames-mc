@@ -1,0 +1,15 @@
+{
+  "_comment": "Default disable list shipped with the mod — empty. To disable parts of the naming system, ship your own JSON file under data/<your-namespace>/disabled/ in a datapack, or edit config/adventureitemnames.json. See https://github.com/bh679/adventureitemnames-mc/wiki/Features for details.",
+  "pools":     [],
+  "chains":    [],
+  "selectors": [],
+  "items": {
+    "tags": [],
+    "ids":  []
+  },
+  "mobs": {
+    "categories":  [],
+    "entity_tags": [],
+    "entity_ids":  []
+  }
+}

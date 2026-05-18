@@ -51,6 +51,7 @@ public final class NameRegistry {
     public static SimpleJsonResourceReloadListener poolListener()     { return new PoolListener(); }
     public static SimpleJsonResourceReloadListener chainListener()    { return new ChainListener(); }
     public static SimpleJsonResourceReloadListener selectorListener() { return new SelectorListener(); }
+    public static SimpleJsonResourceReloadListener configListener()   { return new ConfigListener(); }
 
     public static synchronized Optional<NamePool> pool(ResourceLocation id) {
         return Optional.ofNullable(POOLS.get(id));
