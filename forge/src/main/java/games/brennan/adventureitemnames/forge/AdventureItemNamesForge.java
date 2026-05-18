@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.item.RandomChestItem;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackSelectionConfig;
@@ -11,13 +13,18 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.event.AddPackFindersEvent;
 import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -45,12 +52,27 @@ public final class AdventureItemNamesForge {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    private static final DeferredRegister<Item> ITEMS =
+        DeferredRegister.create(Registries.ITEM, "adventureitemnames");
+
+    public static final RegistryObject<Item> RANDOM_CHEST =
+        ITEMS.register("random_chest", () -> new RandomChestItem(new Item.Properties()));
+
     public AdventureItemNamesForge(IEventBus modBus) {
         ConfigPaths.set(FMLPaths.CONFIGDIR.get());
         UserConfigLoader.reload();
 
+        ITEMS.register(modBus);
+        modBus.addListener(AdventureItemNamesForge::onBuildCreativeTab);
+
         MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForge::onAddReloadListeners);
         modBus.addListener(AdventureItemNamesForge::onAddPackFinders);
+    }
+
+    private static void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(RANDOM_CHEST.get());
+        }
     }
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
