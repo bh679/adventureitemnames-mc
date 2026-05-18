@@ -46,7 +46,13 @@
         { "ref": "adventureitemnames:atla_places",             "weight": 0.025 },
         { "ref": "adventureitemnames:atla_animals",            "weight": 0.020 },
         { "ref": "adventureitemnames:atla_elements",           "weight": 0.020 },
-        { "ref": "adventureitemnames:atla_titles",             "weight": 0.020 }
+        { "ref": "adventureitemnames:atla_titles",             "weight": 0.020 },
+
+        { "ref": "adventureitemnames:adventuretime_characters", "weight": 0.030 },
+        { "ref": "adventureitemnames:adventuretime_places",     "weight": 0.025 },
+        { "ref": "adventureitemnames:adventuretime_animals",    "weight": 0.020 },
+        { "ref": "adventureitemnames:adventuretime_elements",   "weight": 0.020 },
+        { "ref": "adventureitemnames:adventuretime_titles",     "weight": 0.020 }
       ],
       "chance": 1.0,
       "connection": " of ",

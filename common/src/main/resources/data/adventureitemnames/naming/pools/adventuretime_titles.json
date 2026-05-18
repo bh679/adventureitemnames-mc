@@ -1,0 +1,27 @@
+{
+  "id": "adventureitemnames:adventuretime_titles",
+  "entries": [
+    { "text": "the Hero of Ooo" },
+    { "text": "the Vampire Queen" },
+    { "text": "the Ice King" },
+    { "text": "the Lich" },
+    { "text": "the Cosmic Owl" },
+    { "text": "the Earl of Lemongrab" },
+    { "text": "Ruler of the Nightosphere" },
+    { "text": "the Crown's Bearer" },
+    { "text": "the Banana Guard" },
+    { "text": "the Dungeon Master" },
+    { "text": "the Last Human" },
+    { "text": "the Vampire King" },
+    { "text": "the Wizard's Apprentice" },
+    { "text": "Princess of the Candy Kingdom" },
+    { "text": "Master of the Crown" },
+    { "text": "Lord of Evil" },
+    { "text": "Champion of Ooo" },
+    { "text": "Mathematician" },
+    { "text": "the Goblin King" },
+    { "text": "the Bath Boy" },
+    { "text": "the Hyooman Hero" },
+    { "text": "Knight of Ooo" }
+  ]
+}
