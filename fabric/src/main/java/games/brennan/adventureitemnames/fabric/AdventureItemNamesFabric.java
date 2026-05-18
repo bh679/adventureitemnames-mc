@@ -3,17 +3,23 @@ package games.brennan.adventureitemnames.fabric;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +38,12 @@ import java.util.concurrent.Executor;
  */
 public final class AdventureItemNamesFabric implements ModInitializer {
 
+    public static final Item RANDOM_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_chest"),
+        new RandomChestItem(new Item.Properties())
+    );
+
     @Override
     public void onInitialize() {
         ConfigPaths.set(FabricLoader.getInstance().getConfigDir());
@@ -43,6 +55,9 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         rh.registerReloadListener(wrap(NameRegistry.extensionListener(), "chain_extensions"));
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(),  "selectors"));
         rh.registerReloadListener(wrap(NameRegistry.configListener(),    "disabled"));
+
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
+            .register(entries -> entries.accept(RANDOM_CHEST));
 
         FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container ->
             ResourceManagerHelper.registerBuiltinResourcePack(
