@@ -1,0 +1,27 @@
+{
+  "id": "adventureitemnames:atla_titles",
+  "entries": [
+    { "text": "the Avatar" },
+    { "text": "Fire Lord" },
+    { "text": "Earth King" },
+    { "text": "Earth Queen" },
+    { "text": "the Dragon of the West" },
+    { "text": "the Last Airbender" },
+    { "text": "the Blue Spirit" },
+    { "text": "the Painted Lady" },
+    { "text": "the Boulder" },
+    { "text": "the Mechanist" },
+    { "text": "the Cabbage Merchant" },
+    { "text": "Master of the Four Elements" },
+    { "text": "the Phoenix King" },
+    { "text": "Kyoshi Warrior" },
+    { "text": "Dai Li Agent" },
+    { "text": "Yu Yan Archer" },
+    { "text": "Order of the White Lotus" },
+    { "text": "Master Pakku" },
+    { "text": "Master Piandao" },
+    { "text": "Sifu Hotman" },
+    { "text": "the Mother of Faces" },
+    { "text": "Grand Lotus" }
+  ]
+}

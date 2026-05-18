@@ -1,0 +1,31 @@
+{
+  "id": "adventureitemnames:atla_places",
+  "entries": [
+    { "text": "Ba Sing Se" },
+    { "text": "Omashu" },
+    { "text": "the Northern Air Temple" },
+    { "text": "the Western Air Temple" },
+    { "text": "the Eastern Air Temple" },
+    { "text": "the Southern Air Temple" },
+    { "text": "the Northern Water Tribe" },
+    { "text": "the Southern Water Tribe" },
+    { "text": "the Foggy Swamp" },
+    { "text": "the Si Wong Desert" },
+    { "text": "the Boiling Rock" },
+    { "text": "Kyoshi Island" },
+    { "text": "Ember Island" },
+    { "text": "Wulong Forest" },
+    { "text": "the Spirit World" },
+    { "text": "the Cave of Two Lovers" },
+    { "text": "the Serpent's Pass" },
+    { "text": "Republic City" },
+    { "text": "the Fire Nation" },
+    { "text": "the Earth Kingdom" },
+    { "text": "the Crescent Island" },
+    { "text": "Gaoling" },
+    { "text": "Taku" },
+    { "text": "Yu Dao" },
+    { "text": "the Sun Warrior Ruins" },
+    { "text": "the Misty Palms Oasis" }
+  ]
+}
