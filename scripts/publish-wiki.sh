@@ -45,11 +45,8 @@ LATEST_TAG=$(jq -r '.[0].tag_name' "$RELEASES_JSON")
 LATEST_NAME=$(jq -r '.[0].name // .[0].tag_name' "$RELEASES_JSON")
 LATEST_DATE=$(jq -r '.[0].published_at[0:10]' "$RELEASES_JSON")
 LATEST_URL=$(jq -r '.[0].html_url' "$RELEASES_JSON")
-LATEST_ASSET_NAME=$(jq -r '.[0].assets[0].name // empty' "$RELEASES_JSON")
-LATEST_ASSET_URL=$(jq -r '.[0].assets[0].browser_download_url // empty' "$RELEASES_JSON")
-LATEST_ASSET_SIZE=$(jq -r '.[0].assets[0].size // 0' "$RELEASES_JSON")
 
-if [ -z "$LATEST_ASSET_URL" ]; then
+if [ "$(jq '.[0].assets | length' "$RELEASES_JSON")" -eq 0 ]; then
   echo "::warning::Latest release $LATEST_TAG has no assets; skipping wiki update."
   exit 0
 fi
@@ -63,20 +60,63 @@ human_size() {
     awk "BEGIN { printf \"%d KB\", ($bytes + 512) / 1024 }"
   fi
 }
-LATEST_SIZE_HUMAN=$(human_size "$LATEST_ASSET_SIZE")
+
+# For a given release index and loader, print "[<filename> (<size>)](<url>)"
+# or an empty string if that loader's jar isn't attached. Loaders match the
+# filename pattern adventureitemnames-<loader>-<version>.jar produced by the
+# multi-loader build. Pre-v0.2.0 releases shipped a single jar named
+# adventureitemnames-<version>.jar — we fall back to that for the NeoForge
+# slot so the archive table doesn't show empty cells for early builds.
+loader_link() {
+  local release_idx="$1" loader="$2"
+  local asset_json
+  asset_json=$(jq -c --argjson i "$release_idx" --arg loader "$loader" '
+    .[$i].assets[]
+    | select(.name | test("adventureitemnames-" + $loader + "-.*\\.jar$"))
+    | { name: .name, url: .browser_download_url, size: .size }
+  ' "$RELEASES_JSON" | head -1)
+  if [ -z "$asset_json" ] && [ "$loader" = "neoforge" ]; then
+    asset_json=$(jq -c --argjson i "$release_idx" '
+      .[$i].assets[]
+      | select(.name | test("adventureitemnames-[0-9].*\\.jar$"))
+      | { name: .name, url: .browser_download_url, size: .size }
+    ' "$RELEASES_JSON" | head -1)
+  fi
+  if [ -z "$asset_json" ]; then
+    echo ""
+    return
+  fi
+  local name url size size_h
+  name=$(echo "$asset_json" | jq -r '.name')
+  url=$(echo "$asset_json" | jq -r '.url')
+  size=$(echo "$asset_json" | jq -r '.size')
+  size_h=$(human_size "$size")
+  echo "[\`$name\`]($url) ($size_h)"
+}
+
+LATEST_FABRIC=$(loader_link 0 fabric)
+LATEST_FORGE=$(loader_link 0 forge)
+LATEST_NEOFORGE=$(loader_link 0 neoforge)
 
 # --- Render Downloads.md ---
 DL_FILE="$WORKDIR/Downloads.md"
-cat > "$DL_FILE" <<EOF
+{
+  cat <<EOF
 # Downloads
 
-Adventure Item Names is a NeoForge mod for Minecraft 1.21.1 — drop the jar into your \`mods/\` folder alongside NeoForge 21.1.228+ and launch.
+Adventure Item Names is a Minecraft 1.21.1 mod for Fabric, Forge, and NeoForge — drop the matching jar into your \`mods/\` folder and launch.
 
 ## Latest release: $LATEST_TAG
 
 **Released:** $LATEST_DATE
 
-[**Download \`$LATEST_ASSET_NAME\` ($LATEST_SIZE_HUMAN)**]($LATEST_ASSET_URL)
+Choose your loader:
+
+EOF
+  [ -n "$LATEST_FABRIC" ]   && echo "- **Fabric** — $LATEST_FABRIC"
+  [ -n "$LATEST_FORGE" ]    && echo "- **Forge** — $LATEST_FORGE"
+  [ -n "$LATEST_NEOFORGE" ] && echo "- **NeoForge** — $LATEST_NEOFORGE"
+  cat <<EOF
 
 [Release notes on GitHub →]($LATEST_URL)
 
@@ -88,6 +128,7 @@ For datapack extension and the Java API, see the [project README](https://github
 
 > This page is auto-updated on every release by \`scripts/publish-wiki.sh\` (run from the \`release.yml\` workflow on every dispatched release).
 EOF
+} > "$DL_FILE"
 
 # --- Render Downloads-Archive.md ---
 ARCH_FILE="$WORKDIR/Downloads-Archive.md"
@@ -96,19 +137,20 @@ cat > "$ARCH_FILE" <<EOF
 
 > Looking for the most recent build? See [Downloads](Downloads).
 
-| Version | Released | Download | Release notes |
-|---|---|---|---|
+| Version | Released | Fabric | Forge | NeoForge | Release notes |
+|---|---|---|---|---|---|
 EOF
 
-jq -r '.[] | [.tag_name, (.published_at[0:10]), (.assets[0].name // ""), (.assets[0].browser_download_url // ""), (.assets[0].size // 0), .html_url] | @tsv' "$RELEASES_JSON" \
-  | while IFS=$'\t' read -r tag date asset_name asset_url asset_size html_url; do
-      if [ -n "$asset_url" ]; then
-        size_human=$(human_size "$asset_size")
-        echo "| $tag | $date | [\`$asset_name\`]($asset_url) ($size_human) | [Notes]($html_url) |" >> "$ARCH_FILE"
-      else
-        echo "| $tag | $date | _no jar attached_ | [Notes]($html_url) |" >> "$ARCH_FILE"
-      fi
-    done
+NUM=$(jq 'length' "$RELEASES_JSON")
+for i in $(seq 0 $((NUM - 1))); do
+  tag=$(jq -r --argjson i "$i" '.[$i].tag_name' "$RELEASES_JSON")
+  date=$(jq -r --argjson i "$i" '.[$i].published_at[0:10]' "$RELEASES_JSON")
+  html_url=$(jq -r --argjson i "$i" '.[$i].html_url' "$RELEASES_JSON")
+  fab=$(loader_link "$i" fabric)
+  fge=$(loader_link "$i" forge)
+  nfg=$(loader_link "$i" neoforge)
+  echo "| $tag | $date | ${fab:-—} | ${fge:-—} | ${nfg:-—} | [Notes]($html_url) |" >> "$ARCH_FILE"
+done
 
 cat >> "$ARCH_FILE" <<EOF
 

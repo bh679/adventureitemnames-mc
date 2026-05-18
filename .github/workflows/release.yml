@@ -141,13 +141,14 @@ jobs:
           echo "modrinth=$MODRINTH_READY" >> "$GITHUB_OUTPUT"
           echo "curseforge=$CURSEFORGE_READY" >> "$GITHUB_OUTPUT"
 
-      # One Modrinth/CurseForge VERSION with all three loader jars attached
-      # and the version itself tagged for fabric+forge+neoforge. End users
-      # see one entry on the project page and pick the jar matching their
-      # loader by filename (adventureitemnames-fabric-<version>.jar etc.).
-      # This mirrors how Architectury API and similar multi-loader mods ship.
-      - name: Publish to Modrinth + CurseForge
-        id: mcpublish
+      # Each loader publishes as its own Modrinth/CurseForge version, tagged
+      # with exactly one loader and containing exactly one jar. Modrinth and
+      # CurseForge launchers (and the website filters) then auto-pick the
+      # right file for the user's installed loader. version_number uses SemVer
+      # build-metadata suffix (e.g. 0.2.0+fabric) so the three versions stay
+      # distinct on the platforms while sharing a human-readable release tag.
+      - name: Publish Fabric to Modrinth + CurseForge
+        id: publish_fabric
         if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
@@ -155,14 +156,51 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: release-artifacts/*.jar
-          name: Adventure Item Names ${{ env.RELEASE_TAG }}
-          version: ${{ env.RELEASE_TAG }}
+          files: release-artifacts/adventureitemnames-fabric-${{ env.MOD_VERSION }}.jar
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Fabric)
+          version: ${{ env.RELEASE_TAG }}+fabric
           version-type: ${{ steps.release_type.outputs.type }}
-          loaders: |
-            fabric
-            forge
-            neoforge
+          loaders: fabric
+          game-versions: 1.21.1
+          java: 21
+          retry-attempts: 2
+          retry-delay: 10000
+          fail-mode: warn
+
+      - name: Publish Forge to Modrinth + CurseForge
+        id: publish_forge
+        if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ steps.publish_check.outputs.modrinth == 'true' && vars.MODRINTH_PROJECT_ID || '' }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: release-artifacts/adventureitemnames-forge-${{ env.MOD_VERSION }}.jar
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Forge)
+          version: ${{ env.RELEASE_TAG }}+forge
+          version-type: ${{ steps.release_type.outputs.type }}
+          loaders: forge
+          game-versions: 1.21.1
+          java: 21
+          retry-attempts: 2
+          retry-delay: 10000
+          fail-mode: warn
+
+      - name: Publish NeoForge to Modrinth + CurseForge
+        id: publish_neoforge
+        if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ steps.publish_check.outputs.modrinth == 'true' && vars.MODRINTH_PROJECT_ID || '' }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: release-artifacts/adventureitemnames-neoforge-${{ env.MOD_VERSION }}.jar
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (NeoForge)
+          version: ${{ env.RELEASE_TAG }}+neoforge
+          version-type: ${{ steps.release_type.outputs.type }}
+          loaders: neoforge
           game-versions: 1.21.1
           java: 21
           retry-attempts: 2
@@ -190,7 +228,11 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
           REPO: ${{ github.repository }}
           PRERELEASE: ${{ steps.release_type.outputs.prerelease }}
-          MODRINTH_VERSION: ${{ steps.mcpublish.outputs.modrinth-version }}
-          CURSEFORGE_VERSION: ${{ steps.mcpublish.outputs.curseforge-version }}
+          MODRINTH_FABRIC_VERSION: ${{ steps.publish_fabric.outputs.modrinth-version }}
+          MODRINTH_FORGE_VERSION: ${{ steps.publish_forge.outputs.modrinth-version }}
+          MODRINTH_NEOFORGE_VERSION: ${{ steps.publish_neoforge.outputs.modrinth-version }}
+          CURSEFORGE_FABRIC_VERSION: ${{ steps.publish_fabric.outputs.curseforge-version }}
+          CURSEFORGE_FORGE_VERSION: ${{ steps.publish_forge.outputs.curseforge-version }}
+          CURSEFORGE_NEOFORGE_VERSION: ${{ steps.publish_neoforge.outputs.curseforge-version }}
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/notify-discord.sh

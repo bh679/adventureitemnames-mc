@@ -2,13 +2,17 @@
 # Send a rich Discord webhook embed announcing an Adventure Item Names release.
 #
 # Required env (release.yml provides these):
-#   DISCORD_WEBHOOK_URL  Discord channel webhook URL (secret).
-#   RELEASE_TAG          e.g. v0.1.1
-#   REPO                 e.g. bh679/adventureitemnames-mc
-#   PRERELEASE           "true" or "false" — controls embed color + label.
-#   MODRINTH_VERSION     mc-publish step output; non-empty if Modrinth upload succeeded.
-#   CURSEFORGE_VERSION   mc-publish step output; non-empty if CurseForge upload succeeded.
-#   GH_TOKEN             gh CLI auth (already set by GitHub Actions for `${{ github.token }}`).
+#   DISCORD_WEBHOOK_URL          Discord channel webhook URL (secret).
+#   RELEASE_TAG                  e.g. v0.1.1
+#   REPO                         e.g. bh679/adventureitemnames-mc
+#   PRERELEASE                   "true" or "false" — controls embed color + label.
+#   MODRINTH_FABRIC_VERSION      mc-publish output for the Fabric upload; non-empty on success.
+#   MODRINTH_FORGE_VERSION       …Forge…
+#   MODRINTH_NEOFORGE_VERSION    …NeoForge…
+#   CURSEFORGE_FABRIC_VERSION    mc-publish output for the CurseForge Fabric upload.
+#   CURSEFORGE_FORGE_VERSION     …Forge…
+#   CURSEFORGE_NEOFORGE_VERSION  …NeoForge…
+#   GH_TOKEN                     gh CLI auth (already set by GitHub Actions for `${{ github.token }}`).
 #
 # Idempotence: Discord webhooks always create a new message. Re-firing
 # workflow_dispatch against the same tag will produce a duplicate
@@ -21,10 +25,18 @@ set -euo pipefail
 : "${REPO:?required}"
 : "${PRERELEASE:?required}"
 
-# Per-platform success markers based on whether mc-publish recorded an
-# uploaded version ID. Empty output → upload didn't happen → ⚠️.
-MR_MARK=$([ -n "${MODRINTH_VERSION:-}" ] && echo "✅" || echo "⚠️")
-CF_MARK=$([ -n "${CURSEFORGE_VERSION:-}" ] && echo "✅" || echo "⚠️")
+# Per-platform success markers across all three loader uploads.
+# ✅ when all three loaders uploaded, ⚠️ on any miss (full or partial).
+mark_for_platform() {
+  local fab="$1" fge="$2" nfg="$3"
+  if [ -n "$fab" ] && [ -n "$fge" ] && [ -n "$nfg" ]; then
+    echo "✅"
+  else
+    echo "⚠️"
+  fi
+}
+MR_MARK=$(mark_for_platform "${MODRINTH_FABRIC_VERSION:-}" "${MODRINTH_FORGE_VERSION:-}" "${MODRINTH_NEOFORGE_VERSION:-}")
+CF_MARK=$(mark_for_platform "${CURSEFORGE_FABRIC_VERSION:-}" "${CURSEFORGE_FORGE_VERSION:-}" "${CURSEFORGE_NEOFORGE_VERSION:-}")
 
 # Discord embed color: orange for beta builds, Discord-green for stable.
 if [ "$PRERELEASE" = "true" ]; then
@@ -41,7 +53,10 @@ NOTES=$(gh release view "$RELEASE_TAG" --repo "$REPO" --json body --jq '.body[:5
 LOGO_URL="https://raw.githubusercontent.com/$REPO/main/common/src/main/resources/logo.png"
 LANDING_URL="https://github.com/$REPO/wiki/Downloads"
 GH_RELEASE_URL="https://github.com/$REPO/releases/tag/$RELEASE_TAG"
-MODRINTH_URL="https://modrinth.com/mod/adventureitemnames/version/$RELEASE_TAG"
+# Each release now produces three loader-specific versions on Modrinth
+# (v0.2.0+fabric / +forge / +neoforge), so link to the versions list rather
+# than guessing a single version slug.
+MODRINTH_URL="https://modrinth.com/mod/adventureitemnames/versions"
 CURSEFORGE_URL="https://www.curseforge.com/minecraft/mc-mods/adventureitemnames/files"
 
 PAYLOAD=$(jq -n \
