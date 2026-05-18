@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[51,)"
+license="${mod_license}"
+issueTrackerURL="https://github.com/bh679/adventureitemnames-mc/issues"
+
+[[mods]]
+modId="adventureitemnames"
+version="${version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+displayURL="https://github.com/bh679/adventureitemnames-mc"
+
+[[mixins]]
+config="adventureitemnames.mixins.json"
+
+[[dependencies.adventureitemnames]]
+    modId="forge"
+    type="required"
+    versionRange="[${forge_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.adventureitemnames]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1]"
+    ordering="NONE"
+    side="BOTH"

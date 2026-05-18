@@ -1,0 +1,46 @@
+package games.brennan.adventureitemnames.fabric;
+
+import games.brennan.adventureitemnames.internal.NameRegistry;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.profiling.ProfilerFiller;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
+/**
+ * Fabric mod entrypoint. Wraps each {@link NameRegistry} listener with a
+ * Fabric-id identifier and registers it on the server-data resource
+ * manager so {@code /reload} picks them up alongside vanilla recipes,
+ * advancements, loot tables, and tags.
+ */
+public final class AdventureItemNamesFabric implements ModInitializer {
+
+    @Override
+    public void onInitialize() {
+        ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
+        rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));
+        rh.registerReloadListener(wrap(NameRegistry.chainListener(),    "chains"));
+        rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
+    }
+
+    private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {
+        ResourceLocation fabricId = ResourceLocation.fromNamespaceAndPath("adventureitemnames", id);
+        return new IdentifiableResourceReloadListener() {
+            @Override public ResourceLocation getFabricId() { return fabricId; }
+            @Override public List<ResourceLocation> getFabricDependencies() { return List.of(); }
+            @Override public String getName() { return fabricId.toString(); }
+            @Override public CompletableFuture<Void> reload(PreparationBarrier barrier, ResourceManager mgr,
+                                                            ProfilerFiller prep, ProfilerFiller apply,
+                                                            Executor prepExec, Executor applyExec) {
+                return inner.reload(barrier, mgr, prep, apply, prepExec, applyExec);
+            }
+        };
+    }
+}

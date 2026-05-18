@@ -5,9 +5,9 @@ naturally-spawned swords, tools, shields, and armor start coming out
 with fun, evocative generated names like **"Whispering Diamond Blade
 of Iron"** instead of plain *Diamond Sword*.
 
-- **Loader:** NeoForge 1.21.1
+- **Loaders:** Fabric / Forge / NeoForge — Minecraft 1.21.1
 - **License:** PolyForm Shield 1.0.0 (source-available)
-- **Status:** v0.1.0 — initial public release
+- **Status:** v0.2.0 — multi-loader release
 
 ## What it does
 
@@ -31,11 +31,15 @@ Items rolled outside loot tables — items you craft, items from `/give`
 
 ## Install
 
-1. Install [NeoForge for Minecraft 1.21.1](https://neoforged.net/) (version 21.1.228 or later).
-2. Drop `adventureitemnames-0.1.0.jar` into your `mods/` folder.
-3. Launch the game.
+Pick the jar that matches your loader:
 
-That's it — no config required, no other mods needed.
+| Loader | Required | Download |
+|--------|----------|----------|
+| Fabric | [Fabric Loader](https://fabricmc.net/) 0.16+ and [Fabric API](https://modrinth.com/mod/fabric-api) | `adventureitemnames-fabric-0.2.0.jar` |
+| Forge | [Forge](https://files.minecraftforge.net/) 1.21.1-52.1.x | `adventureitemnames-forge-0.2.0.jar` |
+| NeoForge | [NeoForge](https://neoforged.net/) 21.1.228+ | `adventureitemnames-neoforge-0.2.0.jar` |
+
+Drop the jar into your `mods/` folder and launch the game. No config required.
 
 ## Extending with a datapack
 
@@ -145,8 +149,8 @@ makes no internal random calls beyond what you provide.
 
 ## Roadmap
 
-- **v0.1:** NeoForge 1.21.1, GLM auto-fire, datapack-extensible.
-- **v0.2:** Forge / Fabric ports via Architectury Loom or MultiLoader.
+- **v0.1:** NeoForge 1.21.1, datapack-extensible.
+- **v0.2:** Fabric + Forge + NeoForge via Architectury Loom — shared Mixin replaces the v0.1 NeoForge GLM.
 - **v0.x:** In-game config screen for naming probabilities.
 
 ## Credits
