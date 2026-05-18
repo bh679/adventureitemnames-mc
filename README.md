@@ -169,8 +169,12 @@ being applied, so output is deterministic regardless of pack load
 order. Missing target chains, missing target segments, and unknown op
 types are logged and skipped — one bad extension never blocks others.
 
-The mod's own ATLA pack is a real working example — see
-`data/adventureitemnames/naming/chain_extensions/atla.json`.
+The mod's built-in ATLA pack is a real working example — its data
+ships at `resourcepacks/atla/data/adventureitemnames/naming/` inside
+the mod jar. The pack drops 5 ATLA pools alongside one chain extension
+(`chain_extensions/atla.json`) that wires them into the base
+`title_combinations` chain — exactly the pattern third-party packs can
+follow.
 
 ### Context refs
 

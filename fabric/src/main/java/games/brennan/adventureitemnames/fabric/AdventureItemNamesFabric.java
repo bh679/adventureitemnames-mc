@@ -6,7 +6,9 @@ import games.brennan.adventureitemnames.internal.UserConfigLoader;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -41,6 +43,15 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         rh.registerReloadListener(wrap(NameRegistry.extensionListener(), "chain_extensions"));
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(),  "selectors"));
         rh.registerReloadListener(wrap(NameRegistry.configListener(),    "disabled"));
+
+        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container ->
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "atla"),
+                container,
+                Component.literal("Adventure Item Names — ATLA Pack"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            )
+        );
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {
