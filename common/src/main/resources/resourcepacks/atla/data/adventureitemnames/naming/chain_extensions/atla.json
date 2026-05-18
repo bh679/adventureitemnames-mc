@@ -4,6 +4,13 @@
   "operations": [
     {
       "type": "add_refs",
+      "segment": "prefix",
+      "refs": [
+        { "ref": "adventureitemnames:atla_title_prefix", "weight": 0.15 }
+      ]
+    },
+    {
+      "type": "add_refs",
       "segment": "noun_pool",
       "refs": [
         { "ref": "adventureitemnames:atla_characters", "weight": 0.030 },

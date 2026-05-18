@@ -1,0 +1,29 @@
+{
+  "id": "adventureitemnames:atla_title_prefix",
+  "entries": [
+    { "text": "Avatar" },
+    { "text": "Sifu" },
+    { "text": "Sage" },
+    { "text": "Airbender" },
+    { "text": "Waterbender" },
+    { "text": "Earthbender" },
+    { "text": "Firebender" },
+    { "text": "Metalbender" },
+    { "text": "Bender" },
+    { "text": "Acolyte" },
+    { "text": "Warrior" },
+    { "text": "Disciple" },
+    { "text": "Champion" },
+    { "text": "General" },
+    { "text": "Spirit" },
+    { "text": "Guardian" },
+    { "text": "Herald" },
+    { "text": "Keeper" },
+    { "text": "Chief" },
+    { "text": "Elder" },
+    { "text": "Monk" },
+    { "text": "Dragon" },
+    { "text": "Phoenix" },
+    { "text": "Lotus" }
+  ]
+}
