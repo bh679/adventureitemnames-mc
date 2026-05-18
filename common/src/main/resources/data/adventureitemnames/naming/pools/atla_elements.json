@@ -1,0 +1,26 @@
+{
+  "id": "adventureitemnames:atla_elements",
+  "entries": [
+    { "text": "Airbending" },
+    { "text": "Waterbending" },
+    { "text": "Earthbending" },
+    { "text": "Firebending" },
+    { "text": "Lightning" },
+    { "text": "Metalbending" },
+    { "text": "Bloodbending" },
+    { "text": "Energybending" },
+    { "text": "Lavabending" },
+    { "text": "Sandbending" },
+    { "text": "Cloudbending" },
+    { "text": "Plantbending" },
+    { "text": "Healing" },
+    { "text": "Combustion" },
+    { "text": "the Avatar State" },
+    { "text": "the Spirit Realm" },
+    { "text": "Chi Blocking" },
+    { "text": "the Four Elements" },
+    { "text": "Sozin's Comet" },
+    { "text": "the Eclipse" },
+    { "text": "the Spirit Oasis" }
+  ]
+}
