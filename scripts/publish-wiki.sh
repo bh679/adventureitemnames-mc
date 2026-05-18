@@ -25,10 +25,14 @@ set -euo pipefail
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
-# Fetch all releases (newest first by default). Filter out drafts and prereleases.
+# Fetch all releases (newest first by default). Filter out drafts only — we
+# keep prereleases because pre-1.0 (`0.x.x`) releases are auto-flagged as
+# prereleases by the workflow, and they ARE the available builds for a
+# pre-1.0 mod. Once 1.0.0 ships, all stable releases will be non-prerelease
+# and the latest-stable picker still works correctly.
 RELEASES_JSON="$WORKDIR/releases.json"
 gh api "repos/$REPO/releases?per_page=100" \
-  --jq '[.[] | select(.draft==false and .prerelease==false)]' \
+  --jq '[.[] | select(.draft==false)]' \
   > "$RELEASES_JSON"
 
 NUM_RELEASES=$(jq 'length' "$RELEASES_JSON")
