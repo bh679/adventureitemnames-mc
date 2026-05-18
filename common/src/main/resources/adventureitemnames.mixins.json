@@ -4,7 +4,8 @@
   "package": "games.brennan.adventureitemnames.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "LootTableMixin"
+    "LootTableMixin",
+    "MobSpawnMixin"
   ],
   "client": [],
   "server": [],
