@@ -80,6 +80,9 @@ public final class NameComposer {
         if (maybeSel.isEmpty()) return;
         NameSelector sel = maybeSel.get();
 
+        if (!NamingConfig.isSelectorEnabled(sel.id())) return;
+        if (!NamingConfig.isItemEnabled(stack)) return;
+
         boolean enchanted = stack.isEnchanted();
         if (rng.nextFloat() >= (enchanted ? CHANCE_ENCHANTED : CHANCE_PLAIN)) return;
 
@@ -119,21 +122,18 @@ public final class NameComposer {
     public static void applyMobName(Mob mob, RandomSource rng) {
         if (mob.getCustomName() != null) return;
 
+        MobCategory cat = categorize(mob);
+        if (cat == null) return;
+
+        if (!NamingConfig.isMobCategoryEnabled(cat)) return;
+        if (!NamingConfig.isEntityEnabled(mob.getType())) return;
+
         float chance;
         boolean nameVisible;
-        if (mob instanceof AbstractVillager) {
-            chance = CHANCE_MOB_VILLAGER;
-            nameVisible = false;
-        } else if ((mob instanceof Animal
-                 || mob instanceof WaterAnimal
-                 || mob instanceof AmbientCreature
-                 || mob instanceof AbstractGolem
-                 || mob instanceof Allay)
-                && !(mob instanceof Enemy)) {
-            chance = CHANCE_MOB_PASSIVE;
-            nameVisible = true;
-        } else {
-            return;
+        switch (cat) {
+            case VILLAGER -> { chance = CHANCE_MOB_VILLAGER; nameVisible = false; }
+            case PASSIVE  -> { chance = CHANCE_MOB_PASSIVE;  nameVisible = true; }
+            default -> { return; }
         }
 
         if (rng.nextFloat() >= chance) return;
@@ -146,6 +146,23 @@ public final class NameComposer {
     }
 
     /**
+     * Classify a mob into one of the namable categories, or null when the
+     * mob isn't a naming target (hostile, generic, ender dragon, etc.).
+     */
+    private static MobCategory categorize(Mob mob) {
+        if (mob instanceof AbstractVillager) return MobCategory.VILLAGER;
+        if ((mob instanceof Animal
+              || mob instanceof WaterAnimal
+              || mob instanceof AmbientCreature
+              || mob instanceof AbstractGolem
+              || mob instanceof Allay)
+             && !(mob instanceof Enemy)) {
+            return MobCategory.PASSIVE;
+        }
+        return null;
+    }
+
+    /**
      * Roll one of four weighted placements for the item-type synonym:
      * none (65%), prefix with space (4%), suffix with space (30%),
      * prefix with " of " (1%). Returns the original name unchanged when
@@ -153,6 +170,7 @@ public final class NameComposer {
      */
     private static String applyTypeSynonym(String name, ItemStack stack,
                                            ResourceLocation targetTagId, RandomSource rng) {
+        if (!NamingConfig.isPoolEnabled(POOL_TYPE_SYNONYMS)) return name;
         Optional<NamePool> pool = NameRegistry.pool(POOL_TYPE_SYNONYMS);
         if (pool.isEmpty()) return name;
         String synonym = pickPoolEntry(pool.get(), targetTagId, rng);
@@ -225,10 +243,12 @@ public final class NameComposer {
         }
         Optional<NameChain> chain = NameRegistry.chain(refId);
         if (chain.isPresent()) {
+            if (!NamingConfig.isChainEnabled(refId)) return "";
             return compose(refId, stack, targetTagId, rng, depth);
         }
         Optional<NamePool> pool = NameRegistry.pool(refId);
         if (pool.isPresent()) {
+            if (!NamingConfig.isPoolEnabled(refId)) return "";
             return pickPoolEntry(pool.get(), targetTagId, rng);
         }
         LOGGER.warn("[AdventureItemNames] ref '{}' resolves to neither pool nor chain", refId);

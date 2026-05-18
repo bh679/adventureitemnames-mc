@@ -1,9 +1,12 @@
 package games.brennan.adventureitemnames.fabric;
 
+import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import games.brennan.adventureitemnames.internal.UserConfigLoader;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -19,15 +22,24 @@ import java.util.concurrent.Executor;
  * Fabric-id identifier and registers it on the server-data resource
  * manager so {@code /reload} picks them up alongside vanilla recipes,
  * advancements, loot tables, and tags.
+ *
+ * <p>Also pushes the Fabric config dir into {@link ConfigPaths} so the
+ * common-module {@link UserConfigLoader} can find
+ * {@code config/adventureitemnames.json}, and triggers an initial read
+ * of that file at init.</p>
  */
 public final class AdventureItemNamesFabric implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        ConfigPaths.set(FabricLoader.getInstance().getConfigDir());
+        UserConfigLoader.reload();
+
         ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
         rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));
         rh.registerReloadListener(wrap(NameRegistry.chainListener(),    "chains"));
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
+        rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {
