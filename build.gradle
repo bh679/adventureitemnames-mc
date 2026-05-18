@@ -41,7 +41,13 @@ allprojects {
         options.release = 21
     }
 
+    // Pin the Java toolchain to 21 — Fabric mixin transformer in 1.21.1 cannot read
+    // class files from JDK 23+ (major version 67 vs 65). Gradle 9 will provision a
+    // JDK 21 automatically if none is installed.
     java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
         withSourcesJar()
     }
 }
