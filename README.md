@@ -8,6 +8,8 @@ of Iron"** instead of plain *Diamond Sword*.
 - **Loaders:** Fabric / Forge / NeoForge — Minecraft 1.21.1
 - **License:** PolyForm Shield 1.0.0 (source-available)
 - **Status:** v0.2.0 — multi-loader release
+  - **NeoForge + Fabric:** fully tested in dev client (registries load, mod boots cleanly)
+  - **Forge:** production jar builds with correct content (mixin config, data, manifest) but dev-launch verification is blocked by an upstream Architectury Loom 1.13 + Forge 1.21.1 JPMS conflict ([architectury/architectury-loom#284](https://github.com/architectury/architectury-loom/issues/284) confirms the pattern). If you're running the Forge jar in a real install and see issues, please open an issue.
 
 ## What it does
 
