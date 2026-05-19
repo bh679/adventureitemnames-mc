@@ -1,6 +1,7 @@
 package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.ChanceKind;
+import games.brennan.adventureitemnames.api.MobCategory;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -15,10 +16,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * v2 — top-level Spawn Chances editor. Four rows, one per
- * {@link ChanceKind}, each with a dual-bound slider + text edit-box and
- * a {@code ↺} reset button. A footer button opens
- * {@link SelectorsScreen} for per-selector chain remapping.
+ * v2.x — top-level Spawn Chances editor. Four rows, one per
+ * {@link ChanceKind}, each with a dual-bound slider + text edit-box,
+ * a {@code ↺} reset button, and a {@code Configure} button that opens
+ * the per-category sub-menu ({@link CategorySelectorsScreen} for
+ * {@code PLAIN} / {@code ENCHANTED}; {@link MobsScreen} for
+ * {@code MOB_PASSIVE} / {@code MOB_VILLAGER}).
  *
  * <p>Edits go into the shared {@link EditBuffer} and surface in the
  * gated preview panel at the bottom. {@code Save to pack} flushes
@@ -32,6 +35,7 @@ public final class SpawnChancesScreen extends Screen {
     private static final int GAP = 6;
     private static final int EDIT_W = 52;
     private static final int RESET_W = 20;
+    private static final int CONFIG_W = 72;
     private static final int FIRST_ROW_Y = 48;
 
     private static int labelWidth(int screenWidth) {
@@ -43,15 +47,16 @@ public final class SpawnChancesScreen extends Screen {
         return Math.max(60, available);
     }
 
-    /** Side padding × 2 + edit + reset + 3 gaps between (label,slider,edit,reset). */
+    /** Side padding × 2 + edit + reset + config + 4 gaps between (label,slider,edit,reset,config). */
     private static int usedNonLabelSliderWidth() {
-        return SIDE_PAD * 2 + EDIT_W + RESET_W + GAP * 3;
+        return SIDE_PAD * 2 + EDIT_W + RESET_W + CONFIG_W + GAP * 4;
     }
 
     private static int labelX() { return SIDE_PAD; }
     private static int sliderX(int screenWidth) { return labelX() + labelWidth(screenWidth) + GAP; }
     private static int editX(int screenWidth)   { return sliderX(screenWidth) + sliderWidth(screenWidth) + GAP; }
     private static int resetX(int screenWidth)  { return editX(screenWidth) + EDIT_W + GAP; }
+    private static int configX(int screenWidth) { return resetX(screenWidth) + RESET_W + GAP; }
 
     private final Screen parent;
     private final EditBuffer buffer;
@@ -73,12 +78,6 @@ public final class SpawnChancesScreen extends Screen {
             int y = FIRST_ROW_Y + i * ROW_H;
             rows.add(createRow(kinds[i], y));
         }
-
-        int selBtnY = FIRST_ROW_Y + kinds.length * ROW_H + 6;
-        addRenderableWidget(Button.builder(
-            Component.translatable("screen.adventureitemnames.spawn_chances.configure_selectors"),
-            b -> Minecraft.getInstance().setScreen(new SelectorsScreen(this, buffer))
-        ).bounds(width / 2 - 100, selBtnY, 200, 20).build());
 
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
@@ -128,7 +127,31 @@ public final class SpawnChancesScreen extends Screen {
         ).bounds(resetX(width), y, RESET_W, 18).build();
         addRenderableWidget(row.resetButton);
 
+        row.configureButton = Button.builder(
+            Component.translatable("screen.adventureitemnames.spawn_chances.configure_row"),
+            b -> openCategoryScreen(kind)
+        ).bounds(configX(width), y, CONFIG_W, 18).build();
+        addRenderableWidget(row.configureButton);
+
         return row;
+    }
+
+    /**
+     * Open the per-category sub-menu for {@code kind}. {@code PLAIN} /
+     * {@code ENCHANTED} route to {@link CategorySelectorsScreen};
+     * {@code MOB_PASSIVE} / {@code MOB_VILLAGER} route to
+     * {@link MobsScreen}.
+     */
+    private void openCategoryScreen(ChanceKind kind) {
+        Screen next = switch (kind) {
+            case PLAIN, ENCHANTED ->
+                new CategorySelectorsScreen(this, buffer, kind);
+            case MOB_PASSIVE ->
+                new MobsScreen(this, buffer, MobCategory.PASSIVE);
+            case MOB_VILLAGER ->
+                new MobsScreen(this, buffer, MobCategory.VILLAGER);
+        };
+        Minecraft.getInstance().setScreen(next);
     }
 
     private void resetRow(Row row) {
@@ -221,6 +244,7 @@ public final class SpawnChancesScreen extends Screen {
         ChanceSlider slider;
         EditBox editBox;
         Button resetButton;
+        Button configureButton;
         boolean suppressEditResponder;
 
         Row(ChanceKind kind) { this.kind = kind; }

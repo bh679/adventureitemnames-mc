@@ -107,7 +107,7 @@ public final class ChainPicker {
             if (bg != 0) {
                 gfx.fill(panelX + SIDE_PAD - 1, rowY, panelX + PANEL_W - SIDE_PAD + 1, rowY + ROW_H, bg);
             }
-            String label = SelectorsScreen.formatChainLabelFull(entry);
+            String label = ChainLabels.formatChainLabelFull(entry);
             int textColour = isCurrent ? 0xFFFFCC55 : (hover ? 0xFFFFFFFF : 0xFFD0D0D0);
             gfx.drawString(Minecraft.getInstance().font,
                 Component.literal(label),

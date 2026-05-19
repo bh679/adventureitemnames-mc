@@ -72,7 +72,9 @@ public final class UserConfigWriter {
                                             Map<String, Float> weightOverrides,
                                             EntryOverrides entryOverrides,
                                             Map<ChanceKind, Float> chanceOverrides,
-                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides) {
+                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides,
+                                            Set<ResourceLocation> disabledEntities,
+                                            Set<ResourceLocation> enabledEntities) {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — cannot save user config");
@@ -87,6 +89,7 @@ public final class UserConfigWriter {
         applyEntryEdits(root, entryOverrides);
         applyChanceEdits(root, chanceOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
+        applyEntityIdEdits(root, disabledEntities, enabledEntities);
 
         try {
             Files.createDirectories(configDir);
@@ -137,6 +140,55 @@ public final class UserConfigWriter {
         JsonArray rebuilt = new JsonArray();
         for (String s : ids) rebuilt.add(s);
         root.add(key, rebuilt);
+    }
+
+    /**
+     * Merge entity-id enable/disable edits into the nested
+     * {@code mobs.entity_ids[]} array. Mirrors {@link #applyIdListEdits}
+     * but the array lives under the {@code mobs} object — sibling fields
+     * ({@code categories}, {@code entity_tags}) are preserved.
+     *
+     * <p>If the resulting array is empty, the {@code entity_ids} key is
+     * dropped. If the resulting {@code mobs} object becomes empty too,
+     * it's dropped entirely.
+     */
+    private static void applyEntityIdEdits(JsonObject root,
+                                           Set<ResourceLocation> disable,
+                                           Set<ResourceLocation> enable) {
+        if ((disable == null || disable.isEmpty()) && (enable == null || enable.isEmpty())) return;
+        JsonObject mobs;
+        JsonElement mobsEl = root.get("mobs");
+        if (mobsEl != null && mobsEl.isJsonObject()) {
+            mobs = mobsEl.getAsJsonObject();
+        } else {
+            mobs = new JsonObject();
+        }
+        JsonArray existing;
+        JsonElement arrEl = mobs.get("entity_ids");
+        if (arrEl != null && arrEl.isJsonArray()) {
+            existing = arrEl.getAsJsonArray();
+        } else {
+            existing = new JsonArray();
+        }
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonElement item : existing) {
+            if (item.isJsonPrimitive()) ids.add(item.getAsString());
+        }
+        if (disable != null) for (ResourceLocation rl : disable) ids.add(rl.toString());
+        if (enable != null) for (ResourceLocation rl : enable) ids.remove(rl.toString());
+
+        if (ids.isEmpty()) {
+            mobs.remove("entity_ids");
+        } else {
+            JsonArray rebuilt = new JsonArray();
+            for (String s : ids) rebuilt.add(s);
+            mobs.add("entity_ids", rebuilt);
+        }
+        if (mobs.size() == 0) {
+            root.remove("mobs");
+        } else {
+            root.add("mobs", mobs);
+        }
     }
 
     /**

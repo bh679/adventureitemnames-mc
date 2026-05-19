@@ -49,6 +49,9 @@ public final class EditBuffer {
     private final Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> pendingSelectorTiers = new HashMap<>();
     private final Map<ResourceLocation, Boolean> pendingSelectorEnabled = new HashMap<>();
 
+    /** entityId → desired enabled state. Persists into {@code mobs.entity_ids[]}. */
+    private final Map<ResourceLocation, Boolean> pendingEntityEnabled = new HashMap<>();
+
     // ────────────────────────────────────────────────────────────
     // Weights (v1)
     // ────────────────────────────────────────────────────────────
@@ -336,6 +339,36 @@ public final class EditBuffer {
     }
 
     // ────────────────────────────────────────────────────────────
+    // Entity (mob) enable/disable (v2.x)
+    // ────────────────────────────────────────────────────────────
+
+    /** Stage a per-entity enable/disable. Persists into {@code mobs.entity_ids[]} on save. */
+    public void setEntityEnabled(ResourceLocation entityId, boolean enabled) {
+        if (entityId == null) return;
+        pendingEntityEnabled.put(entityId, enabled);
+    }
+
+    public Boolean pendingEntityEnabled(ResourceLocation entityId) {
+        return pendingEntityEnabled.get(entityId);
+    }
+
+    public Set<ResourceLocation> snapshotDisabledEntities() {
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        for (var e : pendingEntityEnabled.entrySet()) {
+            if (Boolean.FALSE.equals(e.getValue())) out.add(e.getKey());
+        }
+        return out;
+    }
+
+    public Set<ResourceLocation> snapshotEnabledEntities() {
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        for (var e : pendingEntityEnabled.entrySet()) {
+            if (Boolean.TRUE.equals(e.getValue())) out.add(e.getKey());
+        }
+        return out;
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Common
     // ────────────────────────────────────────────────────────────
 
@@ -346,7 +379,8 @@ public final class EditBuffer {
             || !pendingRemovedEntries.isEmpty()
             || !pendingChances.isEmpty()
             || !pendingSelectorTiers.isEmpty()
-            || !pendingSelectorEnabled.isEmpty();
+            || !pendingSelectorEnabled.isEmpty()
+            || !pendingEntityEnabled.isEmpty();
     }
 
     public void clear() {
@@ -357,5 +391,6 @@ public final class EditBuffer {
         pendingChances.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
+        pendingEntityEnabled.clear();
     }
 }

@@ -19,9 +19,15 @@
   "screen.adventureitemnames.spawn_chances.mob_passive": "Passive mob naming",
   "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
   "screen.adventureitemnames.spawn_chances.configure_selectors": "Configure selectors →",
+  "screen.adventureitemnames.spawn_chances.configure_row": "Configure →",
 
   "screen.adventureitemnames.selectors.title": "Selectors",
   "screen.adventureitemnames.selectors.tier.none": "(none)",
+  "screen.adventureitemnames.selectors.plain.title": "Plain selectors",
+  "screen.adventureitemnames.selectors.enchanted.title": "Enchanted selectors",
+
+  "screen.adventureitemnames.mobs.passive.title": "Passive mobs",
+  "screen.adventureitemnames.mobs.villager.title": "Villagers",
 
   "screen.adventureitemnames.placeholder.chains": "Chains",
   "screen.adventureitemnames.placeholder.chains.body": "Coming in v3. Edit per-segment chance, connection string, newline flag, and per-ref weights for every naming chain.",
