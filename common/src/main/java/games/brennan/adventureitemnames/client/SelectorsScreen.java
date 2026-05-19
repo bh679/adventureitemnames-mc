@@ -47,15 +47,33 @@ public final class SelectorsScreen extends Screen {
         "sword", "axe", "pickaxe", "shovel", "hoe",
         "helmet", "chestplate", "leggings", "boots", "shield");
 
-    /** Left-anchored column positions (selector + tag). */
-    private static final int COL_X_SELECTOR  = 16;
-    private static final int COL_X_TAG       = 90;
-    /** Right-anchored column offsets (plain / enchanted / enabled). */
-    private static final int COL_W_ENABLED   = 56;
-    private static final int COL_W_ENCH      = 220;
-    private static final int COL_W_PLAIN     = 380;
+    /** Selector path column — left-anchored, fixed text width. Tag shown as tooltip on hover. */
+    private static final int COL_X_SELECTOR  = 8;
+    private static final int COL_W_SELECTOR  = 72;
+    /** Enabled checkbox column — fixed width on the right. */
+    private static final int COL_W_ENABLED   = 24;
+    private static final int GAP             = 6;
     private static final int HEADER_Y        = 44;
     private static final int LIST_TOP        = 58;
+
+    /** Plain / Enchanted dropdown buttons split the remaining horizontal space evenly. */
+    private static int dropdownX(int screenWidth, boolean enchanted) {
+        int firstX = COL_X_SELECTOR + COL_W_SELECTOR + GAP;
+        int dropdownW = dropdownWidth(screenWidth);
+        if (!enchanted) return firstX;
+        return firstX + dropdownW + GAP;
+    }
+
+    /** Each dropdown gets half of the space remaining after selector + enabled + gaps. */
+    private static int dropdownWidth(int screenWidth) {
+        int remaining = screenWidth - COL_X_SELECTOR - COL_W_SELECTOR - GAP - COL_W_ENABLED - GAP * 3;
+        return Math.max(40, remaining / 2);
+    }
+
+    /** Enabled checkbox sits at the right edge with a small padding. */
+    private static int enabledX(int screenWidth) {
+        return screenWidth - COL_W_ENABLED - GAP;
+    }
 
     private final Screen parent;
     private final EditBuffer buffer;
@@ -102,11 +120,10 @@ public final class SelectorsScreen extends Screen {
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
-        gfx.drawString(font, "Selector", COL_X_SELECTOR,           HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Tag",      COL_X_TAG,                HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Plain",    width - COL_W_PLAIN,      HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Enchanted",width - COL_W_ENCH,       HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Enabled",  width - COL_W_ENABLED,    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Selector", COL_X_SELECTOR,            HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Plain",    dropdownX(width, false),   HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Enchant",  dropdownX(width, true),    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "On",       enabledX(width) - 4,       HEADER_Y, 0xFFA0A0A0, false);
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
         preview.render(gfx, mouseX, mouseY, partial);
@@ -207,12 +224,10 @@ public final class SelectorsScreen extends Screen {
             private final Button plainButton;
             private final Button enchantedButton;
             private final Checkbox enabledBox;
-            private final int screenWidth;
 
             Entry(NameSelector sel, SelectorsScreen host) {
                 this.sel = sel;
                 this.host = host;
-                this.screenWidth = host.width;
 
                 this.plainButton = makeCycleButton(NameTier.PLAIN.key());
                 this.enchantedButton = makeCycleButton(NameTier.ENCHANTED.key());
@@ -242,13 +257,7 @@ public final class SelectorsScreen extends Screen {
                 Optional<ResourceLocation> current = host.buffer().effectiveTierChain(
                     sel.id(), tierKey, sel.tiers().get(tierKey));
                 Optional<ResourceLocation> next = host.cycleChain(current, backwards);
-                ResourceLocation shipped = sel.tiers().get(tierKey);
-                boolean revertToShipped = next.isPresent() && shipped != null && shipped.equals(next.get());
-                if (revertToShipped) {
-                    host.buffer().setSelectorTier(sel.id(), tierKey, null);
-                } else {
-                    host.buffer().setSelectorTier(sel.id(), tierKey, next);
-                }
+                host.buffer().setSelectorTier(sel.id(), tierKey, next);
                 Button target = NameTier.PLAIN.key().equals(tierKey) ? plainButton : enchantedButton;
                 target.setMessage(Component.literal(SelectorsScreen.formatChainLabel(next)));
                 host.rerollPreview();
@@ -269,34 +278,40 @@ public final class SelectorsScreen extends Screen {
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
                 int textY = rowTop + 8;
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(sel.id().getPath()).withStyle(ChatFormatting.WHITE),
-                    COL_X_SELECTOR, textY, 0xFFFFFFFF, false);
+                int currentScreenWidth = host.width;
 
-                String tagText = sel.appliesTo().toString();
-                int tagMaxWidth = (screenWidth - COL_W_PLAIN) - COL_X_TAG - 8;
-                if (tagMaxWidth < 60) tagMaxWidth = 60;
-                String truncatedTag = Minecraft.getInstance().font.plainSubstrByWidth(tagText, tagMaxWidth);
-                if (!truncatedTag.equals(tagText) && truncatedTag.length() > 1) {
-                    truncatedTag = Minecraft.getInstance().font.plainSubstrByWidth(tagText, tagMaxWidth - 6) + "…";
+                String pathText = sel.id().getPath();
+                String truncatedPath = Minecraft.getInstance().font.plainSubstrByWidth(pathText, COL_W_SELECTOR);
+                if (!truncatedPath.equals(pathText) && truncatedPath.length() > 1) {
+                    truncatedPath = Minecraft.getInstance().font.plainSubstrByWidth(pathText, COL_W_SELECTOR - 6) + "…";
                 }
                 gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(truncatedTag),
-                    COL_X_TAG, textY, 0xFFC0C0C0, false);
+                    Component.literal(truncatedPath).withStyle(ChatFormatting.WHITE),
+                    COL_X_SELECTOR, textY, 0xFFFFFFFF, false);
 
-                plainButton.setX(screenWidth - COL_W_PLAIN);
+                int dropdownW = dropdownWidth(currentScreenWidth);
+                plainButton.setX(dropdownX(currentScreenWidth, false));
                 plainButton.setY(rowTop + 3);
-                plainButton.setWidth(COL_W_PLAIN - COL_W_ENCH - 4);
+                plainButton.setWidth(dropdownW);
                 plainButton.render(gfx, mouseX, mouseY, partial);
 
-                enchantedButton.setX(screenWidth - COL_W_ENCH);
+                enchantedButton.setX(dropdownX(currentScreenWidth, true));
                 enchantedButton.setY(rowTop + 3);
-                enchantedButton.setWidth(COL_W_ENCH - COL_W_ENABLED - 4);
+                enchantedButton.setWidth(dropdownW);
                 enchantedButton.render(gfx, mouseX, mouseY, partial);
 
-                enabledBox.setX(screenWidth - COL_W_ENABLED);
+                enabledBox.setX(enabledX(currentScreenWidth));
                 enabledBox.setY(rowTop + 3);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
+
+                // Hover the selector path → render a tooltip with the item tag.
+                boolean hoverSelectorText = mouseX >= COL_X_SELECTOR
+                    && mouseX < COL_X_SELECTOR + COL_W_SELECTOR
+                    && mouseY >= rowTop && mouseY < rowTop + rowHeight;
+                if (hoverSelectorText) {
+                    gfx.renderTooltip(Minecraft.getInstance().font,
+                        Component.literal(sel.appliesTo().toString()), mouseX, mouseY);
+                }
             }
         }
     }

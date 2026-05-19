@@ -28,11 +28,30 @@ import java.util.List;
 public final class SpawnChancesScreen extends Screen {
 
     private static final int ROW_H = 26;
-    private static final int LABEL_W = 160;
-    private static final int SLIDER_W = 160;
+    private static final int SIDE_PAD = 8;
+    private static final int GAP = 6;
     private static final int EDIT_W = 52;
-    private static final int RESET_W = 22;
+    private static final int RESET_W = 20;
     private static final int FIRST_ROW_Y = 48;
+
+    private static int labelWidth(int screenWidth) {
+        return Math.min(150, Math.max(80, (screenWidth - usedNonLabelSliderWidth()) * 2 / 5));
+    }
+
+    private static int sliderWidth(int screenWidth) {
+        int available = screenWidth - usedNonLabelSliderWidth() - labelWidth(screenWidth);
+        return Math.max(60, available);
+    }
+
+    /** Side padding × 2 + edit + reset + 3 gaps between (label,slider,edit,reset). */
+    private static int usedNonLabelSliderWidth() {
+        return SIDE_PAD * 2 + EDIT_W + RESET_W + GAP * 3;
+    }
+
+    private static int labelX() { return SIDE_PAD; }
+    private static int sliderX(int screenWidth) { return labelX() + labelWidth(screenWidth) + GAP; }
+    private static int editX(int screenWidth)   { return sliderX(screenWidth) + sliderWidth(screenWidth) + GAP; }
+    private static int resetX(int screenWidth)  { return editX(screenWidth) + EDIT_W + GAP; }
 
     private final Screen parent;
     private final EditBuffer buffer;
@@ -50,10 +69,9 @@ public final class SpawnChancesScreen extends Screen {
     protected void init() {
         rows.clear();
         ChanceKind[] kinds = ChanceKind.values();
-        int rowLeft = width / 2 - (LABEL_W + SLIDER_W + EDIT_W + RESET_W + 12) / 2;
         for (int i = 0; i < kinds.length; i++) {
             int y = FIRST_ROW_Y + i * ROW_H;
-            rows.add(createRow(kinds[i], rowLeft, y));
+            rows.add(createRow(kinds[i], y));
         }
 
         int selBtnY = FIRST_ROW_Y + kinds.length * ROW_H + 6;
@@ -79,18 +97,18 @@ public final class SpawnChancesScreen extends Screen {
         addRenderableWidget(preview.button());
     }
 
-    private Row createRow(ChanceKind kind, int rowLeft, int y) {
+    private Row createRow(ChanceKind kind, int y) {
         Row row = new Row(kind);
-        int x = rowLeft + LABEL_W + 4;
-        row.slider = new ChanceSlider(x, y, SLIDER_W, 18, kind, buffer.effectiveChance(kind), (newValue) -> {
-            buffer.setChance(kind, newValue);
-            row.setEditBoxValue(formatChance(newValue));
-            refreshSaveAndPreview();
-        });
-        addRenderableWidget(row.slider);
-        x += SLIDER_W + 4;
 
-        row.editBox = new EditBox(font, x, y, EDIT_W, 18, Component.literal(kind.key()));
+        row.slider = new ChanceSlider(sliderX(width), y, sliderWidth(width), 18,
+            kind, buffer.effectiveChance(kind), (newValue) -> {
+                buffer.setChance(kind, newValue);
+                row.setEditBoxValue(formatChance(newValue));
+                refreshSaveAndPreview();
+            });
+        addRenderableWidget(row.slider);
+
+        row.editBox = new EditBox(font, editX(width), y, EDIT_W, 18, Component.literal(kind.key()));
         row.editBox.setMaxLength(5);
         row.editBox.setValue(formatChance(buffer.effectiveChance(kind)));
         row.editBox.setResponder(text -> {
@@ -102,12 +120,11 @@ public final class SpawnChancesScreen extends Screen {
             refreshSaveAndPreview();
         });
         addRenderableWidget(row.editBox);
-        x += EDIT_W + 4;
 
         row.resetButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.reset"),
             b -> resetRow(row)
-        ).bounds(x, y, RESET_W, 18).build();
+        ).bounds(resetX(width), y, RESET_W, 18).build();
         addRenderableWidget(row.resetButton);
 
         return row;
@@ -143,12 +160,11 @@ public final class SpawnChancesScreen extends Screen {
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
-        int rowLeft = width / 2 - (LABEL_W + SLIDER_W + EDIT_W + RESET_W + 12) / 2;
         for (int i = 0; i < rows.size(); i++) {
             Row row = rows.get(i);
             int y = FIRST_ROW_Y + i * ROW_H + 5;
             gfx.drawString(font, Component.translatable(labelKey(row.kind)),
-                rowLeft, y, 0xFFE0E0E0, false);
+                labelX(), y, 0xFFE0E0E0, false);
         }
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
