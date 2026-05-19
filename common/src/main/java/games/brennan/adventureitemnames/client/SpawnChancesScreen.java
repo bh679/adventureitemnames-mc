@@ -83,18 +83,19 @@ public final class SpawnChancesScreen extends Screen {
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.HEIGHT - 26, 80, 20).build());
+        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.HEIGHT - 26, 80, 20).build();
+        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
-        preview = new PreviewPanel(buffer, null, true);
+        if (preview == null) preview = new PreviewPanel(buffer, null, true, this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
+        addRenderableWidget(preview.toggleButton());
     }
 
     private Row createRow(ChanceKind kind, int y) {

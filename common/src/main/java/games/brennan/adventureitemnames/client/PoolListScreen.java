@@ -56,25 +56,26 @@ public final class PoolListScreen extends Screen {
 
     @Override
     protected void init() {
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new PoolList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.HEIGHT - 26, 80, 20).build());
+        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.HEIGHT - 26, 80, 20).build();
+        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
-        preview = new PreviewPanel(buffer, null);
+        if (preview == null) preview = new PreviewPanel(buffer, null, this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
+        addRenderableWidget(preview.toggleButton());
     }
 
     @Override
@@ -126,13 +127,16 @@ public final class PoolListScreen extends Screen {
 
     void rerollPreviewForcedPool(net.minecraft.resources.ResourceLocation poolId) {
         if (preview == null) return;
-        Button old = preview.button();
-        PreviewPanel forced = new PreviewPanel(buffer, poolId);
+        Button oldReroll = preview.button();
+        Button oldToggle = preview.toggleButton();
+        PreviewPanel forced = new PreviewPanel(buffer, poolId, this::rebuildWidgets);
         forced.rebuild(width, height);
         forced.rerollNow();
-        if (old != null) this.removeWidget(old);
+        if (oldReroll != null) this.removeWidget(oldReroll);
+        if (oldToggle != null) this.removeWidget(oldToggle);
         this.preview = forced;
         this.addRenderableWidget(forced.button());
+        this.addRenderableWidget(forced.toggleButton());
     }
 
     /** Vanilla {@code ContainerObjectSelectionList} with one entry per pool. */
