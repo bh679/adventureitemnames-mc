@@ -12,7 +12,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -24,25 +23,26 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Minimal "Add custom selector" form — pick an item, pick a chain, done.
+ * Minimal "Add custom selector" form — pick item(s), pick chain, done.
  * Reached from the {@code + Add custom selector} button at the bottom of
  * {@link CategorySelectorsScreen}.
  *
  * <p>Two rows:
  * <ul>
- *   <li>Item — opens {@link ItemPicker} to pick a vanilla item from
- *       the existing Kind/Material grid. The picked {@link ItemStack}
- *       becomes the selector's {@code applies_to} (matched by item id
- *       in {@code NameRegistry#selectorMatches}).</li>
+ *   <li>Items — opens {@link ItemPicker} in multi-material mode. User
+ *       picks a kind (sword/axe/…); then a checkbox grid lets them
+ *       include / exclude individual materials. Every material is
+ *       checked by default; the resulting {@code List<ItemStack>}
+ *       seeds one custom selector per item.</li>
  *   <li>Chain — a {@link ChainPicker} popup for the current category's
- *       tier. Both tiers on the resulting selector are set to this
+ *       tier. Both tiers on each resulting selector are set to this
  *       chain by default; the user can edit either later from the other
  *       category sub-menu.</li>
  * </ul>
  *
- * <p>On Add, the new selector is staged via
- * {@link EditBuffer#addCustomSelector(NameSelector)} and the supplied
- * {@code onDone} callback fires so the caller can refresh its list.
+ * <p>On Add, one {@link EditBuffer#addCustomSelector(NameSelector)} call
+ * fires per picked item. The supplied {@code onDone} callback fires once
+ * after all are staged so the caller can refresh its list.
  */
 @Environment(EnvType.CLIENT)
 public final class AddSelectorScreen extends Screen {
@@ -58,10 +58,10 @@ public final class AddSelectorScreen extends Screen {
     private final EditBuffer buffer;
     private final NameTier tier;
     private final Runnable onDone;
-    private Button itemButton;
+    private Button itemsButton;
     private Button chainButton;
     private Button addButton;
-    private ItemStack pickedItem = ItemStack.EMPTY;
+    private List<ItemStack> pickedItems = List.of();
     private Optional<ResourceLocation> pickedChain = Optional.empty();
     private List<Optional<ResourceLocation>> chainCycle = List.of();
     private ItemPicker activeItemPicker;
@@ -83,11 +83,11 @@ public final class AddSelectorScreen extends Screen {
         int fieldX = SIDE_PAD + LABEL_W;
         int rowY = FIRST_ROW_Y;
 
-        itemButton = Button.builder(
-            Component.literal(itemButtonLabel()),
+        itemsButton = Button.builder(
+            Component.literal(itemsButtonLabel()),
             b -> openItemPicker()
         ).bounds(fieldX, rowY, FIELD_W, 20).build();
-        addRenderableWidget(itemButton);
+        addRenderableWidget(itemsButton);
 
         rowY += ROW_H;
         chainButton = Button.builder(
@@ -109,34 +109,40 @@ public final class AddSelectorScreen extends Screen {
         addRenderableWidget(addButton);
     }
 
-    private String itemButtonLabel() {
-        if (pickedItem == null || pickedItem.isEmpty()) return "Pick…";
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(pickedItem.getItem());
-        return id == null ? "Pick…" : id.toString();
+    private String itemsButtonLabel() {
+        if (pickedItems.isEmpty()) return "Pick…";
+        if (pickedItems.size() == 1) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(pickedItems.get(0).getItem());
+            return id == null ? "Pick…" : id.toString();
+        }
+        return pickedItems.size() + " items";
     }
 
     private void openItemPicker() {
         activeItemPicker = new ItemPicker(width, height, new ItemPicker.Listener() {
             @Override public void onSpecific(ItemStack stack) {
-                pickedItem = stack.copy();
-                itemButton.setMessage(Component.literal(itemButtonLabel()));
+                // Shouldn't fire in multi-mode, but treat as single-item selection just in case.
+                pickedItems = List.of(stack.copy());
+                itemsButton.setMessage(Component.literal(itemsButtonLabel()));
+                activeItemPicker = null;
+            }
+            @Override public void onSpecificMulti(List<ItemStack> stacks) {
+                pickedItems = new ArrayList<>(stacks.size());
+                for (ItemStack s : stacks) pickedItems.add(s.copy());
+                itemsButton.setMessage(Component.literal(itemsButtonLabel()));
                 activeItemPicker = null;
             }
             @Override public void onRandomItem() {
-                // No meaningful interpretation here — the selector needs a concrete item.
+                // No-op in multi-mode (Random cell isn't rendered) but guard anyway.
                 activeItemPicker = null;
             }
             @Override public void onRandomMaterial(ItemPicker.Kind kind) {
-                // Treat as picking the iron variant of that kind, so the form still
-                // produces a concrete item.
-                pickedItem = new ItemStack(kind.iconItem());
-                itemButton.setMessage(Component.literal(itemButtonLabel()));
                 activeItemPicker = null;
             }
             @Override public void onCancelled() {
                 activeItemPicker = null;
             }
-        });
+        }, true);
     }
 
     private void openChainPicker() {
@@ -170,12 +176,15 @@ public final class AddSelectorScreen extends Screen {
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
         int rowY = FIRST_ROW_Y + 6;
-        gfx.drawString(font, Component.literal("Item"), SIDE_PAD, rowY, 0xFFE0E0E0, false);
-        if (pickedItem != null && !pickedItem.isEmpty()) {
-            // Show a small icon to the right of the item button for a visual confirm.
+        gfx.drawString(font, Component.literal("Items"), SIDE_PAD, rowY, 0xFFE0E0E0, false);
+        if (!pickedItems.isEmpty()) {
+            // Show up to 4 item icons to the right of the button as a peek.
             int iconX = SIDE_PAD + LABEL_W + FIELD_W + 4;
             int iconY = FIRST_ROW_Y + (20 - ICON_SIZE) / 2;
-            gfx.renderItem(pickedItem, iconX, iconY);
+            int shown = Math.min(4, pickedItems.size());
+            for (int i = 0; i < shown; i++) {
+                gfx.renderItem(pickedItems.get(i), iconX + i * (ICON_SIZE + 2), iconY);
+            }
         }
         rowY += ROW_H;
         gfx.drawString(font, Component.literal("Chain"), SIDE_PAD, rowY, 0xFFE0E0E0, false);
@@ -186,7 +195,7 @@ public final class AddSelectorScreen extends Screen {
                 width / 2, errY, 0xFFFF6060);
         }
 
-        if (addButton != null) addButton.active = pickedItem != null && !pickedItem.isEmpty() && pickedChain.isPresent();
+        if (addButton != null) addButton.active = !pickedItems.isEmpty() && pickedChain.isPresent();
     }
 
     @Override
@@ -217,40 +226,35 @@ public final class AddSelectorScreen extends Screen {
 
     private void submit() {
         errorMessage = "";
-        if (pickedItem == null || pickedItem.isEmpty()) {
-            errorMessage = "Pick an item first";
+        if (pickedItems.isEmpty()) {
+            errorMessage = "Pick at least one item";
             return;
         }
         if (pickedChain.isEmpty()) {
             errorMessage = "Pick a chain";
             return;
         }
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(pickedItem.getItem());
-        if (itemId == null) {
-            errorMessage = "Picked item is not registered";
+        int added = 0;
+        for (ItemStack stack : pickedItems) {
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (itemId == null) continue;
+            ResourceLocation selectorId = ResourceLocation.fromNamespaceAndPath(
+                "adventureitemnames", "custom_" + itemId.getPath());
+            if (NameRegistry.shippedSelectors().containsKey(selectorId)) {
+                // Skip silently — shipped already owns this id (rare for vanilla
+                // sword/axe variants since shipped uses tags, but defensive).
+                continue;
+            }
+            Map<String, ResourceLocation> tiers = new LinkedHashMap<>();
+            tiers.put(NameTier.PLAIN.key(), pickedChain.get());
+            tiers.put(NameTier.ENCHANTED.key(), pickedChain.get());
+            buffer.addCustomSelector(new NameSelector(selectorId, itemId, tiers));
+            added++;
+        }
+        if (added == 0) {
+            errorMessage = "All picked items collide with shipped selectors";
             return;
         }
-        // Auto-derive selector id from the item id. Namespace stays adventureitemnames
-        // so user customs don't collide with shipped ones (e.g. minecraft:iron_sword →
-        // adventureitemnames:custom_iron_sword).
-        ResourceLocation selectorId = ResourceLocation.fromNamespaceAndPath(
-            "adventureitemnames", "custom_" + itemId.getPath());
-        if (NameRegistry.shippedSelectors().containsKey(selectorId)) {
-            errorMessage = "A shipped selector already uses that id";
-            return;
-        }
-
-        // Set BOTH tiers to the picked chain — the user picked one chain
-        // from one category sub-menu; defaulting the other tier to the
-        // same chain means the item gets named in both states. They can
-        // edit the other tier from the other sub-menu later.
-        Map<String, ResourceLocation> tiers = new LinkedHashMap<>();
-        tiers.put(NameTier.PLAIN.key(), pickedChain.get());
-        tiers.put(NameTier.ENCHANTED.key(), pickedChain.get());
-
-        NameSelector sel = new NameSelector(selectorId, itemId, tiers);
-        buffer.addCustomSelector(sel);
-
         if (onDone != null) onDone.run();
         Minecraft.getInstance().setScreen(parent);
     }

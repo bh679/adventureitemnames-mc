@@ -11,6 +11,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -37,6 +39,11 @@ public final class ItemPicker {
         void onRandomItem();
         /** User wants a fixed kind but random material — re-roll material every name re-roll. */
         void onRandomMaterial(Kind kind);
+        /**
+         * Multi-select submit (only fired when {@code multiMaterial=true}).
+         * Default no-op so single-select callers don't need to implement it.
+         */
+        default void onSpecificMulti(List<ItemStack> stacks) {}
         void onCancelled();
     }
 
@@ -123,15 +130,23 @@ public final class ItemPicker {
     private final int screenH;
     private final int panelX;
     private final int panelY;
+    /** When true: hide "Random *" cells; stage 2 uses checkboxes + Done. */
+    private final boolean multiMaterial;
     private Stage stage = Stage.PICK_KIND;
     private Kind selectedKind;
+    private final EnumSet<Material> selectedMaterials = EnumSet.noneOf(Material.class);
 
     public ItemPicker(int screenW, int screenH, Listener listener) {
+        this(screenW, screenH, listener, false);
+    }
+
+    public ItemPicker(int screenW, int screenH, Listener listener, boolean multiMaterial) {
         this.screenW = screenW;
         this.screenH = screenH;
         this.panelX = (screenW - PANEL_W) / 2;
         this.panelY = (screenH - PANEL_H) / 2;
         this.listener = listener;
+        this.multiMaterial = multiMaterial;
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
@@ -154,6 +169,10 @@ public final class ItemPicker {
         int btnY = panelY + PANEL_H - BTN_H - 6;
         drawButton(gfx, "Cancel", panelX + PANEL_W - BTN_W - 8, btnY, mouseX, mouseY);
         if (stage == Stage.PICK_MATERIAL) drawButton(gfx, "Back", panelX + 8, btnY, mouseX, mouseY);
+        // In multi-mode, the material stage also gets a centre "Done" button.
+        if (multiMaterial && stage == Stage.PICK_MATERIAL) {
+            drawButton(gfx, "Done", panelX + (PANEL_W - BTN_W) / 2, btnY, mouseX, mouseY);
+        }
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -170,10 +189,26 @@ public final class ItemPicker {
         if (stage == Stage.PICK_MATERIAL && hitButton(mouseX, mouseY, panelX + 8, btnY)) {
             stage = Stage.PICK_KIND;
             selectedKind = null;
+            selectedMaterials.clear();
+            return true;
+        }
+        if (multiMaterial && stage == Stage.PICK_MATERIAL
+            && hitButton(mouseX, mouseY, panelX + (PANEL_W - BTN_W) / 2, btnY)) {
+            submitMultiMaterial();
             return true;
         }
         if (stage == Stage.PICK_KIND) return handleKindClick(mouseX, mouseY);
         return handleMaterialClick(mouseX, mouseY);
+    }
+
+    private void submitMultiMaterial() {
+        if (selectedKind == null) return;
+        List<Material> mats = selectedKind.materials();
+        List<ItemStack> out = new ArrayList<>(mats.size());
+        for (Material m : mats) {
+            if (selectedMaterials.contains(m)) out.add(resolve(selectedKind, m));
+        }
+        if (!out.isEmpty()) listener.onSpecificMulti(out);
     }
 
     public boolean keyPressed(int keyCode) {
@@ -220,10 +255,12 @@ public final class ItemPicker {
             int y = gridY + (i / cols) * CELL;
             drawCellWithIcon(gfx, x, y, new ItemStack(kinds[i].iconItem()), mouseX, mouseY, kinds[i].label);
         }
-        int ri = kinds.length;
-        int rx = gridX + (ri % cols) * CELL;
-        int ry = gridY + (ri / cols) * CELL;
-        drawRandomCell(gfx, rx, ry, mouseX, mouseY, "Random item");
+        if (!multiMaterial) {
+            int ri = kinds.length;
+            int rx = gridX + (ri % cols) * CELL;
+            int ry = gridY + (ri / cols) * CELL;
+            drawRandomCell(gfx, rx, ry, mouseX, mouseY, "Random item");
+        }
     }
 
     private boolean handleKindClick(double mouseX, double mouseY) {
@@ -237,20 +274,32 @@ public final class ItemPicker {
             if (mouseX >= x && mouseX < x + CELL && mouseY >= y && mouseY < y + CELL) {
                 Kind picked = kinds[i];
                 if (picked.isFixed()) {
-                    listener.onSpecific(new ItemStack(picked.iconItem()));
+                    if (multiMaterial) {
+                        // Fixed kinds have no material variant — submit as a one-item list.
+                        listener.onSpecificMulti(List.of(new ItemStack(picked.iconItem())));
+                    } else {
+                        listener.onSpecific(new ItemStack(picked.iconItem()));
+                    }
                 } else {
                     selectedKind = picked;
+                    if (multiMaterial) {
+                        // Default: every material checked.
+                        selectedMaterials.clear();
+                        selectedMaterials.addAll(picked.materials());
+                    }
                     stage = Stage.PICK_MATERIAL;
                 }
                 return true;
             }
         }
-        int ri = kinds.length;
-        int rx = gridX + (ri % cols) * CELL;
-        int ry = gridY + (ri / cols) * CELL;
-        if (mouseX >= rx && mouseX < rx + CELL && mouseY >= ry && mouseY < ry + CELL) {
-            listener.onRandomItem();
-            return true;
+        if (!multiMaterial) {
+            int ri = kinds.length;
+            int rx = gridX + (ri % cols) * CELL;
+            int ry = gridY + (ri / cols) * CELL;
+            if (mouseX >= rx && mouseX < rx + CELL && mouseY >= ry && mouseY < ry + CELL) {
+                listener.onRandomItem();
+                return true;
+            }
         }
         return true;
     }
@@ -266,11 +315,39 @@ public final class ItemPicker {
             ItemStack stack = resolve(selectedKind, mats.get(i));
             drawCellWithIcon(gfx, x, y, stack, mouseX, mouseY,
                 mats.get(i).label + " " + selectedKind.label);
+            if (multiMaterial) {
+                drawSelectionMark(gfx, x, y, selectedMaterials.contains(mats.get(i)));
+            }
         }
-        int ri = mats.size();
-        int rx = gridX + (ri % cols) * CELL;
-        int ry = gridY + (ri / cols) * CELL;
-        drawRandomCell(gfx, rx, ry, mouseX, mouseY, "Random material");
+        if (!multiMaterial) {
+            int ri = mats.size();
+            int rx = gridX + (ri % cols) * CELL;
+            int ry = gridY + (ri / cols) * CELL;
+            drawRandomCell(gfx, rx, ry, mouseX, mouseY, "Random material");
+        }
+    }
+
+    /**
+     * Tiny checkmark overlay in the bottom-right of a material cell so the
+     * multi-select mode reads as "X of these N are picked" at a glance.
+     * Unchecked cells get a hollow dimmed box, checked cells get a filled
+     * green square with a small tick.
+     */
+    private void drawSelectionMark(GuiGraphics gfx, int cellX, int cellY, boolean checked) {
+        int boxSize = 8;
+        int bx = cellX + CELL - boxSize - 2;
+        int by = cellY + CELL - boxSize - 2;
+        if (checked) {
+            gfx.fill(bx, by, bx + boxSize, by + boxSize, 0xFF4CAF50);
+            gfx.fill(bx, by, bx + boxSize, by + 1, 0xFF8FE39A);
+            gfx.fill(bx, by + boxSize - 1, bx + boxSize, by + boxSize, 0xFF2E7D32);
+            gfx.drawString(Minecraft.getInstance().font, "✓",
+                bx + 1, by, 0xFFFFFFFF, false);
+        } else {
+            gfx.fill(bx, by, bx + boxSize, by + boxSize, 0x80202020);
+            gfx.fill(bx, by, bx + boxSize, by + 1, 0xFF606060);
+            gfx.fill(bx, by + boxSize - 1, bx + boxSize, by + boxSize, 0xFF101010);
+        }
     }
 
     private boolean handleMaterialClick(double mouseX, double mouseY) {
@@ -282,16 +359,24 @@ public final class ItemPicker {
             int x = gridX + (i % cols) * CELL;
             int y = gridY + (i / cols) * CELL;
             if (mouseX >= x && mouseX < x + CELL && mouseY >= y && mouseY < y + CELL) {
+                if (multiMaterial) {
+                    // Toggle this material in the selection set.
+                    Material m = mats.get(i);
+                    if (!selectedMaterials.add(m)) selectedMaterials.remove(m);
+                    return true;
+                }
                 listener.onSpecific(resolve(selectedKind, mats.get(i)));
                 return true;
             }
         }
-        int ri = mats.size();
-        int rx = gridX + (ri % cols) * CELL;
-        int ry = gridY + (ri / cols) * CELL;
-        if (mouseX >= rx && mouseX < rx + CELL && mouseY >= ry && mouseY < ry + CELL) {
-            listener.onRandomMaterial(selectedKind);
-            return true;
+        if (!multiMaterial) {
+            int ri = mats.size();
+            int rx = gridX + (ri % cols) * CELL;
+            int ry = gridY + (ri / cols) * CELL;
+            if (mouseX >= rx && mouseX < rx + CELL && mouseY >= ry && mouseY < ry + CELL) {
+                listener.onRandomMaterial(selectedKind);
+                return true;
+            }
         }
         return true;
     }
