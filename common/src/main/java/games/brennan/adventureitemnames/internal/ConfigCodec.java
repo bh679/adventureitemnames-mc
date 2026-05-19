@@ -12,10 +12,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Parses an enable/disable config JSON into a {@link DisableSet}.
- * Missing fields default to empty; unknown keys are logged at WARN and
- * ignored. Wildcards of the form {@code namespace:*} are accepted in any
- * id list and resolved at query time.
+ * Parses an enable/disable + weight-override config JSON into a
+ * {@link LoadedConfig}. Missing fields default to empty; unknown keys are
+ * logged at WARN and ignored. Wildcards of the form {@code namespace:*}
+ * are accepted in any id list and resolved at query time.
  *
  * <p>Schema (all fields optional):
  * <pre>{@code
@@ -31,6 +31,9 @@ import java.nio.charset.StandardCharsets;
  *     "categories":  ["passive"],
  *     "entity_tags": ["minecraft:raiders"],
  *     "entity_ids":  ["minecraft:wandering_trader"]
+ *   },
+ *   "weight_overrides": {
+ *     "adventureitemnames:title_combinations#1#adventureitemnames:mc_technoblade": 0.10
  *   }
  * }
  * }</pre>
@@ -38,28 +41,32 @@ import java.nio.charset.StandardCharsets;
 public final class ConfigCodec {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    /** Defensive upper bound on any single override weight. */
+    private static final float MAX_WEIGHT = 1000f;
 
     private ConfigCodec() {}
 
-    public static DisableSet parse(JsonElement root, String sourceLabel) {
-        DisableSet out = new DisableSet();
+    /** Parse the entire {@code adventureitemnames.json} schema. */
+    public static LoadedConfig parse(JsonElement root, String sourceLabel) {
+        DisableSet disables = new DisableSet();
+        WeightOverrides weights = new WeightOverrides();
         if (root == null || !root.isJsonObject()) {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return out;
+            return new LoadedConfig(disables, weights);
         }
         JsonObject obj = root.getAsJsonObject();
 
-        readIdList(obj, "pools", out.pools, sourceLabel);
-        readIdList(obj, "chains", out.chains, sourceLabel);
-        readIdList(obj, "selectors", out.selectors, sourceLabel);
+        readIdList(obj, "pools", disables.pools, sourceLabel);
+        readIdList(obj, "chains", disables.chains, sourceLabel);
+        readIdList(obj, "selectors", disables.selectors, sourceLabel);
 
         JsonElement itemsEl = obj.get("items");
         if (itemsEl != null && itemsEl.isJsonObject()) {
             JsonObject itemsObj = itemsEl.getAsJsonObject();
-            readIdList(itemsObj, "tags", out.itemTags, sourceLabel + "/items");
-            readIdList(itemsObj, "ids", out.itemIds, sourceLabel + "/items");
+            readIdList(itemsObj, "tags", disables.itemTags, sourceLabel + "/items");
+            readIdList(itemsObj, "ids", disables.itemIds, sourceLabel + "/items");
         } else if (itemsEl != null) {
             LOGGER.warn("[AdventureItemNames] config '{}' 'items' is not an object — ignoring", sourceLabel);
         }
@@ -77,27 +84,76 @@ public final class ConfigCodec {
                             LOGGER.warn("[AdventureItemNames] config '{}' unknown mob category '{}'", sourceLabel, e.getAsString());
                             continue;
                         }
-                        out.mobCategories.add(cat);
+                        disables.mobCategories.add(cat);
                     }
                 } else {
                     LOGGER.warn("[AdventureItemNames] config '{}' 'mobs/categories' is not an array", sourceLabel);
                 }
             }
-            readIdList(mobsObj, "entity_tags", out.entityTags, sourceLabel + "/mobs");
-            readIdList(mobsObj, "entity_ids", out.entityIds, sourceLabel + "/mobs");
+            readIdList(mobsObj, "entity_tags", disables.entityTags, sourceLabel + "/mobs");
+            readIdList(mobsObj, "entity_ids", disables.entityIds, sourceLabel + "/mobs");
         } else if (mobsEl != null) {
             LOGGER.warn("[AdventureItemNames] config '{}' 'mobs' is not an object — ignoring", sourceLabel);
         }
-        return out;
+
+        JsonElement weightsEl = obj.get("weight_overrides");
+        if (weightsEl != null && weightsEl.isJsonObject()) {
+            for (var entry : weightsEl.getAsJsonObject().entrySet()) {
+                String key = entry.getKey();
+                JsonElement valEl = entry.getValue();
+                if (valEl == null || !valEl.isJsonPrimitive() || !valEl.getAsJsonPrimitive().isNumber()) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' weight_overrides['{}'] is not a number — ignoring", sourceLabel, key);
+                    continue;
+                }
+                if (!isValidWeightKey(key)) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' weight_overrides key '{}' is malformed — ignoring", sourceLabel, key);
+                    continue;
+                }
+                float v = valEl.getAsFloat();
+                if (v < 0f) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' weight_overrides['{}'] is negative — ignoring", sourceLabel, key);
+                    continue;
+                }
+                if (v > MAX_WEIGHT) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' weight_overrides['{}'] exceeds {} — clamping", sourceLabel, key, MAX_WEIGHT);
+                    v = MAX_WEIGHT;
+                }
+                weights.weights.put(key, v);
+            }
+        } else if (weightsEl != null) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'weight_overrides' is not an object — ignoring", sourceLabel);
+        }
+        return new LoadedConfig(disables, weights);
     }
 
-    public static DisableSet parse(InputStream in, String sourceLabel) {
+    public static LoadedConfig parse(InputStream in, String sourceLabel) {
         try {
             JsonElement root = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             return parse(root, sourceLabel);
         } catch (Exception e) {
             LOGGER.warn("[AdventureItemNames] config '{}' failed to parse: {}", sourceLabel, e.getMessage());
-            return new DisableSet();
+            return LoadedConfig.empty();
+        }
+    }
+
+    /** Validate a weight-override key of the form {@code <chain_id>#<segment_index>#<ref_id>}. */
+    static boolean isValidWeightKey(String key) {
+        if (key == null) return false;
+        int firstHash = key.indexOf('#');
+        if (firstHash <= 0) return false;
+        int secondHash = key.indexOf('#', firstHash + 1);
+        if (secondHash <= firstHash + 1) return false;
+        if (secondHash == key.length() - 1) return false;
+        String chainId = key.substring(0, firstHash);
+        String segIdx = key.substring(firstHash + 1, secondHash);
+        String refId = key.substring(secondHash + 1);
+        if (net.minecraft.resources.ResourceLocation.tryParse(chainId) == null) return false;
+        if (net.minecraft.resources.ResourceLocation.tryParse(refId) == null) return false;
+        try {
+            int idx = Integer.parseInt(segIdx);
+            return idx >= 0;
+        } catch (NumberFormatException ex) {
+            return false;
         }
     }
 
