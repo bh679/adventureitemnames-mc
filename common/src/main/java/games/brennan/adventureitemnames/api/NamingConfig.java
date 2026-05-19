@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.api;
 
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
+import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
@@ -12,9 +13,12 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Public configuration surface for enabling/disabling parts of the naming
@@ -58,6 +62,9 @@ public final class NamingConfig {
     private static final WeightOverrides USER_WEIGHTS = new WeightOverrides();
     private static final WeightOverrides API_WEIGHTS = new WeightOverrides();
 
+    private static final EntryOverrides USER_ENTRIES = new EntryOverrides();
+    private static final EntryOverrides API_ENTRIES = new EntryOverrides();
+
     private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
 
@@ -94,6 +101,14 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_WEIGHTS.clear();
             if (newOverrides != null) USER_WEIGHTS.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer pool entry overrides. Internal — called by the user-config loader. */
+    public static void setUserEntryOverrides(EntryOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_ENTRIES.clear();
+            if (newOverrides != null) USER_ENTRIES.mergeFrom(newOverrides);
         }
     }
 
@@ -182,6 +197,30 @@ public final class NamingConfig {
     }
 
     /**
+     * Add a pool entry at the API layer. Takes effect immediately for
+     * {@link NameComposer} rolls until cleared via
+     * {@link #clearEntryOverride(ResourceLocation)} or
+     * {@link #restoreApiLayer(ApiSnapshot)}. Used by the in-game UI
+     * preview to surface unsaved edits.
+     */
+    public static void addEntry(ResourceLocation poolId, NamePool.PoolEntry entry) {
+        if (poolId == null || entry == null) return;
+        synchronized (LOCK) { API_ENTRIES.addEntry(poolId, entry); }
+    }
+
+    /** Remove a pool entry by text at the API layer. Exact-text equality. */
+    public static void removeEntry(ResourceLocation poolId, String text) {
+        if (poolId == null || text == null) return;
+        synchronized (LOCK) { API_ENTRIES.removeText(poolId, text); }
+    }
+
+    /** Drop every API-layer entry override for one pool. */
+    public static void clearEntryOverride(ResourceLocation poolId) {
+        if (poolId == null) return;
+        synchronized (LOCK) { API_ENTRIES.clearForPool(poolId); }
+    }
+
+    /**
      * Set an API-layer chance override. Value is clamped to {@code [0, 1]};
      * a negative value clears the override and lets the user-config /
      * default take effect.
@@ -247,6 +286,7 @@ public final class NamingConfig {
     public record ApiSnapshot(
         DisableSet disables,
         WeightOverrides weights,
+        EntryOverrides entries,
         ChanceOverrides chances,
         SelectorOverrides selectorTiers,
         SegmentOverrides segments
@@ -258,13 +298,14 @@ public final class NamingConfig {
             d.mergeFrom(API);
             WeightOverrides w = new WeightOverrides();
             w.mergeFrom(API_WEIGHTS);
+            EntryOverrides e = API_ENTRIES.snapshot();
             ChanceOverrides c = new ChanceOverrides();
             c.mergeFrom(API_CHANCES);
             SelectorOverrides s = new SelectorOverrides();
             s.mergeFrom(API_SELECTORS);
             SegmentOverrides g = new SegmentOverrides();
             g.mergeFrom(API_SEGMENTS);
-            return new ApiSnapshot(d, w, c, s, g);
+            return new ApiSnapshot(d, w, e, c, s, g);
         }
     }
 
@@ -275,6 +316,8 @@ public final class NamingConfig {
             API.mergeFrom(snapshot.disables());
             API_WEIGHTS.clear();
             API_WEIGHTS.mergeFrom(snapshot.weights());
+            API_ENTRIES.clear();
+            API_ENTRIES.mergeFrom(snapshot.entries());
             API_CHANCES.clear();
             API_CHANCES.mergeFrom(snapshot.chances());
             API_SELECTORS.clear();
@@ -369,6 +412,56 @@ public final class NamingConfig {
      */
     public static Map<String, Float> snapshotUserWeightOverrides() {
         synchronized (LOCK) { return USER_WEIGHTS.snapshot(); }
+    }
+
+    /**
+     * Effective entry list for one pool, after USER and API entry
+     * overrides are applied (removes from shipped, then adds appended).
+     *
+     * <p>Hot path: when neither USER nor API has any edit for this
+     * pool's id, returns {@code pool.entries()} directly with no copy —
+     * the common case stays allocation-free. Otherwise builds a fresh
+     * list each call. No per-pool cache in v1; add one if profiling
+     * shows the slow path is ever hot.
+     *
+     * <p>The {@link NameComposer} consults this in {@code pickPoolEntry}
+     * instead of reading {@code pool.entries()} directly, so user edits
+     * affect every roll.
+     */
+    public static List<NamePool.PoolEntry> effectivePoolEntries(NamePool pool) {
+        if (pool == null) return List.of();
+        ResourceLocation id = pool.id();
+        synchronized (LOCK) {
+            if (USER_ENTRIES.isEmptyFor(id) && API_ENTRIES.isEmptyFor(id)) {
+                return pool.entries();
+            }
+            Set<String> removed = new LinkedHashSet<>();
+            Set<String> u = USER_ENTRIES.removed.get(id);
+            if (u != null) removed.addAll(u);
+            Set<String> a = API_ENTRIES.removed.get(id);
+            if (a != null) removed.addAll(a);
+
+            List<NamePool.PoolEntry> out = new ArrayList<>(pool.entries().size());
+            for (NamePool.PoolEntry e : pool.entries()) {
+                if (!removed.contains(e.text())) out.add(e);
+            }
+            // Added entries are also filtered by the removed-set so that
+            // "remove and re-add" is order-independent and a stale USER
+            // added entry can be retired by a subsequent `removed` line.
+            List<NamePool.PoolEntry> userAdded = USER_ENTRIES.added.get(id);
+            if (userAdded != null) {
+                for (NamePool.PoolEntry e : userAdded) {
+                    if (!removed.contains(e.text())) out.add(e);
+                }
+            }
+            List<NamePool.PoolEntry> apiAdded = API_ENTRIES.added.get(id);
+            if (apiAdded != null) {
+                for (NamePool.PoolEntry e : apiAdded) {
+                    if (!removed.contains(e.text())) out.add(e);
+                }
+            }
+            return out;
+        }
     }
 
     /**

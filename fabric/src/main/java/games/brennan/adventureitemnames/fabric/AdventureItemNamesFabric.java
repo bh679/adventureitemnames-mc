@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.fabric;
 
+import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
@@ -10,6 +11,7 @@ import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -20,7 +22,10 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import org.slf4j.Logger;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -33,11 +38,13 @@ import java.util.concurrent.Executor;
  *
  * <p>Also pushes the Fabric config dir into {@link ConfigPaths} so the
  * common-module {@link UserConfigLoader} can find
- * {@code config/adventureitemnames.json}, registers the built-in ATLA
- * and Adventure Time data packs (both default-enabled), and registers
- * the {@code random_chest} creative test items.</p>
+ * {@code config/adventureitemnames.json}, registers the built-in themed
+ * data packs (all default-enabled), and registers the {@code random_chest}
+ * creative test items.</p>
  */
 public final class AdventureItemNamesFabric implements ModInitializer {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final Item RANDOM_CHEST = Registry.register(
         BuiltInRegistries.ITEM,
@@ -75,20 +82,63 @@ public final class AdventureItemNamesFabric implements ModInitializer {
                 entries.accept(RANDOM_ENCHANTED_CHEST);
             });
 
-        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container -> {
-            ResourceManagerHelper.registerBuiltinResourcePack(
-                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "atla"),
-                container,
-                Component.literal("Adventure Item Names — ATLA Pack"),
-                ResourcePackActivationType.DEFAULT_ENABLED
-            );
-            ResourceManagerHelper.registerBuiltinResourcePack(
-                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "adventuretime"),
-                container,
-                Component.literal("Adventure Item Names — Adventure Time Pack"),
-                ResourcePackActivationType.DEFAULT_ENABLED
-            );
-        });
+        registerBuiltinPack("mc_names",      "Adventure Item Names — Minecraft Pack");
+        registerBuiltinPack("wholesome",     "Adventure Item Names — Wholesome Pack");
+        registerBuiltinPack("discord",       "Adventure Item Names — Discord Supporters");
+        registerBuiltinPack("atla",          "Adventure Item Names — ATLA Pack");
+        registerBuiltinPack("adventuretime", "Adventure Item Names — Adventure Time Pack");
+    }
+
+    /**
+     * Register one built-in resource pack with the mod container that
+     * actually owns {@code resourcepacks/<packPath>} on disk.
+     *
+     * <p>In a production jar, this is always the {@code adventureitemnames}
+     * container (shadowJar bundles common's resources in). In Architectury
+     * Fabric dev mode, common's resources live under a synthetic
+     * {@code generated_<hash>} mod whose hash changes each run — so we
+     * iterate every loaded mod and pick the first whose root paths contain
+     * the pack folder. Without this scan,
+     * {@link ResourceManagerHelper#registerBuiltinResourcePack} silently
+     * fails in dev because {@code ModNioResourcePack.create} returns null
+     * when the {@code adventureitemnames} container's roots don't include
+     * the pack directory.</p>
+     */
+    private static void registerBuiltinPack(String packPath, String displayName) {
+        String resourcePath = "resourcepacks/" + packPath;
+        ModContainer owner = findContainerWithResource(resourcePath);
+        if (owner == null) {
+            LOGGER.warn("[AdventureItemNames] built-in pack '{}' not found on any mod's root paths — skipping registration", resourcePath);
+            return;
+        }
+        boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
+            ResourceLocation.fromNamespaceAndPath("adventureitemnames", packPath),
+            owner,
+            Component.literal(displayName),
+            ResourcePackActivationType.DEFAULT_ENABLED
+        );
+        if (ok) {
+            LOGGER.info("[AdventureItemNames] registered built-in data pack '{}' via container '{}'",
+                        packPath, owner.getMetadata().getId());
+        } else {
+            LOGGER.warn("[AdventureItemNames] registerBuiltinResourcePack returned false for '{}' (container '{}')",
+                        packPath, owner.getMetadata().getId());
+        }
+    }
+
+    private static ModContainer findContainerWithResource(String resourcePath) {
+        for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
+            for (Path root : mod.getRootPaths()) {
+                Path normalizedRoot = root.toAbsolutePath().normalize();
+                Path candidate = normalizedRoot.resolve(
+                    resourcePath.replace("/", normalizedRoot.getFileSystem().getSeparator())
+                ).normalize();
+                if (candidate.startsWith(normalizedRoot) && Files.exists(candidate)) {
+                    return mod;
+                }
+            }
+        }
+        return null;
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {

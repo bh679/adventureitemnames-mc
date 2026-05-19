@@ -65,30 +65,31 @@ public final class RefEditorScreen extends Screen {
 
     @Override
     protected void init() {
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new RefList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.HEIGHT - 26, 80, 20).build());
+        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
         addRenderableWidget(Button.builder(
             Component.literal("+ Add ref"),
             b -> openRefPicker()
-        ).bounds(width / 2 - 60, height - PreviewPanel.HEIGHT - 26, 120, 20).build());
+        ).bounds(width / 2 - 60, height - PreviewPanel.currentHeight() - 26, 120, 20).build());
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.HEIGHT - 26, 80, 20).build();
+        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
-        preview = new PreviewPanel(buffer, null, true);
+        if (preview == null) preview = new PreviewPanel(buffer, null, true, this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
+        addRenderableWidget(preview.toggleButton());
     }
 
     @Override

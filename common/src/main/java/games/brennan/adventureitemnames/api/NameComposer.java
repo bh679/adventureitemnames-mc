@@ -21,6 +21,8 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Walks a {@link NameChain} graph deterministically against a supplied
@@ -56,6 +58,9 @@ public final class NameComposer {
 
     private static final ResourceLocation CHAIN_MOB_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
+
+    /** Pool ids that already triggered the user-blanked-pool fallback warning. */
+    private static final Set<ResourceLocation> FALLBACK_WARNED = ConcurrentHashMap.newKeySet();
 
     private NameComposer() {}
 
@@ -309,14 +314,32 @@ public final class NameComposer {
     }
 
     private static String pickPoolEntry(NamePool pool, ResourceLocation targetTagId, RandomSource rng) {
-        List<NamePool.PoolEntry> compatible = new ArrayList<>(pool.entries().size());
-        for (NamePool.PoolEntry e : pool.entries()) {
+        List<NamePool.PoolEntry> source = NamingConfig.effectivePoolEntries(pool);
+        if (source.isEmpty() && !pool.entries().isEmpty()) {
+            warnFallbackOnce(pool.id());
+            source = pool.entries();
+        }
+        List<NamePool.PoolEntry> compatible = new ArrayList<>(source.size());
+        for (NamePool.PoolEntry e : source) {
             if (e.itemTypes().isEmpty() || e.itemTypes().contains(targetTagId)) {
                 compatible.add(e);
             }
         }
         if (compatible.isEmpty()) return "";
         return compatible.get(rng.nextInt(compatible.size())).text();
+    }
+
+    /**
+     * One-time-per-pool WARN when entry overrides zero out a pool's
+     * effective entry list. Guards against hand-edited config that
+     * would otherwise produce empty names — composer falls back to the
+     * shipped entries so naming remains functional.
+     */
+    private static void warnFallbackOnce(ResourceLocation poolId) {
+        if (FALLBACK_WARNED.add(poolId)) {
+            LOGGER.warn("[AdventureItemNames] pool '{}' has been fully blanked by user/API overrides — "
+                + "falling back to shipped entries. Edit pool_entry_overrides in adventureitemnames.json to fix.", poolId);
+        }
     }
 
     /**

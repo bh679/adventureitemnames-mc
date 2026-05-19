@@ -105,6 +105,9 @@ public final class AdventureItemNamesForge {
     private static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) return;
 
+        registerBuiltinPack(event, "mc_names", "Adventure Item Names — Minecraft Pack");
+        registerBuiltinPack(event, "wholesome", "Adventure Item Names — Wholesome Pack");
+        registerBuiltinPack(event, "discord", "Adventure Item Names — Discord Supporters");
         registerBuiltinPack(event, "atla", "Adventure Item Names — ATLA Pack");
         registerBuiltinPack(event, "adventuretime", "Adventure Item Names — Adventure Time Pack");
     }

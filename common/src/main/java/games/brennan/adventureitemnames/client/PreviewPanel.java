@@ -15,11 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Bottom-docked preview strip used on every config screen. Six slots,
- * each showing an item icon plus the name a roll produced. Clicking an
- * icon opens a two-stage {@link ItemPicker} so the user can switch the
- * slot to any kind+material combo — useful for comparing "Netherite
- * Sword" vs "Wooden Sword" naming pressure.
+ * Bottom-docked preview strip used on every config screen. Up to six
+ * slots, each showing an item icon plus the name a roll produced;
+ * clicking an icon opens a two-stage {@link ItemPicker} so the user can
+ * switch the slot to any kind+material combo — useful for comparing
+ * "Netherite Sword" vs "Wooden Sword" naming pressure.
+ *
+ * <p>The panel has two display modes controlled by a shared static
+ * {@link #expanded} flag (default {@code false} = compact 2-slot strip,
+ * 1 row; {@code true} = full 6-slot strip, 3 rows). A small toggle
+ * button next to the 🎲 reroll button flips between them. The flag is
+ * static so toggling on one config screen persists when navigating to
+ * another sibling screen within the same session.
  *
  * <p>Each slot can be one of three configurations:
  * <ul>
@@ -34,8 +41,10 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public final class PreviewPanel {
 
-    public static final int HEIGHT = 86;
+    public static final int HEIGHT_COLLAPSED = 42;
+    public static final int HEIGHT_EXPANDED = 86;
     public static final int SLOT_COUNT = 6;
+    private static final int COLLAPSED_SLOTS = 2;
     private static final int PADDING_X = 8;
     private static final int HEADER_H = 14;
     private static final int ICON_SIZE = 16;
@@ -43,6 +52,13 @@ public final class PreviewPanel {
     private static final int TEXT_LINE_H = 9;
     private static final int TEXT_OFFSET_Y = 1;
     private static final int MAX_TEXT_LINES = 2;
+
+    private static boolean expanded = false;
+
+    /** Current panel height in pixels, given the shared expand state. */
+    public static int currentHeight() { return expanded ? HEIGHT_EXPANDED : HEIGHT_COLLAPSED; }
+
+    private static int visibleSlots() { return expanded ? SLOT_COUNT : COLLAPSED_SLOTS; }
 
     /** One slot's source configuration — feeds {@link #materialize}. */
     public sealed interface SlotConfig {
@@ -54,15 +70,17 @@ public final class PreviewPanel {
     private final EditBuffer buffer;
     private final ResourceLocation forcePool;
     private final boolean gateByChance;
+    private final Runnable onLayoutChanged;
     private final SlotConfig[] slotConfigs = new SlotConfig[SLOT_COUNT];
     private List<PreviewRoller.Result> results = List.of();
     private Button reroll;
+    private Button toggle;
     private int screenWidth;
     private int screenHeight;
     private ItemPicker activePicker;
 
     public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool) {
-        this(buffer, forcePool, false);
+        this(buffer, forcePool, false, null);
     }
 
     /**
@@ -73,9 +91,26 @@ public final class PreviewPanel {
      *     preserve the always-shows-a-name UX.
      */
     public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool, boolean gateByChance) {
+        this(buffer, forcePool, gateByChance, null);
+    }
+
+    public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool, Runnable onLayoutChanged) {
+        this(buffer, forcePool, false, onLayoutChanged);
+    }
+
+    /**
+     * Canonical constructor.
+     *
+     * @param onLayoutChanged invoked when the user toggles expand/collapse.
+     *     Hosting screens pass {@code this::rebuildWidgets} so layout
+     *     recomputes around the new panel height.
+     */
+    public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool,
+                        boolean gateByChance, Runnable onLayoutChanged) {
         this.buffer = buffer;
         this.forcePool = forcePool;
         this.gateByChance = gateByChance;
+        this.onLayoutChanged = onLayoutChanged;
         for (int i = 0; i < SLOT_COUNT; i++) {
             slotConfigs[i] = new SlotConfig.Specific(PreviewRoller.DEFAULT_SAMPLES[i].copy());
         }
@@ -84,13 +119,23 @@ public final class PreviewPanel {
     public void rebuild(int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
-        rerollNow();
+        if (results.isEmpty()) rerollNow();
+        int top = screenHeight - currentHeight() + 2;
         reroll = Button.builder(Component.literal("🎲"), b -> rerollNow())
-            .bounds(screenWidth - 32 - PADDING_X, screenHeight - HEIGHT + 2, 32, 16)
+            .bounds(screenWidth - 32 - PADDING_X, top, 32, 16)
+            .build();
+        toggle = Button.builder(Component.literal(expanded ? "▼" : "▲"), b -> toggleExpanded())
+            .bounds(screenWidth - 32 - PADDING_X - 16 - 4, top, 16, 16)
             .build();
     }
 
     public Button button() { return reroll; }
+    public Button toggleButton() { return toggle; }
+
+    private void toggleExpanded() {
+        expanded = !expanded;
+        if (onLayoutChanged != null) onLayoutChanged.run();
+    }
 
     public void rerollNow() {
         RandomSource rng = pickRng();
@@ -153,9 +198,10 @@ public final class PreviewPanel {
             return true;
         }
         if (button != 0 || screenWidth == 0) return false;
-        int y0 = screenHeight - HEIGHT + HEADER_H;
+        int y0 = screenHeight - currentHeight() + HEADER_H;
         int columnWidth = (screenWidth - PADDING_X * 2) / 2;
-        for (int i = 0; i < results.size() && i < SLOT_COUNT; i++) {
+        int visible = visibleSlots();
+        for (int i = 0; i < results.size() && i < visible; i++) {
             int col = i % 2;
             int row = i / 2;
             int iconX = PADDING_X + col * columnWidth;
@@ -200,7 +246,7 @@ public final class PreviewPanel {
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (screenWidth == 0) return;
-        int y0 = screenHeight - HEIGHT;
+        int y0 = screenHeight - currentHeight();
         gfx.fill(0, y0, screenWidth, screenHeight, 0xCC101010);
         gfx.fill(0, y0, screenWidth, y0 + 1, 0xFF606060);
 
@@ -210,8 +256,9 @@ public final class PreviewPanel {
 
         int rowsStartY = y0 + HEADER_H;
         int columnWidth = (screenWidth - PADDING_X * 2) / 2;
+        int visible = visibleSlots();
         int hoveredSlot = -1;
-        for (int i = 0; i < results.size() && i < SLOT_COUNT; i++) {
+        for (int i = 0; i < results.size() && i < visible; i++) {
             int col = i % 2;
             int row = i / 2;
             int x = PADDING_X + col * columnWidth;

@@ -1,15 +1,18 @@
 package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.ChanceKind;
+import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NamingConfig;
+import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -25,13 +28,12 @@ import java.util.Set;
  * true, then flushes through {@code ConfigSave} →
  * {@link games.brennan.adventureitemnames.internal.UserConfigWriter}.
  *
- * <p>Five parallel buffers — weights (per chain-segment-ref), pool
- * enable/disable (v1), and three new in v2: chance overrides per
- * {@link ChanceKind}, selector tier remappings, and selector
- * enable/disable. {@link #effectiveChance(ChanceKind)} merges pending →
- * user → default; {@link #effectiveTierChain(ResourceLocation, String, ResourceLocation)}
- * merges pending → user → shipped — so a UI row re-renders correctly
- * before the user hits Save.
+ * <p>Six parallel buffers — weights (per chain-segment-ref), pool
+ * enable/disable, pool entry add/remove (v3 in-game pool editor), and
+ * three v2 buffers: chance overrides per {@link ChanceKind}, selector
+ * tier remappings, and selector enable/disable. The {@code effective…}
+ * helpers merge pending → user → shipped so any UI row re-renders
+ * correctly before the user hits Save.
  */
 @Environment(EnvType.CLIENT)
 public final class EditBuffer {
@@ -39,6 +41,11 @@ public final class EditBuffer {
     private final Map<String, Float> pendingWeights = new HashMap<>();
     /** poolId → desired enabled state. */
     private final Map<ResourceLocation, Boolean> pendingPoolEnabled = new HashMap<>();
+
+    /** poolId → entries the user is staging to add. */
+    private final Map<ResourceLocation, List<NamePool.PoolEntry>> pendingAddedEntries = new LinkedHashMap<>();
+    /** poolId → shipped-entry texts the user is staging to remove. */
+    private final Map<ResourceLocation, Set<String>> pendingRemovedEntries = new LinkedHashMap<>();
 
     private final Map<ChanceKind, Float> pendingChances = new EnumMap<>(ChanceKind.class);
     /** selectorId → tier → Optional<chainId> (empty = (none) suppression). */
@@ -70,6 +77,130 @@ public final class EditBuffer {
 
     public Float pendingWeight(ResourceLocation chainId, int segIdx, ResourceLocation refId) {
         return pendingWeights.get(WeightOverrides.key(chainId, segIdx, refId));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Pool entry edits (v3)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Stage a new entry for {@code poolId}. If the same text is sitting
+     * in {@code pendingRemovedEntries}, the remove is unstaged instead
+     * (the user toggled a delete then re-added the same text). Avoids
+     * creating a redundant {@code removed:[X] + added:[X]} pair that
+     * lowers to a no-op.
+     */
+    public void addEntry(ResourceLocation poolId, NamePool.PoolEntry entry) {
+        if (poolId == null || entry == null) return;
+        Set<String> removed = pendingRemovedEntries.get(poolId);
+        if (removed != null && removed.remove(entry.text())) {
+            if (removed.isEmpty()) pendingRemovedEntries.remove(poolId);
+            return;
+        }
+        pendingAddedEntries.computeIfAbsent(poolId, k -> new ArrayList<>()).add(entry);
+    }
+
+    /** Stage a shipped entry for removal. */
+    public void removeShippedEntry(ResourceLocation poolId, String text) {
+        if (poolId == null || text == null) return;
+        pendingRemovedEntries.computeIfAbsent(poolId, k -> new LinkedHashSet<>()).add(text);
+    }
+
+    /** Drop a previously-staged add (by text, first match wins). */
+    public void unstageAdd(ResourceLocation poolId, String text) {
+        if (poolId == null || text == null) return;
+        List<NamePool.PoolEntry> list = pendingAddedEntries.get(poolId);
+        if (list == null) return;
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).text().equals(text)) {
+                list.remove(i);
+                break;
+            }
+        }
+        if (list.isEmpty()) pendingAddedEntries.remove(poolId);
+    }
+
+    /** Drop a previously-staged shipped-entry remove. */
+    public void unstageRemove(ResourceLocation poolId, String text) {
+        if (poolId == null || text == null) return;
+        Set<String> set = pendingRemovedEntries.get(poolId);
+        if (set == null) return;
+        set.remove(text);
+        if (set.isEmpty()) pendingRemovedEntries.remove(poolId);
+    }
+
+    /**
+     * Smart text-edit routing. When the row being edited was originally
+     * shipped (i.e. came from {@code pool.entries()}), stage a remove of
+     * the original plus an add of the new text. When the row is a
+     * pending-add (the user just added it without saving), mutate that
+     * pending-add in place — otherwise the saved JSON would carry a
+     * phantom {@code removed:[<original>]} pointing at a text that was
+     * never shipped.
+     */
+    public void editEntryText(ResourceLocation poolId, String originalText, String newText, boolean wasShipped) {
+        if (poolId == null || originalText == null || newText == null) return;
+        if (originalText.equals(newText)) return;
+        if (wasShipped) {
+            removeShippedEntry(poolId, originalText);
+            addEntry(poolId, NamePool.PoolEntry.universal(newText));
+            return;
+        }
+        List<NamePool.PoolEntry> list = pendingAddedEntries.get(poolId);
+        if (list == null) return;
+        for (int i = 0; i < list.size(); i++) {
+            NamePool.PoolEntry e = list.get(i);
+            if (e.text().equals(originalText)) {
+                list.set(i, new NamePool.PoolEntry(newText, e.itemTypes()));
+                return;
+            }
+        }
+    }
+
+    /** Snapshot of pending entry edits as a {@link EntryOverrides} — used by save and by preview promotion. */
+    public EntryOverrides snapshotEntryOverrides() {
+        EntryOverrides out = new EntryOverrides();
+        for (var e : pendingRemovedEntries.entrySet()) {
+            for (String t : e.getValue()) out.removeText(e.getKey(), t);
+        }
+        for (var e : pendingAddedEntries.entrySet()) {
+            for (NamePool.PoolEntry pe : e.getValue()) out.addEntry(e.getKey(), pe);
+        }
+        return out;
+    }
+
+    /**
+     * Effective entries for {@code pool} with shipped + saved-USER + buffer overlay.
+     * Used by {@link PoolEntriesScreen} to render the live row list, and by
+     * {@link PoolListScreen}'s "Entries" column to keep the count fresh after edits.
+     */
+    public List<NamePool.PoolEntry> effectivePoolEntries(NamePool pool) {
+        if (pool == null) return List.of();
+        List<NamePool.PoolEntry> saved = NamingConfig.effectivePoolEntries(pool);
+        ResourceLocation id = pool.id();
+        Set<String> bufferRemoved = pendingRemovedEntries.get(id);
+        List<NamePool.PoolEntry> bufferAdded = pendingAddedEntries.get(id);
+        if ((bufferRemoved == null || bufferRemoved.isEmpty())
+            && (bufferAdded == null || bufferAdded.isEmpty())) {
+            return saved;
+        }
+        List<NamePool.PoolEntry> out = new ArrayList<>(saved.size());
+        for (NamePool.PoolEntry e : saved) {
+            if (bufferRemoved == null || !bufferRemoved.contains(e.text())) out.add(e);
+        }
+        if (bufferAdded != null) out.addAll(bufferAdded);
+        return out;
+    }
+
+    public int effectiveEntryCount(NamePool pool) {
+        return effectivePoolEntries(pool).size();
+    }
+
+    public boolean isPendingAdd(ResourceLocation poolId, String text) {
+        List<NamePool.PoolEntry> a = pendingAddedEntries.get(poolId);
+        if (a == null) return false;
+        for (NamePool.PoolEntry e : a) if (e.text().equals(text)) return true;
+        return false;
     }
 
     public Map<String, Float> snapshotWeights() {
@@ -332,6 +463,8 @@ public final class EditBuffer {
     public boolean isDirty() {
         return !pendingWeights.isEmpty()
             || !pendingPoolEnabled.isEmpty()
+            || !pendingAddedEntries.isEmpty()
+            || !pendingRemovedEntries.isEmpty()
             || !pendingChances.isEmpty()
             || !pendingSelectorTiers.isEmpty()
             || !pendingSelectorEnabled.isEmpty()
@@ -343,6 +476,8 @@ public final class EditBuffer {
     public void clear() {
         pendingWeights.clear();
         pendingPoolEnabled.clear();
+        pendingAddedEntries.clear();
+        pendingRemovedEntries.clear();
         pendingChances.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();

@@ -1,0 +1,12 @@
+{
+  "id": "adventureitemnames:title_combinations",
+  "replace": false,
+  "segments": [
+    { "refs": [] },
+    {
+      "refs": [
+        { "ref": "adventureitemnames:discord_people", "weight": 0.06 }
+      ]
+    }
+  ]
+}

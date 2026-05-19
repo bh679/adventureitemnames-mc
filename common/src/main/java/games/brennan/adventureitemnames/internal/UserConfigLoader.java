@@ -45,6 +45,7 @@ public final class UserConfigLoader {
             LoadedConfig cfg = ConfigCodec.parse(in, "user(" + file.getFileName() + ")");
             NamingConfig.setUserLayer(cfg.disables());
             NamingConfig.setUserWeightOverrides(cfg.weights());
+            NamingConfig.setUserEntryOverrides(cfg.entries());
             NamingConfig.setUserChances(cfg.chances());
             NamingConfig.setUserSelectorOverrides(cfg.selectorOverrides());
             NamingConfig.setUserSegmentOverrides(cfg.segmentOverrides());
@@ -59,6 +60,7 @@ public final class UserConfigLoader {
     private static void resetUserLayers() {
         NamingConfig.setUserLayer(new DisableSet());
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
+        NamingConfig.setUserEntryOverrides(new EntryOverrides());
         NamingConfig.setUserChances(new ChanceOverrides());
         NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
         NamingConfig.setUserSegmentOverrides(new SegmentOverrides());

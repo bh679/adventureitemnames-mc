@@ -9,6 +9,9 @@
 
   "screen.adventureitemnames.datapacks.title": "Datapacks",
   "screen.adventureitemnames.pools.title": "Pools — %s",
+  "screen.adventureitemnames.entries.title": "Entries — %s",
+  "screen.adventureitemnames.entries.add_placeholder": "Add new entry…",
+  "screen.adventureitemnames.entries.last_entry_tooltip": "Cannot remove the last entry — pool would be empty.",
 
   "screen.adventureitemnames.spawn_chances.title": "Spawn Chances",
   "screen.adventureitemnames.spawn_chances.plain": "Plain item naming",
@@ -33,6 +36,9 @@
 
   "screen.adventureitemnames.action.open": "Open",
   "screen.adventureitemnames.action.save": "Save to pack",
+  "screen.adventureitemnames.action.edit_entries": "Edit",
+  "screen.adventureitemnames.action.add": "+ Add",
+  "screen.adventureitemnames.action.delete": "✕",
   "screen.adventureitemnames.action.reset": "↺",
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",

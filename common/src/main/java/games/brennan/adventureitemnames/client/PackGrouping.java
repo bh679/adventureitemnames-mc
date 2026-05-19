@@ -64,8 +64,19 @@ public final class PackGrouping {
         return switch (packId) {
             case "vanilla" -> "Vanilla";
             case "mod/adventureitemnames", "fabric" -> "Adventure Item Names";
+            // Forge/NeoForge format — explicit "mod/<modid>/<subpack>" pack name.
+            case "mod/adventureitemnames/mc_names" -> "Minecraft Pack";
+            case "mod/adventureitemnames/wholesome" -> "Wholesome Pack";
+            case "mod/adventureitemnames/discord" -> "Discord Supporters Pack";
             case "mod/adventureitemnames/atla" -> "ATLA Pack";
             case "mod/adventureitemnames/adventuretime" -> "Adventure Time Pack";
+            // Fabric format — the pack id is the ResourceLocation toString() of
+            // what was passed to registerBuiltinResourcePack (namespace:path).
+            case "adventureitemnames:mc_names" -> "Minecraft Pack";
+            case "adventureitemnames:wholesome" -> "Wholesome Pack";
+            case "adventureitemnames:discord" -> "Discord Supporters Pack";
+            case "adventureitemnames:atla" -> "ATLA Pack";
+            case "adventureitemnames:adventuretime" -> "Adventure Time Pack";
             default -> {
                 String stripped = packId.startsWith("mod/") ? packId.substring(4)
                                 : packId.startsWith("file/") ? packId.substring(5)
