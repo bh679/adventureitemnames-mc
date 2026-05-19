@@ -138,19 +138,37 @@ public final class NameRegistry {
      */
     public static synchronized Optional<NameSelector> findMatching(ItemStack stack) {
         if (stack.isEmpty()) return Optional.empty();
+        net.minecraft.resources.ResourceLocation stackItemId =
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
         for (NameSelector sel : SELECTORS.values()) {
-            TagKey<Item> tagKey = TagKey.create(Registries.ITEM, sel.appliesTo());
-            if (stack.is(tagKey)) return Optional.of(sel);
+            if (selectorMatches(sel.appliesTo(), stack, stackItemId)) return Optional.of(sel);
         }
         // Shipped selectors come first so they retain priority. User-defined
         // selectors only catch items that no shipped selector covers — they
         // can add naming for new item kinds (e.g. tridents) without
         // shadowing the default sword/axe/etc. mapping.
         for (NameSelector sel : NamingConfig.snapshotUserCustomSelectors().values()) {
-            TagKey<Item> tagKey = TagKey.create(Registries.ITEM, sel.appliesTo());
-            if (stack.is(tagKey)) return Optional.of(sel);
+            if (selectorMatches(sel.appliesTo(), stack, stackItemId)) return Optional.of(sel);
         }
         return Optional.empty();
+    }
+
+    /**
+     * Selector matching strategy. The {@code appliesTo} field on a
+     * {@link NameSelector} is conceptually an item tag, but the UI flow
+     * for adding a custom selector lets users pick a single concrete
+     * item (e.g. {@code minecraft:trident}). To keep the JSON / record
+     * schema uniform we store either kind in the same field and fall
+     * back at match time: tag-match first (handles shipped selectors and
+     * tag-flavoured custom selectors), then item-id equality (handles
+     * concrete-item custom selectors).
+     */
+    private static boolean selectorMatches(net.minecraft.resources.ResourceLocation appliesTo,
+                                           ItemStack stack,
+                                           net.minecraft.resources.ResourceLocation stackItemId) {
+        TagKey<Item> tagKey = TagKey.create(Registries.ITEM, appliesTo);
+        if (stack.is(tagKey)) return true;
+        return stackItemId != null && stackItemId.equals(appliesTo);
     }
 
     private static synchronized void replacePools(Map<ResourceLocation, NamePool> next,

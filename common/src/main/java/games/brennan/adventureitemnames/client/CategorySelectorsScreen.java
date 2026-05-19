@@ -187,9 +187,9 @@ public final class CategorySelectorsScreen extends Screen {
             });
     }
 
-    /** Open the "Add custom selector" form. */
+    /** Open the "Add custom selector" form, scoped to this screen's tier. */
     void openAddSelectorScreen() {
-        Minecraft.getInstance().setScreen(new AddSelectorScreen(this, buffer, this::rebuildWidgets));
+        Minecraft.getInstance().setScreen(new AddSelectorScreen(this, buffer, tier, this::rebuildWidgets));
     }
 
     /** Drop a staged-or-saved user-defined selector by id. */
