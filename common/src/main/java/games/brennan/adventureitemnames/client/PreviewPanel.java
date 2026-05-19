@@ -53,6 +53,7 @@ public final class PreviewPanel {
 
     private final EditBuffer buffer;
     private final ResourceLocation forcePool;
+    private final boolean gateByChance;
     private final SlotConfig[] slotConfigs = new SlotConfig[SLOT_COUNT];
     private List<PreviewRoller.Result> results = List.of();
     private Button reroll;
@@ -61,8 +62,20 @@ public final class PreviewPanel {
     private ItemPicker activePicker;
 
     public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool) {
+        this(buffer, forcePool, false);
+    }
+
+    /**
+     * @param gateByChance when true, each preview slot first rolls
+     *     against the effective per-tier chance; failed rolls render as
+     *     {@code —}. Used by Spawn Chances + Selectors screens so chance
+     *     edits are visible. v1 screens keep the un-gated default to
+     *     preserve the always-shows-a-name UX.
+     */
+    public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool, boolean gateByChance) {
         this.buffer = buffer;
         this.forcePool = forcePool;
+        this.gateByChance = gateByChance;
         for (int i = 0; i < SLOT_COUNT; i++) {
             slotConfigs[i] = new SlotConfig.Specific(PreviewRoller.DEFAULT_SAMPLES[i].copy());
         }
@@ -87,7 +100,7 @@ public final class PreviewPanel {
             stacks.add(materialize(slotConfigs[i], rng));
             enchanted.add(isSlotEnchanted(i));
         }
-        results = PreviewRoller.rollBatch(stacks, enchanted, buffer, forcePool);
+        results = PreviewRoller.rollBatch(stacks, enchanted, buffer, forcePool, gateByChance);
     }
 
     private void rerollSlot(int slot) {
@@ -95,7 +108,7 @@ public final class PreviewPanel {
         RandomSource rng = pickRng();
         ItemStack stack = materialize(slotConfigs[slot], rng);
         PreviewRoller.Result rolled = PreviewRoller.rollSingle(
-            stack, isSlotEnchanted(slot), buffer, forcePool);
+            stack, isSlotEnchanted(slot), buffer, forcePool, gateByChance);
         List<PreviewRoller.Result> next = new ArrayList<>(results);
         while (next.size() <= slot) {
             next.add(new PreviewRoller.Result(materialize(slotConfigs[next.size()], rng), "—"));
