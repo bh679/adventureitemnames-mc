@@ -176,19 +176,37 @@ public final class SelectorsScreen extends Screen {
 
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
-    /** Filtered registered selectors in the fixed display order. Missing entries are skipped. */
+    /**
+     * Open the "add a new selector" stub. v2 has no runtime selector
+     * creation — letting the user pick an item tag and assign chains
+     * needs a tag-picker UI + a new layer in {@link NamingConfig} that
+     * carries user-defined selectors alongside the shipped ones. Held
+     * for v3; this screen surfaces the affordance so the API surface
+     * is discoverable.
+     */
+    void openAddSelectorPlaceholder() {
+        Minecraft.getInstance().setScreen(new PlaceholderScreen(this,
+            Component.literal("Add custom selector"),
+            Component.literal("Coming in v3 — pick an item tag and a chain pair to define a new selector at runtime.")));
+    }
+
+    /**
+     * Every registered selector, ordered by {@link #SELECTOR_PATH_ORDER}
+     * first and then alphabetically by id. Includes user-datapack
+     * selectors (any namespace) so a third-party selector auto-appears
+     * in the grid without a code change.
+     */
     private List<NameSelector> orderedSelectors() {
-        Map<String, NameSelector> byPath = new LinkedHashMap<>();
-        for (var entry : NameRegistry.allSelectors().entrySet()) {
-            ResourceLocation id = entry.getKey();
-            if (!"adventureitemnames".equals(id.getNamespace())) continue;
-            byPath.put(id.getPath(), entry.getValue());
-        }
+        Map<ResourceLocation, NameSelector> remaining = new LinkedHashMap<>(NameRegistry.allSelectors());
         List<NameSelector> ordered = new ArrayList<>();
         for (String path : SELECTOR_PATH_ORDER) {
-            NameSelector sel = byPath.get(path);
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("adventureitemnames", path);
+            NameSelector sel = remaining.remove(id);
             if (sel != null) ordered.add(sel);
         }
+        remaining.values().stream()
+            .sorted(Comparator.comparing(s -> s.id().toString()))
+            .forEach(ordered::add);
         return ordered;
     }
 
@@ -286,8 +304,9 @@ public final class SelectorsScreen extends Screen {
             for (int i = 0; i < selectors.size(); i += 2) {
                 NameSelector left = selectors.get(i);
                 NameSelector right = i + 1 < selectors.size() ? selectors.get(i + 1) : null;
-                addEntry(new Entry(left, right, host));
+                addEntry(new PairEntry(left, right, host));
             }
+            addEntry(new AddEntry(host));
         }
 
         @Override
@@ -296,15 +315,16 @@ public final class SelectorsScreen extends Screen {
         @Override
         protected int getScrollbarPosition() { return width - 6; }
 
+        /** Base type — subclassed by {@link PairEntry} (selectors) and {@link AddEntry} (+ row). */
+        abstract static class Entry extends ContainerObjectSelectionList.Entry<Entry> {}
+
         /** One list row = two selector cells side-by-side. */
-        static final class Entry extends ContainerObjectSelectionList.Entry<Entry> {
+        static final class PairEntry extends Entry {
 
             private final Cell left;
             private final Cell right;
-            private final SelectorsScreen host;
 
-            Entry(NameSelector leftSel, NameSelector rightSel, SelectorsScreen host) {
-                this.host = host;
+            PairEntry(NameSelector leftSel, NameSelector rightSel, SelectorsScreen host) {
                 this.left = new Cell(leftSel, host);
                 this.right = rightSel != null ? new Cell(rightSel, host) : null;
             }
@@ -333,6 +353,49 @@ public final class SelectorsScreen extends Screen {
                     right.render(gfx, rowLeft + halfWidth + GAP_BETWEEN, rowTop,
                         halfWidth, rowHeight, mouseX, mouseY, partial);
                 }
+            }
+        }
+
+        /**
+         * Bottom-of-list "+ Add custom selector" entry. v2 stops at a
+         * placeholder click handler — letting the user define a tag →
+         * chain mapping at runtime is v3 work (requires plumbing for
+         * adding selectors at runtime + tag picker UI).
+         */
+        static final class AddEntry extends Entry {
+
+            private final Button addButton;
+            private final SelectorsScreen host;
+
+            AddEntry(SelectorsScreen host) {
+                this.host = host;
+                this.addButton = Button.builder(
+                    Component.literal("+ Add custom selector"),
+                    b -> host.openAddSelectorPlaceholder()
+                ).bounds(0, 0, 200, DROPDOWN_H).build();
+            }
+
+            @Override
+            public List<? extends NarratableEntry> narratables() { return List.of(addButton); }
+
+            @Override
+            public List<? extends GuiEventListener> children() { return List.of(addButton); }
+
+            @Override
+            public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
+                               int rowWidth, int rowHeight, int mouseX, int mouseY,
+                               boolean hovered, float partial) {
+                // Divider line so the + row reads as a separate section, not just another row.
+                int dividerY = rowTop + 2;
+                gfx.fill(rowLeft + 8, dividerY, rowLeft + rowWidth - 8, dividerY + 1, 0xFF505050);
+
+                int btnW = Math.min(rowWidth - 32, 220);
+                int btnX = rowLeft + (rowWidth - btnW) / 2;
+                int btnY = rowTop + (rowHeight - DROPDOWN_H) / 2 + 1;
+                addButton.setX(btnX);
+                addButton.setY(btnY);
+                addButton.setWidth(btnW);
+                addButton.render(gfx, mouseX, mouseY, partial);
             }
         }
 
