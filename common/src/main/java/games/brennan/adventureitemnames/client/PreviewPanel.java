@@ -41,12 +41,12 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public final class PreviewPanel {
 
-    public static final int HEIGHT_COLLAPSED = 42;
-    public static final int HEIGHT_EXPANDED = 86;
+    public static final int HEIGHT_COLLAPSED = 24;
+    public static final int HEIGHT_EXPANDED = 68;
     public static final int SLOT_COUNT = 6;
     private static final int COLLAPSED_SLOTS = 2;
     private static final int PADDING_X = 8;
-    private static final int HEADER_H = 14;
+    private static final int HEADER_H = 2;
     private static final int ICON_SIZE = 16;
     private static final int LINE_H = 22;
     private static final int TEXT_LINE_H = 9;
@@ -250,10 +250,6 @@ public final class PreviewPanel {
         gfx.fill(0, y0, screenWidth, screenHeight, 0xCC101010);
         gfx.fill(0, y0, screenWidth, y0 + 1, 0xFF606060);
 
-        gfx.drawString(Minecraft.getInstance().font,
-            Component.literal("Preview · click an icon to change item"),
-            PADDING_X, y0 + 4, 0xFFA0A0A0, false);
-
         int rowsStartY = y0 + HEADER_H;
         int columnWidth = (screenWidth - PADDING_X * 2) / 2;
         int visible = visibleSlots();
@@ -280,6 +276,7 @@ public final class PreviewPanel {
 
             int textX = x + ICON_SIZE + 4;
             int textMaxWidth = columnWidth - ICON_SIZE - 8;
+            if (col == 1 && row == 0) textMaxWidth -= 60;
             List<FormattedCharSequence> trimmed = Minecraft.getInstance().font.split(
                 Component.literal(r.name()), textMaxWidth);
             int lines = Math.min(MAX_TEXT_LINES, trimmed.size());
