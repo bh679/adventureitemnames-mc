@@ -40,7 +40,13 @@
         { "ref": "adventureitemnames:mc_music_discs",          "weight": 0.008 },
         { "ref": "adventureitemnames:mc_potions_effects",      "weight": 0.004 },
         { "ref": "adventureitemnames:mc_enchantments",         "weight": 0.003 },
-        { "ref": "adventureitemnames:mc_streamers",            "weight": 0.002 }
+        { "ref": "adventureitemnames:mc_streamers",            "weight": 0.002 },
+
+        { "ref": "adventureitemnames:atla_characters",         "weight": 0.030 },
+        { "ref": "adventureitemnames:atla_places",             "weight": 0.025 },
+        { "ref": "adventureitemnames:atla_animals",            "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_elements",           "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_titles",             "weight": 0.020 }
       ],
       "chance": 1.0,
       "connection": " of ",

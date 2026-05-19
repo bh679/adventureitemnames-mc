@@ -1,8 +1,11 @@
 package games.brennan.adventureitemnames.forge;
 
+import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.item.RandomChestItem;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackSelectionConfig;
@@ -10,15 +13,23 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddPackFindersEvent;
 import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
+import org.slf4j.Logger;
 
+import java.nio.file.Path;
 import java.util.Optional;
 
 /**
@@ -29,20 +40,53 @@ import java.util.Optional;
  *
  * <p>Pushes the Forge config dir into {@link ConfigPaths} so the
  * common-module user-config loader knows where to find
- * {@code config/adventureitemnames.json}, and registers the built-in
- * "Adventure Time" data pack via {@code AddPackFindersEvent}.</p>
+ * {@code config/adventureitemnames.json}.</p>
+ *
+ * <p>Registers the built-in ATLA and Adventure Time data packs on the
+ * mod event bus via {@link AddPackFindersEvent}. Forge's API doesn't
+ * expose a "default-enabled-but-toggleable" mode — both packs ship as
+ * <em>always active</em> at the loader level. Users can still suppress
+ * specific pools/chains through the {@code NamingConfig} disable layer
+ * (see the user config file).</p>
  */
 @Mod("adventureitemnames")
 public final class AdventureItemNamesForge {
 
-    public AdventureItemNamesForge() {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final DeferredRegister<Item> ITEMS =
+        DeferredRegister.create(Registries.ITEM, "adventureitemnames");
+
+    public static final RegistryObject<Item> RANDOM_CHEST =
+        ITEMS.register("random_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.DEFAULT));
+
+    public static final RegistryObject<Item> RANDOM_NAMED_CHEST =
+        ITEMS.register("random_named_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ALWAYS_NAMED));
+
+    public static final RegistryObject<Item> RANDOM_ENCHANTED_CHEST =
+        ITEMS.register("random_enchanted_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ENCHANTED));
+
+    public AdventureItemNamesForge(IEventBus modBus) {
         ConfigPaths.set(FMLPaths.CONFIGDIR.get());
         UserConfigLoader.reload();
 
-        MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForge::onAddReloadListeners);
+        ITEMS.register(modBus);
+        modBus.addListener(AdventureItemNamesForge::onBuildCreativeTab);
 
-        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForge::onAddReloadListeners);
         modBus.addListener(AdventureItemNamesForge::onAddPackFinders);
+
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            games.brennan.adventureitemnames.forge.client.AdventureItemNamesForgeClient.register(modBus);
+        }
+    }
+
+    private static void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(RANDOM_CHEST.get());
+            event.accept(RANDOM_NAMED_CHEST.get());
+            event.accept(RANDOM_ENCHANTED_CHEST.get());
+        }
     }
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
@@ -54,22 +98,40 @@ public final class AdventureItemNamesForge {
 
     private static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) return;
+
         var modFile = ModList.get().getModFileById("adventureitemnames");
-        if (modFile == null) return;
-        var path = modFile.getFile().findResource("resourcepacks/adventuretime");
-        var location = new PackLocationInfo(
-                "builtin/adventureitemnames/adventuretime",
-                Component.literal("Adventure Time"),
-                PackSource.BUILT_IN,
-                Optional.empty()
+        if (modFile == null) {
+            LOGGER.warn("[AdventureItemNames] mod file lookup failed; built-in packs will not be registered");
+            return;
+        }
+
+        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/atla"),
+            "atla", "Adventure Item Names — ATLA Pack");
+        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/adventuretime"),
+            "adventuretime", "Adventure Item Names — Adventure Time Pack");
+    }
+
+    private static void registerBuiltinPack(AddPackFindersEvent event,
+                                            Path resourcePath,
+                                            String packPath,
+                                            String displayName) {
+        if (resourcePath == null) {
+            LOGGER.warn("[AdventureItemNames] resource path 'resourcepacks/{}' not found inside mod jar", packPath);
+            return;
+        }
+        PackLocationInfo location = new PackLocationInfo(
+            "mod/adventureitemnames/" + packPath,
+            Component.literal(displayName),
+            PackSource.BUILT_IN,
+            Optional.empty()
         );
-        var resources = new PathPackResources.PathResourcesSupplier(path);
-        Pack pack = Pack.readMetaAndCreate(
-                location,
-                resources,
-                PackType.SERVER_DATA,
-                new PackSelectionConfig(true, Pack.Position.TOP, false)
+        Pack.ResourcesSupplier supplier = new PathPackResources.PathResourcesSupplier(resourcePath);
+        PackSelectionConfig selectionConfig = new PackSelectionConfig(
+            /* required = */ true,
+            Pack.Position.TOP,
+            /* fixedPosition = */ false
         );
+        Pack pack = Pack.readMetaAndCreate(location, supplier, PackType.SERVER_DATA, selectionConfig);
         if (pack != null) {
             event.addRepositorySource(consumer -> consumer.accept(pack));
         }

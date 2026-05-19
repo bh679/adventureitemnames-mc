@@ -33,20 +33,24 @@ public final class UserConfigLoader {
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — skipping user config load");
             NamingConfig.setUserLayer(new DisableSet());
+            NamingConfig.setUserWeightOverrides(new WeightOverrides());
             return;
         }
         Path file = configDir.resolve(FILE_NAME);
         if (!Files.exists(file)) {
             NamingConfig.setUserLayer(new DisableSet());
+            NamingConfig.setUserWeightOverrides(new WeightOverrides());
             return;
         }
         try (InputStream in = Files.newInputStream(file)) {
-            DisableSet ds = ConfigCodec.parse(in, "user(" + file.getFileName() + ")");
-            NamingConfig.setUserLayer(ds);
+            LoadedConfig cfg = ConfigCodec.parse(in, "user(" + file.getFileName() + ")");
+            NamingConfig.setUserLayer(cfg.disables());
+            NamingConfig.setUserWeightOverrides(cfg.weights());
             LOGGER.info("[AdventureItemNames] user config loaded from {}", file);
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to read {}: {}", file, ex.getMessage());
             NamingConfig.setUserLayer(new DisableSet());
+            NamingConfig.setUserWeightOverrides(new WeightOverrides());
         }
     }
 }

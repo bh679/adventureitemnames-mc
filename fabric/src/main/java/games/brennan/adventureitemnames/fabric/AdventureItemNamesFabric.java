@@ -3,17 +3,23 @@ package games.brennan.adventureitemnames.fabric;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,10 +33,29 @@ import java.util.concurrent.Executor;
  *
  * <p>Also pushes the Fabric config dir into {@link ConfigPaths} so the
  * common-module {@link UserConfigLoader} can find
- * {@code config/adventureitemnames.json}, and triggers an initial read
- * of that file at init.</p>
+ * {@code config/adventureitemnames.json}, registers the built-in ATLA
+ * and Adventure Time data packs (both default-enabled), and registers
+ * the {@code random_chest} creative test items.</p>
  */
 public final class AdventureItemNamesFabric implements ModInitializer {
+
+    public static final Item RANDOM_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_chest"),
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.DEFAULT)
+    );
+
+    public static final Item RANDOM_NAMED_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_named_chest"),
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ALWAYS_NAMED)
+    );
+
+    public static final Item RANDOM_ENCHANTED_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_enchanted_chest"),
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ENCHANTED)
+    );
 
     @Override
     public void onInitialize() {
@@ -43,14 +68,27 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
         rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
 
-        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container ->
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
+            .register(entries -> {
+                entries.accept(RANDOM_CHEST);
+                entries.accept(RANDOM_NAMED_CHEST);
+                entries.accept(RANDOM_ENCHANTED_CHEST);
+            });
+
+        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container -> {
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "atla"),
+                container,
+                Component.literal("Adventure Item Names — ATLA Pack"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            );
             ResourceManagerHelper.registerBuiltinResourcePack(
                 ResourceLocation.fromNamespaceAndPath("adventureitemnames", "adventuretime"),
                 container,
-                Component.literal("Adventure Time"),
+                Component.literal("Adventure Item Names — Adventure Time Pack"),
                 ResourcePackActivationType.DEFAULT_ENABLED
-            )
-        );
+            );
+        });
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {

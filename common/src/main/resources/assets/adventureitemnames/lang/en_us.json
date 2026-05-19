@@ -1,0 +1,26 @@
+{
+  "key.categories.adventureitemnames": "Adventure Item Names",
+  "key.adventureitemnames.open_config": "Open config screen",
+
+  "screen.adventureitemnames.config.title": "Adventure Item Names",
+  "screen.adventureitemnames.config.datapacks": "Datapacks",
+  "screen.adventureitemnames.config.spawn_chances": "Spawn Chances",
+  "screen.adventureitemnames.config.chains": "Chains",
+
+  "screen.adventureitemnames.datapacks.title": "Datapacks",
+  "screen.adventureitemnames.pools.title": "Pools — %s",
+
+  "screen.adventureitemnames.placeholder.spawn_chances": "Spawn Chances",
+  "screen.adventureitemnames.placeholder.spawn_chances.body": "Coming in v2. Edit the per-tier and per-mob-category spawn probabilities for naming.",
+  "screen.adventureitemnames.placeholder.chains": "Chains",
+  "screen.adventureitemnames.placeholder.chains.body": "Coming in v3. Edit per-segment chance, connection string, newline flag, and per-ref weights for every naming chain.",
+
+  "screen.adventureitemnames.action.open": "Open",
+  "screen.adventureitemnames.action.save": "Save to pack",
+
+  "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
+
+  "item.adventureitemnames.random_chest": "Random Chest",
+  "item.adventureitemnames.random_named_chest": "Random Named Chest",
+  "item.adventureitemnames.random_enchanted_chest": "Random Enchanted Chest"
+}
