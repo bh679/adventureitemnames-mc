@@ -269,17 +269,19 @@ public final class NameComposer {
         StringBuilder out = new StringBuilder();
         int segIdx = 0;
         for (NameSegment seg : maybeChain.get().segments()) {
-            if (seg.chance() < 1f && rng.nextFloat() >= seg.chance()) { segIdx++; continue; }
+            float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
+            if (chance < 1f && rng.nextFloat() >= chance) { segIdx++; continue; }
 
-            NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, seg.refs(), rng);
+            List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
+            NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
             if (picked == null) { segIdx++; continue; }
 
             String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
             if (fragment == null || fragment.isEmpty()) { segIdx++; continue; }
 
             if (out.length() > 0) {
-                out.append(seg.connection());
-                if (seg.newline()) out.append('\n');
+                out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
+                if (NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) out.append('\n');
             }
             out.append(fragment);
             segIdx++;

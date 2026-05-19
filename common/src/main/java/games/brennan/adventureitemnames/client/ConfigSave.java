@@ -33,7 +33,10 @@ public final class ConfigSave {
             buffer.snapshotEnabledSelectors(),
             buffer.snapshotWeights(),
             buffer.snapshotChances(),
-            buffer.snapshotSelectorTiers());
+            buffer.snapshotSelectorTiers(),
+            buffer.snapshotSegmentEdits(),
+            buffer.snapshotCustomSelectors(),
+            buffer.snapshotRemovedCustomSelectorIds());
         if (ok) {
             UserConfigLoader.reload();
             buffer.clear();

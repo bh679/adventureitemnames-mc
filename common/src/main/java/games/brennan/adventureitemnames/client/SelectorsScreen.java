@@ -69,6 +69,8 @@ public final class SelectorsScreen extends Screen {
     /** Available chains for the picker: {@code Optional.empty()} = (none); else chain id. */
     private List<Optional<ResourceLocation>> chainCycle = List.of();
     private ChainPicker activePicker;
+    /** Item-tag ids known to the client at screen-open time. Used to render the ⚠ warning row. */
+    private java.util.Set<ResourceLocation> loadedItemTagIds = java.util.Set.of();
 
     public SelectorsScreen(Screen parent, EditBuffer buffer) {
         super(Component.translatable("screen.adventureitemnames.selectors.title"));
@@ -79,6 +81,8 @@ public final class SelectorsScreen extends Screen {
     @Override
     protected void init() {
         chainCycle = buildChainCycle();
+        loadedItemTagIds = new java.util.HashSet<>();
+        BuiltInRegistries.ITEM.getTagNames().forEach(t -> loadedItemTagIds.add(t.location()));
 
         List<NameSelector> selectors = orderedSelectors();
         int listBottom = height - PreviewPanel.HEIGHT - 32;
@@ -176,18 +180,14 @@ public final class SelectorsScreen extends Screen {
 
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
-    /**
-     * Open the "add a new selector" stub. v2 has no runtime selector
-     * creation — letting the user pick an item tag and assign chains
-     * needs a tag-picker UI + a new layer in {@link NamingConfig} that
-     * carries user-defined selectors alongside the shipped ones. Held
-     * for v3; this screen surfaces the affordance so the API surface
-     * is discoverable.
-     */
-    void openAddSelectorPlaceholder() {
-        Minecraft.getInstance().setScreen(new PlaceholderScreen(this,
-            Component.literal("Add custom selector"),
-            Component.literal("Coming in v3 — pick an item tag and a chain pair to define a new selector at runtime.")));
+    /** Open the v3 custom-selector creation popup. */
+    void openAddSelector() {
+        Minecraft.getInstance().setScreen(new AddSelectorPopup(this, buffer));
+    }
+
+    /** True when the selector's {@code applies_to} tag is loaded — only user selectors render the warning. */
+    boolean isTagLoaded(ResourceLocation tagId) {
+        return loadedItemTagIds.contains(tagId);
     }
 
     /**
@@ -281,7 +281,8 @@ public final class SelectorsScreen extends Screen {
     /**
      * Map a selector path to a representative vanilla {@link ItemStack}.
      * Tool / armor selectors use the iron variant (so the icon is colour-rich);
-     * shield maps to itself. Unknown paths fall through to {@link Items#AIR}.
+     * shield maps to itself. Unknown paths fall through to a paper icon so
+     * user-defined selectors (with arbitrary id paths) still render visibly.
      */
     private static ItemStack iconForSelector(NameSelector sel) {
         String path = sel.id().getPath();
@@ -292,7 +293,7 @@ public final class SelectorsScreen extends Screen {
             default -> path;
         };
         Item item = BuiltInRegistries.ITEM.getOptional(
-            ResourceLocation.fromNamespaceAndPath("minecraft", itemPath)).orElse(Items.AIR);
+            ResourceLocation.fromNamespaceAndPath("minecraft", itemPath)).orElse(Items.PAPER);
         return new ItemStack(item);
     }
 
@@ -371,7 +372,7 @@ public final class SelectorsScreen extends Screen {
                 this.host = host;
                 this.addButton = Button.builder(
                     Component.literal("+ Add custom selector"),
-                    b -> host.openAddSelectorPlaceholder()
+                    b -> host.openAddSelector()
                 ).bounds(0, 0, 200, DROPDOWN_H).build();
             }
 
@@ -466,6 +467,12 @@ public final class SelectorsScreen extends Screen {
                 int iconY = rowTop + (rowHeight - ICON_SIZE) / 2;
                 gfx.renderItem(iconForSelector(sel), x, iconY);
                 int iconX = x;
+                boolean isUser = NameRegistry.isUserSelector(sel.id());
+                boolean tagMissing = isUser && !host.isTagLoaded(sel.appliesTo());
+                if (tagMissing) {
+                    gfx.drawString(Minecraft.getInstance().font,
+                        Component.literal("⚠"), iconX + ICON_SIZE - 5, iconY + ICON_SIZE - 8, 0xFFFFAA55, false);
+                }
                 x += ICON_SIZE + CELL_GAP;
 
                 int dropdownAvail = cellLeft + cellWidth - CELL_PAD - CHECKBOX_SIZE - CELL_GAP - x - CELL_GAP;
@@ -491,10 +498,18 @@ public final class SelectorsScreen extends Screen {
                 boolean hoverIcon = mouseX >= iconX && mouseX < iconX + ICON_SIZE
                     && mouseY >= iconY && mouseY < iconY + ICON_SIZE;
                 if (hoverIcon) {
-                    gfx.renderComponentTooltip(Minecraft.getInstance().font,
-                        List.of(Component.literal(sel.id().getPath()),
-                                Component.literal(sel.appliesTo().toString())),
-                        mouseX, mouseY);
+                    java.util.List<Component> tooltip = new java.util.ArrayList<>();
+                    tooltip.add(Component.literal(sel.id().toString()));
+                    tooltip.add(Component.literal("#" + sel.appliesTo()));
+                    if (tagMissing) {
+                        tooltip.add(Component.literal("⚠ Tag not loaded — selector inactive until tag is available")
+                            .withStyle(net.minecraft.ChatFormatting.YELLOW));
+                    }
+                    if (isUser) {
+                        tooltip.add(Component.literal("(user-defined)")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY));
+                    }
+                    gfx.renderComponentTooltip(Minecraft.getInstance().font, tooltip, mouseX, mouseY);
                 }
             }
         }

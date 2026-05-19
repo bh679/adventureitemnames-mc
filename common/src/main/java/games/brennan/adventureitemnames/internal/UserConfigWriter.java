@@ -9,6 +9,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
+import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -66,7 +68,10 @@ public final class UserConfigWriter {
                                             Set<ResourceLocation> enabledSelectors,
                                             Map<String, Float> weightOverrides,
                                             Map<ChanceKind, Float> chanceOverrides,
-                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides) {
+                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides,
+                                            Map<String, SegmentOverrides.SegmentEdit> segmentOverrides,
+                                            Map<ResourceLocation, NameSelector> customSelectorEdits,
+                                            Set<ResourceLocation> removedCustomSelectorIds) {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — cannot save user config");
@@ -80,6 +85,8 @@ public final class UserConfigWriter {
         applyWeightEdits(root, weightOverrides);
         applyChanceEdits(root, chanceOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
+        applySegmentEdits(root, segmentOverrides);
+        applyCustomSelectorEdits(root, customSelectorEdits, removedCustomSelectorIds);
 
         try {
             Files.createDirectories(configDir);
@@ -217,6 +224,112 @@ public final class UserConfigWriter {
         } else {
             root.add("selector_overrides", existing);
         }
+    }
+
+    /**
+     * Merge segment edits into the {@code segment_overrides} block.
+     * A {@code null} {@link SegmentOverrides.SegmentEdit} clears the entire
+     * key. Within an edit, a {@code null} field removes that override
+     * (lets it fall through); a non-null field writes it. A
+     * {@link SegmentOverrides.SegmentEdit#isNoOp()} edit drops the key.
+     * If the resulting block is empty it's removed.
+     */
+    private static void applySegmentEdits(JsonObject root, Map<String, SegmentOverrides.SegmentEdit> edits) {
+        if (edits == null || edits.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("segment_overrides");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : edits.entrySet()) {
+            String key = entry.getKey();
+            SegmentOverrides.SegmentEdit edit = entry.getValue();
+            if (edit == null) {
+                existing.remove(key);
+                continue;
+            }
+            JsonObject perSeg;
+            JsonElement perEl = existing.get(key);
+            if (perEl != null && perEl.isJsonObject()) {
+                perSeg = perEl.getAsJsonObject();
+            } else {
+                perSeg = new JsonObject();
+            }
+            applyOrRemove(perSeg, "chance", edit.chance(), v -> new JsonPrimitive(v));
+            applyOrRemove(perSeg, "connection", edit.connection(), v -> new JsonPrimitive(v));
+            applyOrRemove(perSeg, "newline", edit.newline(), v -> new JsonPrimitive(v));
+            if (edit.refs() == null) {
+                perSeg.remove("refs");
+            } else {
+                JsonArray arr = new JsonArray();
+                for (NameSegment.WeightedRef r : edit.refs()) {
+                    JsonObject rObj = new JsonObject();
+                    rObj.add("ref", new JsonPrimitive(r.ref().toString()));
+                    rObj.add("weight", new JsonPrimitive(r.weight()));
+                    arr.add(rObj);
+                }
+                perSeg.add("refs", arr);
+            }
+            if (perSeg.size() == 0) {
+                existing.remove(key);
+            } else {
+                existing.add(key, perSeg);
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("segment_overrides");
+        } else {
+            root.add("segment_overrides", existing);
+        }
+    }
+
+    /**
+     * Merge custom-selector edits into the {@code custom_selectors} block.
+     * Entries in {@code edits} are upserted; ids in {@code removedIds} are
+     * dropped. If the resulting block is empty it's removed.
+     */
+    private static void applyCustomSelectorEdits(JsonObject root,
+                                                 Map<ResourceLocation, NameSelector> edits,
+                                                 Set<ResourceLocation> removedIds) {
+        boolean hasAny = (edits != null && !edits.isEmpty()) || (removedIds != null && !removedIds.isEmpty());
+        if (!hasAny) return;
+        JsonObject existing;
+        JsonElement el = root.get("custom_selectors");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        if (removedIds != null) {
+            for (ResourceLocation id : removedIds) existing.remove(id.toString());
+        }
+        if (edits != null) {
+            for (var entry : edits.entrySet()) {
+                NameSelector sel = entry.getValue();
+                JsonObject sObj = new JsonObject();
+                sObj.add("applies_to", new JsonPrimitive(sel.appliesTo().toString()));
+                JsonObject tObj = new JsonObject();
+                for (var t : sel.tiers().entrySet()) {
+                    tObj.add(t.getKey(), new JsonPrimitive(t.getValue().toString()));
+                }
+                sObj.add("tiers", tObj);
+                existing.add(entry.getKey().toString(), sObj);
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("custom_selectors");
+        } else {
+            root.add("custom_selectors", existing);
+        }
+    }
+
+    /** If {@code v} is null, remove {@code key}; otherwise add the encoded value. */
+    private static <T> void applyOrRemove(JsonObject target, String key, T v,
+                                          java.util.function.Function<T, JsonElement> encode) {
+        if (v == null) target.remove(key);
+        else target.add(key, encode.apply(v));
     }
 
     private static void applyWeightEdits(JsonObject root, Map<String, Float> edits) {

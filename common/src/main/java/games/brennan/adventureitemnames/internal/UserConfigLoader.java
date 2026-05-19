@@ -8,17 +8,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * Reads {@code <configDir>/adventureitemnames.json} and applies it to the
- * user layer of {@link NamingConfig}. Called once at init by each loader
- * entry-point, and again on every {@code /reload} from
- * {@link ConfigListener}.
+ * user layer of {@link NamingConfig} and {@link NameRegistry}. Called once
+ * at init by each loader entry-point, and again on every {@code /reload}
+ * from {@link ConfigListener}.
  *
- * <p>If the file is absent, the user layer is reset to empty (i.e. no
- * user-level disables). If the file is malformed, the parse errors are
- * logged and the user layer is also reset to empty so the previous
- * config doesn't linger.</p>
+ * <p>If the file is absent, all user layers are reset to empty (i.e. no
+ * user-level disables, no overrides, no custom selectors). If the file is
+ * malformed, the parse errors are logged and the user layer is also reset
+ * to empty so the previous config doesn't linger.</p>
  */
 public final class UserConfigLoader {
 
@@ -46,6 +47,8 @@ public final class UserConfigLoader {
             NamingConfig.setUserWeightOverrides(cfg.weights());
             NamingConfig.setUserChances(cfg.chances());
             NamingConfig.setUserSelectorOverrides(cfg.selectorOverrides());
+            NamingConfig.setUserSegmentOverrides(cfg.segmentOverrides());
+            NameRegistry.installUserSelectors(cfg.customSelectors().snapshot());
             LOGGER.info("[AdventureItemNames] user config loaded from {}", file);
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to read {}: {}", file, ex.getMessage());
@@ -58,5 +61,7 @@ public final class UserConfigLoader {
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
         NamingConfig.setUserChances(new ChanceOverrides());
         NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
+        NamingConfig.setUserSegmentOverrides(new SegmentOverrides());
+        NameRegistry.installUserSelectors(Map.of());
     }
 }

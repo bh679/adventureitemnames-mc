@@ -19,8 +19,10 @@ import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * In-memory registry of every naming pool, chain, and selector under
@@ -62,6 +64,18 @@ public final class NameRegistry {
     /** Returned by the {@code packIdOf*} lookups when the resource manager couldn't pin a source. */
     public static final String UNKNOWN_PACK = "unknown";
 
+    /** Pack id reported for user-defined custom selectors. */
+    public static final String USER_PACK = "user-config";
+
+    /**
+     * User-defined selectors loaded from {@code adventureitemnames.json}.
+     * Held in a side store so they automatically re-overlay on top of
+     * {@link #SELECTORS} every time the datapack-layer
+     * {@link SelectorListener} fires — without needing the resource
+     * manager to guarantee reload ordering.
+     */
+    private static final Map<ResourceLocation, NameSelector> USER_SELECTOR_BACKING = new LinkedHashMap<>();
+
     private NameRegistry() {}
 
     public static SimpleJsonResourceReloadListener poolListener()     { return new PoolListener(); }
@@ -100,6 +114,48 @@ public final class NameRegistry {
 
     public static synchronized String packIdOfSelector(ResourceLocation id) {
         return SELECTOR_PACKS.getOrDefault(id, UNKNOWN_PACK);
+    }
+
+    /** True when the selector was contributed by the user-config file, not a datapack. */
+    public static synchronized boolean isUserSelector(ResourceLocation id) {
+        return id != null && USER_SELECTOR_BACKING.containsKey(id);
+    }
+
+    /** Snapshot of every user-defined selector. Insertion-ordered. */
+    public static synchronized Map<ResourceLocation, NameSelector> userSelectors() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(USER_SELECTOR_BACKING));
+    }
+
+    /**
+     * Replace the user-selector overlay with {@code next} and overlay it on
+     * top of the current {@link #SELECTORS} map. Previously-installed user
+     * selector ids not in {@code next} are removed from {@link #SELECTORS}
+     * (unless a datapack selector with the same id exists, in which case
+     * the datapack version stays). Datapack-id collisions log a warning;
+     * the shipped/datapack selector wins.
+     */
+    public static synchronized void installUserSelectors(Map<ResourceLocation, NameSelector> next) {
+        Set<ResourceLocation> previous = new LinkedHashSet<>(USER_SELECTOR_BACKING.keySet());
+        USER_SELECTOR_BACKING.clear();
+        if (next != null) USER_SELECTOR_BACKING.putAll(next);
+
+        // Drop previous user selectors that aren't carrying over.
+        for (ResourceLocation id : previous) {
+            if (!USER_SELECTOR_BACKING.containsKey(id)) {
+                SELECTORS.remove(id);
+                SELECTOR_PACKS.remove(id);
+            }
+        }
+        // Overlay (skip ids that collide with datapack selectors).
+        for (Map.Entry<ResourceLocation, NameSelector> e : USER_SELECTOR_BACKING.entrySet()) {
+            ResourceLocation id = e.getKey();
+            if (SELECTORS.containsKey(id) && !SELECTOR_PACKS.getOrDefault(id, USER_PACK).equals(USER_PACK)) {
+                LOGGER.warn("[AdventureItemNames] user selector {} collides with datapack selector — keeping datapack version", id);
+                continue;
+            }
+            SELECTORS.put(id, e.getValue());
+            SELECTOR_PACKS.put(id, USER_PACK);
+        }
     }
 
     /**
@@ -141,7 +197,16 @@ public final class NameRegistry {
         SELECTORS.putAll(next);
         SELECTOR_PACKS.clear();
         SELECTOR_PACKS.putAll(packs);
-        LOGGER.info("[AdventureItemNames] selectors reloaded — {}", SELECTORS.size());
+        // Re-overlay user-defined selectors so they survive a datapack reload
+        // regardless of whether ConfigListener has fired yet for this reload cycle.
+        for (Map.Entry<ResourceLocation, NameSelector> e : USER_SELECTOR_BACKING.entrySet()) {
+            ResourceLocation id = e.getKey();
+            if (SELECTORS.containsKey(id)) continue; // datapack wins
+            SELECTORS.put(id, e.getValue());
+            SELECTOR_PACKS.put(id, USER_PACK);
+        }
+        LOGGER.info("[AdventureItemNames] selectors reloaded — {} ({} user)",
+            SELECTORS.size(), USER_SELECTOR_BACKING.size());
     }
 
     /**

@@ -1,7 +1,10 @@
 package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.ChanceKind;
+import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NamingConfig;
+import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -11,6 +14,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -40,6 +44,13 @@ public final class EditBuffer {
     /** selectorId → tier → Optional<chainId> (empty = (none) suppression). */
     private final Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> pendingSelectorTiers = new HashMap<>();
     private final Map<ResourceLocation, Boolean> pendingSelectorEnabled = new HashMap<>();
+
+    /** chainId#segIdx → SegmentEdit (each field nullable). */
+    private final Map<String, SegmentOverrides.SegmentEdit> pendingSegmentEdits = new LinkedHashMap<>();
+    /** New custom selectors added in this session. Insertion-ordered. */
+    private final Map<ResourceLocation, NameSelector> pendingCustomSelectors = new LinkedHashMap<>();
+    /** Custom-selector ids the user removed in this session. */
+    private final Set<ResourceLocation> pendingRemovedCustomSelectorIds = new LinkedHashSet<>();
 
     // ────────────────────────────────────────────────────────────
     // Weights (v1)
@@ -204,6 +215,117 @@ public final class EditBuffer {
     }
 
     // ────────────────────────────────────────────────────────────
+    // Per-segment field overrides (v3)
+    // ────────────────────────────────────────────────────────────
+
+    public void setSegmentChance(ResourceLocation chainId, int segIdx, Float chance) {
+        mutateSegment(chainId, segIdx, edit -> edit.withChance(chance));
+    }
+
+    public void setSegmentConnection(ResourceLocation chainId, int segIdx, String connection) {
+        mutateSegment(chainId, segIdx, edit -> edit.withConnection(connection));
+    }
+
+    public void setSegmentNewline(ResourceLocation chainId, int segIdx, Boolean newline) {
+        mutateSegment(chainId, segIdx, edit -> edit.withNewline(newline));
+    }
+
+    /** Pass {@code null} to clear the refs override and fall through to the shipped list. */
+    public void setSegmentRefs(ResourceLocation chainId, int segIdx, List<NameSegment.WeightedRef> refs) {
+        mutateSegment(chainId, segIdx, edit -> edit.withRefs(refs == null ? null : List.copyOf(refs)));
+    }
+
+    /** Read the pending {@link SegmentOverrides.SegmentEdit} for this segment, or {@code null}. */
+    public SegmentOverrides.SegmentEdit pendingSegmentEdit(ResourceLocation chainId, int segIdx) {
+        return pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+    }
+
+    public boolean hasPendingSegmentEdit(ResourceLocation chainId, int segIdx) {
+        return pendingSegmentEdits.containsKey(SegmentOverrides.key(chainId, segIdx));
+    }
+
+    /** Effective chance for the UI: pending → user-layer → shipped. */
+    public float effectiveSegmentChance(ResourceLocation chainId, int segIdx, float shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.chance() != null) return clamp01(pending.chance());
+        return NamingConfig.effectiveSegmentChance(chainId, segIdx, shipped);
+    }
+
+    public String effectiveSegmentConnection(ResourceLocation chainId, int segIdx, String shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.connection() != null) return pending.connection();
+        return NamingConfig.effectiveSegmentConnection(chainId, segIdx, shipped);
+    }
+
+    public boolean effectiveSegmentNewline(ResourceLocation chainId, int segIdx, boolean shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.newline() != null) return pending.newline();
+        return NamingConfig.effectiveSegmentNewline(chainId, segIdx, shipped);
+    }
+
+    public List<NameSegment.WeightedRef> effectiveSegmentRefs(ResourceLocation chainId, int segIdx,
+                                                              List<NameSegment.WeightedRef> shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.refs() != null) return List.copyOf(pending.refs());
+        return NamingConfig.effectiveSegmentRefs(chainId, segIdx, shipped);
+    }
+
+    public Map<String, SegmentOverrides.SegmentEdit> snapshotSegmentEdits() {
+        return new LinkedHashMap<>(pendingSegmentEdits);
+    }
+
+    private void mutateSegment(ResourceLocation chainId, int segIdx,
+                               java.util.function.Function<SegmentOverrides.SegmentEdit, SegmentOverrides.SegmentEdit> tx) {
+        if (chainId == null) return;
+        String key = SegmentOverrides.key(chainId, segIdx);
+        SegmentOverrides.SegmentEdit cur = pendingSegmentEdits.getOrDefault(key, SegmentOverrides.SegmentEdit.empty());
+        SegmentOverrides.SegmentEdit next = tx.apply(cur);
+        if (next == null || next.isNoOp()) {
+            pendingSegmentEdits.remove(key);
+        } else {
+            pendingSegmentEdits.put(key, next);
+        }
+    }
+
+    private static float clamp01(float v) {
+        if (v < 0f) return 0f;
+        if (v > 1f) return 1f;
+        return v;
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Custom selectors (v3)
+    // ────────────────────────────────────────────────────────────
+
+    public void addCustomSelector(NameSelector sel) {
+        if (sel == null) return;
+        pendingCustomSelectors.put(sel.id(), sel);
+        pendingRemovedCustomSelectorIds.remove(sel.id());
+    }
+
+    public void removeCustomSelector(ResourceLocation id) {
+        if (id == null) return;
+        pendingCustomSelectors.remove(id);
+        pendingRemovedCustomSelectorIds.add(id);
+    }
+
+    public Map<ResourceLocation, NameSelector> snapshotCustomSelectors() {
+        return new LinkedHashMap<>(pendingCustomSelectors);
+    }
+
+    public Set<ResourceLocation> snapshotRemovedCustomSelectorIds() {
+        return new LinkedHashSet<>(pendingRemovedCustomSelectorIds);
+    }
+
+    public boolean hasPendingCustomSelector(ResourceLocation id) {
+        return pendingCustomSelectors.containsKey(id);
+    }
+
+    public boolean hasPendingCustomSelectorRemoval(ResourceLocation id) {
+        return pendingRemovedCustomSelectorIds.contains(id);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Common
     // ────────────────────────────────────────────────────────────
 
@@ -212,7 +334,10 @@ public final class EditBuffer {
             || !pendingPoolEnabled.isEmpty()
             || !pendingChances.isEmpty()
             || !pendingSelectorTiers.isEmpty()
-            || !pendingSelectorEnabled.isEmpty();
+            || !pendingSelectorEnabled.isEmpty()
+            || !pendingSegmentEdits.isEmpty()
+            || !pendingCustomSelectors.isEmpty()
+            || !pendingRemovedCustomSelectorIds.isEmpty();
     }
 
     public void clear() {
@@ -221,5 +346,8 @@ public final class EditBuffer {
         pendingChances.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
+        pendingSegmentEdits.clear();
+        pendingCustomSelectors.clear();
+        pendingRemovedCustomSelectorIds.clear();
     }
 }
