@@ -1,18 +1,22 @@
 package games.brennan.adventureitemnames.neoforge;
 
+import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
 import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
@@ -22,6 +26,11 @@ import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.slf4j.Logger;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * NeoForge mod entrypoint. Registers the datapack-style reload listeners
@@ -36,6 +45,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  */
 @Mod("adventureitemnames")
 public final class AdventureItemNamesNeoForge {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems("adventureitemnames");
 
@@ -80,21 +91,43 @@ public final class AdventureItemNamesNeoForge {
 
     private static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) return;
-        event.addPackFinders(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", "resourcepacks/atla"),
-            PackType.SERVER_DATA,
-            Component.literal("Adventure Item Names — ATLA Pack"),
+
+        var modFile = ModList.get().getModFileById("adventureitemnames");
+        if (modFile == null) {
+            LOGGER.warn("[AdventureItemNames] mod file lookup failed; built-in data packs will not be registered");
+            return;
+        }
+
+        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/atla"),
+            "atla", "Adventure Item Names — ATLA Pack");
+        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/adventuretime"),
+            "adventuretime", "Adventure Item Names — Adventure Time Pack");
+    }
+
+    private static void registerBuiltinPack(AddPackFindersEvent event, Path resourcePath,
+                                            String packPath, String displayName) {
+        if (resourcePath == null || !Files.exists(resourcePath)) {
+            LOGGER.warn("[AdventureItemNames] built-in pack 'resourcepacks/{}' not found inside mod jar", packPath);
+            return;
+        }
+        PackLocationInfo location = new PackLocationInfo(
+            "mod/adventureitemnames/" + packPath,
+            Component.literal(displayName),
             PackSource.BUILT_IN,
-            /* alwaysActive = */ true,
-            Pack.Position.TOP
+            Optional.empty()
         );
-        event.addPackFinders(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", "resourcepacks/adventuretime"),
-            PackType.SERVER_DATA,
-            Component.literal("Adventure Item Names — Adventure Time Pack"),
-            PackSource.BUILT_IN,
-            /* alwaysActive = */ true,
-            Pack.Position.TOP
+        Pack.ResourcesSupplier supplier = new PathPackResources.PathResourcesSupplier(resourcePath);
+        PackSelectionConfig selectionConfig = new PackSelectionConfig(
+            /* required = */ true,
+            Pack.Position.TOP,
+            /* fixedPosition = */ false
         );
+        Pack pack = Pack.readMetaAndCreate(location, supplier, PackType.SERVER_DATA, selectionConfig);
+        if (pack == null) {
+            LOGGER.warn("[AdventureItemNames] Pack.readMetaAndCreate returned null for 'resourcepacks/{}' (path={})", packPath, resourcePath);
+            return;
+        }
+        LOGGER.info("[AdventureItemNames] registered built-in data pack '{}' from {}", packPath, resourcePath);
+        event.addRepositorySource(consumer -> consumer.accept(pack));
     }
 }
