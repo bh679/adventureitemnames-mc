@@ -45,9 +45,9 @@ import java.util.Optional;
 @Environment(EnvType.CLIENT)
 public final class SelectorsScreen extends Screen {
 
-    /** Fixed display order for the 10 supported selector paths. */
+    /** Fixed display order for the supported selector paths. */
     private static final List<String> SELECTOR_PATH_ORDER = List.of(
-        "sword", "axe", "pickaxe", "shovel", "hoe",
+        "sword", "axe", "pickaxe", "shovel", "hoe", "bow",
         "helmet", "chestplate", "leggings", "boots", "shield");
 
     /** Two selector cells per list entry — laid out side-by-side in a 2-column grid. */
