@@ -50,43 +50,25 @@ public final class SelectorsScreen extends Screen {
         "sword", "axe", "pickaxe", "shovel", "hoe",
         "helmet", "chestplate", "leggings", "boots", "shield");
 
-    /** Selector icon column — 16x16 vanilla item icon. Path + tag shown as tooltip on hover. */
-    private static final int COL_X_SELECTOR  = 8;
-    private static final int COL_W_SELECTOR  = 18;
+    /** Two selector cells per list entry — laid out side-by-side in a 2-column grid. */
     private static final int ICON_SIZE       = 16;
-    /** "P" / "E" tier label column — single-char prefix to the left of each dropdown. */
-    private static final int COL_W_TIER      = 10;
-    /** Enabled checkbox column — fixed width on the right. */
-    private static final int COL_W_ENABLED   = 24;
-    private static final int GAP             = 6;
+    private static final int CHECKBOX_SIZE   = 18;
+    private static final int CELL_PAD        = 4;
+    private static final int CELL_GAP        = 4;
+    private static final int GAP_BETWEEN     = 6;
     private static final int LIST_TOP        = 32;
-    /** Per-entry row height: 2 stacked dropdowns + a sliver of padding. */
-    private static final int ENTRY_H         = 44;
+    /** Per-entry row height: a single dropdown + a sliver of padding. */
+    private static final int ENTRY_H         = 22;
     private static final int DROPDOWN_H      = 18;
-
-    /** Dropdown starts after icon + gap + tier label + small gap. */
-    private static int dropdownX(int screenWidth) {
-        return COL_X_SELECTOR + COL_W_SELECTOR + GAP + COL_W_TIER + 2;
-    }
-
-    /** Dropdown fills the space between its start x and the enabled checkbox. */
-    private static int dropdownWidth(int screenWidth) {
-        int w = enabledX(screenWidth) - GAP - dropdownX(screenWidth);
-        return Math.max(40, w);
-    }
-
-    /** Enabled checkbox sits at the right edge with a small padding. */
-    private static int enabledX(int screenWidth) {
-        return screenWidth - COL_W_ENABLED - GAP;
-    }
 
     private final Screen parent;
     private final EditBuffer buffer;
     private SelectorList list;
     private PreviewPanel preview;
     private Button saveButton;
-    /** Cached cycle list — {@code Optional.empty()} = (none); else chain id. Refreshed on each {@link #init}. */
+    /** Available chains for the picker: {@code Optional.empty()} = (none); else chain id. */
     private List<Optional<ResourceLocation>> chainCycle = List.of();
+    private ChainPicker activePicker;
 
     public SelectorsScreen(Screen parent, EditBuffer buffer) {
         super(Component.translatable("screen.adventureitemnames.selectors.title"));
@@ -122,6 +104,14 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activePicker != null) {
+            // Modal picker is open — skip the underlying widget render so item
+            // icons + button tooltips don't bleed through the popup. The picker
+            // already draws its own dim backdrop.
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activePicker.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
@@ -138,14 +128,43 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activePicker != null) {
+            activePicker.mouseClicked(mouseX, mouseY, button);
+            return true;
+        }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (activePicker != null) {
+            if (activePicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activePicker != null && activePicker.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** Open the chain picker for one tier on one selector. Called from a row's dropdown click. */
+    void openChainPicker(ResourceLocation selectorId, String tierKey,
+                         Optional<ResourceLocation> current, java.util.function.Consumer<Optional<ResourceLocation>> onPick) {
+        String tierTitle = NameTier.PLAIN.key().equals(tierKey) ? "Plain chain" : "Enchanted chain";
+        activePicker = new ChainPicker(width, height, tierTitle, chainCycle, current,
+            new ChainPicker.Listener() {
+                @Override public void onPicked(Optional<ResourceLocation> chain) {
+                    activePicker = null;
+                    onPick.accept(chain);
+                }
+                @Override public void onCancelled() {
+                    activePicker = null;
+                }
+            });
     }
 
     @Override
@@ -183,41 +202,62 @@ public final class SelectorsScreen extends Screen {
         return Collections.unmodifiableList(out);
     }
 
-    int indexOfChain(Optional<ResourceLocation> current) {
-        for (int i = 0; i < chainCycle.size(); i++) {
-            if (chainCycle.get(i).equals(current)) return i;
-        }
-        return 0;
-    }
-
-    Optional<ResourceLocation> cycleChain(Optional<ResourceLocation> current, boolean backwards) {
-        if (chainCycle.isEmpty()) return current;
-        int idx = indexOfChain(current);
-        int next = backwards
-            ? (idx - 1 + chainCycle.size()) % chainCycle.size()
-            : (idx + 1) % chainCycle.size();
-        return chainCycle.get(next);
-    }
+    /**
+     * Per-word abbreviations applied after dropping {@code name} and
+     * splitting on underscores — squeezes common long tokens into
+     * narrow dropdown buttons. Unknown tokens pass through unchanged.
+     */
+    private static final java.util.Map<String, String> WORD_ABBREVS = java.util.Map.of(
+        "weapon", "wep",
+        "material", "mat",
+        "element", "elem",
+        "combinations", "combos",
+        "combination", "combo");
 
     /**
-     * Compact display name for a chain id: drops the {@code adventureitemnames:}
-     * namespace prefix, strips the literal word {@code name} that's often used
-     * as a filler in path components (so {@code weapon_name_short} reads as
-     * {@code weapon short}), and replaces remaining underscores with spaces.
+     * Compact display name for a chain id (for use in the dropdown
+     * <em>button</em> — limited horizontal space): drops the
+     * {@code adventureitemnames:} namespace prefix, strips the literal
+     * word {@code name} that's often used as a filler in path
+     * components (so {@code weapon_name_short} reads as
+     * {@code wep short}), and replaces remaining underscores with
+     * spaces.
      */
     static String formatChainLabel(Optional<ResourceLocation> chain) {
         if (chain.isEmpty()) return "(none)";
         ResourceLocation rl = chain.get();
-        String path = rl.getPath()
+        String stripped = rl.getPath()
             .replaceFirst("_name_", "_")
             .replaceFirst("_name$", "")
-            .replaceFirst("^name_", "")
-            .replace('_', ' ');
-        if (path.isBlank()) path = rl.getPath();
-        if (!"adventureitemnames".equals(rl.getNamespace())) {
-            return rl.getNamespace() + ":" + path;
+            .replaceFirst("^name_", "");
+        if (stripped.isBlank()) stripped = rl.getPath();
+        String[] words = stripped.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) sb.append(' ');
+            sb.append(WORD_ABBREVS.getOrDefault(words[i], words[i]));
         }
-        return path;
+        return prefixNamespace(rl, sb.toString());
+    }
+
+    /**
+     * Full display name for a chain id (for use in the popup picker
+     * list — plenty of horizontal space, prefer readability): replaces
+     * underscores with spaces, keeps the literal word {@code name}, no
+     * abbreviations. So {@code weapon_name_short} reads as
+     * {@code weapon name short}.
+     */
+    static String formatChainLabelFull(Optional<ResourceLocation> chain) {
+        if (chain.isEmpty()) return "(none)";
+        ResourceLocation rl = chain.get();
+        return prefixNamespace(rl, rl.getPath().replace('_', ' '));
+    }
+
+    private static String prefixNamespace(ResourceLocation rl, String label) {
+        if (!"adventureitemnames".equals(rl.getNamespace())) {
+            return rl.getNamespace() + ":" + label;
+        }
+        return label;
     }
 
     /**
@@ -243,16 +283,61 @@ public final class SelectorsScreen extends Screen {
         SelectorList(Minecraft mc, int width, int height, int top,
                      List<NameSelector> selectors, SelectorsScreen host) {
             super(mc, width, height, top, ENTRY_H);
-            for (NameSelector sel : selectors) addEntry(new Entry(sel, host));
+            for (int i = 0; i < selectors.size(); i += 2) {
+                NameSelector left = selectors.get(i);
+                NameSelector right = i + 1 < selectors.size() ? selectors.get(i + 1) : null;
+                addEntry(new Entry(left, right, host));
+            }
         }
 
         @Override
-        public int getRowWidth() { return width - 32; }
+        public int getRowWidth() { return width - 16; }
 
         @Override
-        protected int getScrollbarPosition() { return width - 12; }
+        protected int getScrollbarPosition() { return width - 6; }
 
+        /** One list row = two selector cells side-by-side. */
         static final class Entry extends ContainerObjectSelectionList.Entry<Entry> {
+
+            private final Cell left;
+            private final Cell right;
+            private final SelectorsScreen host;
+
+            Entry(NameSelector leftSel, NameSelector rightSel, SelectorsScreen host) {
+                this.host = host;
+                this.left = new Cell(leftSel, host);
+                this.right = rightSel != null ? new Cell(rightSel, host) : null;
+            }
+
+            @Override
+            public List<? extends NarratableEntry> narratables() {
+                List<NarratableEntry> out = new ArrayList<>(left.widgets());
+                if (right != null) out.addAll(right.widgets());
+                return out;
+            }
+
+            @Override
+            public List<? extends GuiEventListener> children() {
+                List<GuiEventListener> out = new ArrayList<>(left.widgets());
+                if (right != null) out.addAll(right.widgets());
+                return out;
+            }
+
+            @Override
+            public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
+                               int rowWidth, int rowHeight, int mouseX, int mouseY,
+                               boolean hovered, float partial) {
+                int halfWidth = (rowWidth - GAP_BETWEEN) / 2;
+                left.render(gfx, rowLeft, rowTop, halfWidth, rowHeight, mouseX, mouseY, partial);
+                if (right != null) {
+                    right.render(gfx, rowLeft + halfWidth + GAP_BETWEEN, rowTop,
+                        halfWidth, rowHeight, mouseX, mouseY, partial);
+                }
+            }
+        }
+
+        /** One selector in the 2-column grid: icon · plain · enchanted · enabled. */
+        static final class Cell {
 
             private final NameSelector sel;
             private final SelectorsScreen host;
@@ -260,7 +345,7 @@ public final class SelectorsScreen extends Screen {
             private final Button enchantedButton;
             private final Checkbox enabledBox;
 
-            Entry(NameSelector sel, SelectorsScreen host) {
+            Cell(NameSelector sel, SelectorsScreen host) {
                 this.sel = sel;
                 this.host = host;
 
@@ -280,66 +365,64 @@ public final class SelectorsScreen extends Screen {
                     .build();
             }
 
+            List<? extends net.minecraft.client.gui.components.AbstractWidget> widgets() {
+                return List.of(plainButton, enchantedButton, enabledBox);
+            }
+
             private Button makeCycleButton(String tierKey) {
                 Optional<ResourceLocation> initial = host.buffer().effectiveTierChain(
                     sel.id(), tierKey, sel.tiers().get(tierKey));
-                return new CycleButton(0, 0, 140, 18,
+                Component tooltipLabel = tooltipForTier(tierKey);
+                Button btn = Button.builder(
                     Component.literal(SelectorsScreen.formatChainLabel(initial)),
-                    (backwards) -> onCycle(tierKey, backwards));
+                    b -> openPicker(tierKey)
+                ).bounds(0, 0, 60, DROPDOWN_H).build();
+                btn.setTooltip(net.minecraft.client.gui.components.Tooltip.create(tooltipLabel));
+                return btn;
             }
 
-            private void onCycle(String tierKey, boolean backwards) {
+            private static Component tooltipForTier(String tierKey) {
+                if (NameTier.PLAIN.key().equals(tierKey)) return Component.literal("Plain chain");
+                return Component.literal("Enchanted chain");
+            }
+
+            private void openPicker(String tierKey) {
                 Optional<ResourceLocation> current = host.buffer().effectiveTierChain(
                     sel.id(), tierKey, sel.tiers().get(tierKey));
-                Optional<ResourceLocation> next = host.cycleChain(current, backwards);
-                host.buffer().setSelectorTier(sel.id(), tierKey, next);
-                Button target = NameTier.PLAIN.key().equals(tierKey) ? plainButton : enchantedButton;
-                target.setMessage(Component.literal(SelectorsScreen.formatChainLabel(next)));
-                host.rerollPreview();
+                host.openChainPicker(sel.id(), tierKey, current, picked -> {
+                    host.buffer().setSelectorTier(sel.id(), tierKey, picked);
+                    Button target = NameTier.PLAIN.key().equals(tierKey) ? plainButton : enchantedButton;
+                    target.setMessage(Component.literal(SelectorsScreen.formatChainLabel(picked)));
+                    host.rerollPreview();
+                });
             }
 
-            @Override
-            public List<? extends NarratableEntry> narratables() {
-                return List.of(plainButton, enchantedButton, enabledBox);
-            }
-
-            @Override
-            public List<? extends GuiEventListener> children() {
-                return List.of(plainButton, enchantedButton, enabledBox);
-            }
-
-            @Override
-            public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
-                               int rowWidth, int rowHeight, int mouseX, int mouseY,
-                               boolean hovered, float partial) {
-                int currentScreenWidth = host.width;
-
-                int iconX = COL_X_SELECTOR;
+            void render(GuiGraphics gfx, int cellLeft, int rowTop, int cellWidth, int rowHeight,
+                        int mouseX, int mouseY, float partial) {
+                int x = cellLeft + CELL_PAD;
                 int iconY = rowTop + (rowHeight - ICON_SIZE) / 2;
-                gfx.renderItem(iconForSelector(sel), iconX, iconY);
+                gfx.renderItem(iconForSelector(sel), x, iconY);
+                int iconX = x;
+                x += ICON_SIZE + CELL_GAP;
 
-                int plainRowY = rowTop + 3;
-                int enchantedRowY = rowTop + 3 + DROPDOWN_H + 2;
-                int tierLabelX = COL_X_SELECTOR + COL_W_SELECTOR + GAP;
-                int dropdownXVal = dropdownX(currentScreenWidth);
-                int dropdownW = dropdownWidth(currentScreenWidth);
+                int dropdownAvail = cellLeft + cellWidth - CELL_PAD - CHECKBOX_SIZE - CELL_GAP - x - CELL_GAP;
+                int dropdownW = Math.max(24, dropdownAvail / 2);
+                int btnY = rowTop + (rowHeight - DROPDOWN_H) / 2;
 
-                gfx.drawString(Minecraft.getInstance().font, "P",
-                    tierLabelX, plainRowY + 5, 0xFFA0A0A0, false);
-                plainButton.setX(dropdownXVal);
-                plainButton.setY(plainRowY);
+                plainButton.setX(x);
+                plainButton.setY(btnY);
                 plainButton.setWidth(dropdownW);
                 plainButton.render(gfx, mouseX, mouseY, partial);
+                x += dropdownW + CELL_GAP;
 
-                gfx.drawString(Minecraft.getInstance().font, "E",
-                    tierLabelX, enchantedRowY + 5, 0xFFA0A0A0, false);
-                enchantedButton.setX(dropdownXVal);
-                enchantedButton.setY(enchantedRowY);
+                enchantedButton.setX(x);
+                enchantedButton.setY(btnY);
                 enchantedButton.setWidth(dropdownW);
                 enchantedButton.render(gfx, mouseX, mouseY, partial);
+                x += dropdownW + CELL_GAP;
 
-                enabledBox.setX(enabledX(currentScreenWidth));
-                enabledBox.setY(rowTop + (rowHeight - 18) / 2);
+                enabledBox.setX(x);
+                enabledBox.setY(rowTop + (rowHeight - CHECKBOX_SIZE) / 2);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
 
                 boolean hoverIcon = mouseX >= iconX && mouseX < iconX + ICON_SIZE
@@ -354,35 +437,4 @@ public final class SelectorsScreen extends Screen {
         }
     }
 
-    /**
-     * {@link Button} that emits a "cycle" callback with a {@code backwards}
-     * flag (true on right-click / shift-click). Used by the chain
-     * dropdowns to walk the cycle without needing an overlay widget.
-     */
-    private static final class CycleButton extends Button {
-        private final java.util.function.Consumer<Boolean> onCycle;
-
-        CycleButton(int x, int y, int w, int h, Component label,
-                    java.util.function.Consumer<Boolean> onCycle) {
-            super(x, y, w, h, label, b -> {}, Button.DEFAULT_NARRATION);
-            this.onCycle = onCycle;
-        }
-
-        @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (!this.isHovered() || !this.active || !this.visible) return false;
-            if (button == 0) {
-                boolean shift = net.minecraft.client.gui.screens.Screen.hasShiftDown();
-                onCycle.accept(shift);
-                this.playDownSound(Minecraft.getInstance().getSoundManager());
-                return true;
-            }
-            if (button == 1) {
-                onCycle.accept(true);
-                this.playDownSound(Minecraft.getInstance().getSoundManager());
-                return true;
-            }
-            return false;
-        }
-    }
 }
