@@ -109,6 +109,14 @@ public final class PreviewRoller {
             NamingConfig.enablePool(poolId);
         }
 
+        var pendingEntries = buffer.snapshotEntryOverrides();
+        for (var e : pendingEntries.removed.entrySet()) {
+            for (String text : e.getValue()) NamingConfig.removeEntry(e.getKey(), text);
+        }
+        for (var e : pendingEntries.added.entrySet()) {
+            for (var pe : e.getValue()) NamingConfig.addEntry(e.getKey(), pe);
+        }
+
         if (forcePoolForSegment1 != null) {
             ResourceLocation chain = ResourceLocation.fromNamespaceAndPath(
                 "adventureitemnames", "title_combinations");

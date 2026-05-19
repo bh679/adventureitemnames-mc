@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.api;
 
+import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.AfterEach;
@@ -27,8 +28,10 @@ class NamingConfigWeightTest {
     void resetLayers() {
         NamingConfig.restoreApiLayer(new NamingConfig.ApiSnapshot(
             new games.brennan.adventureitemnames.internal.DisableSet(),
-            new WeightOverrides()));
+            new WeightOverrides(),
+            new EntryOverrides()));
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
+        NamingConfig.setUserEntryOverrides(new EntryOverrides());
     }
 
     @Test

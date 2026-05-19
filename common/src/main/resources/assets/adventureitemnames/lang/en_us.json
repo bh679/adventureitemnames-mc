@@ -9,6 +9,9 @@
 
   "screen.adventureitemnames.datapacks.title": "Datapacks",
   "screen.adventureitemnames.pools.title": "Pools — %s",
+  "screen.adventureitemnames.entries.title": "Entries — %s",
+  "screen.adventureitemnames.entries.add_placeholder": "Add new entry…",
+  "screen.adventureitemnames.entries.last_entry_tooltip": "Cannot remove the last entry — pool would be empty.",
 
   "screen.adventureitemnames.placeholder.spawn_chances": "Spawn Chances",
   "screen.adventureitemnames.placeholder.spawn_chances.body": "Coming in v2. Edit the per-tier and per-mob-category spawn probabilities for naming.",
@@ -17,6 +20,9 @@
 
   "screen.adventureitemnames.action.open": "Open",
   "screen.adventureitemnames.action.save": "Save to pack",
+  "screen.adventureitemnames.action.edit_entries": "Edit",
+  "screen.adventureitemnames.action.add": "+ Add",
+  "screen.adventureitemnames.action.delete": "✕",
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
 

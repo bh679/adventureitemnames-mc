@@ -1,15 +1,20 @@
 package games.brennan.adventureitemnames.internal;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.MobCategory;
+import games.brennan.adventureitemnames.api.NamePool;
+import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Parses an enable/disable + weight-override config JSON into a
@@ -43,6 +48,8 @@ public final class ConfigCodec {
     private static final Logger LOGGER = LogUtils.getLogger();
     /** Defensive upper bound on any single override weight. */
     private static final float MAX_WEIGHT = 1000f;
+    /** Defensive upper bound on pool-entry text length — prevents pathologically large names. */
+    static final int MAX_ENTRY_TEXT_LEN = 256;
 
     private ConfigCodec() {}
 
@@ -50,11 +57,12 @@ public final class ConfigCodec {
     public static LoadedConfig parse(JsonElement root, String sourceLabel) {
         DisableSet disables = new DisableSet();
         WeightOverrides weights = new WeightOverrides();
+        EntryOverrides entries = new EntryOverrides();
         if (root == null || !root.isJsonObject()) {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return new LoadedConfig(disables, weights);
+            return new LoadedConfig(disables, weights, entries);
         }
         JsonObject obj = root.getAsJsonObject();
 
@@ -123,7 +131,115 @@ public final class ConfigCodec {
         } else if (weightsEl != null) {
             LOGGER.warn("[AdventureItemNames] config '{}' 'weight_overrides' is not an object — ignoring", sourceLabel);
         }
-        return new LoadedConfig(disables, weights);
+
+        JsonElement entriesEl = obj.get("pool_entry_overrides");
+        if (entriesEl != null && entriesEl.isJsonObject()) {
+            for (var poolEntry : entriesEl.getAsJsonObject().entrySet()) {
+                ResourceLocation poolId = ResourceLocation.tryParse(poolEntry.getKey());
+                if (poolId == null) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides key '{}' is not a valid resource location — ignoring",
+                        sourceLabel, poolEntry.getKey());
+                    continue;
+                }
+                JsonElement bodyEl = poolEntry.getValue();
+                if (bodyEl == null || !bodyEl.isJsonObject()) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'] is not an object — ignoring",
+                        sourceLabel, poolId);
+                    continue;
+                }
+                JsonObject body = bodyEl.getAsJsonObject();
+                readRemovedTexts(body, poolId, entries, sourceLabel);
+                readAddedEntries(body, poolId, entries, sourceLabel);
+            }
+        } else if (entriesEl != null) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'pool_entry_overrides' is not an object — ignoring", sourceLabel);
+        }
+        return new LoadedConfig(disables, weights, entries);
+    }
+
+    private static void readRemovedTexts(JsonObject body, ResourceLocation poolId,
+                                         EntryOverrides entries, String sourceLabel) {
+        JsonElement removedEl = body.get("removed");
+        if (removedEl == null) return;
+        if (!removedEl.isJsonArray()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].removed is not an array — ignoring",
+                sourceLabel, poolId);
+            return;
+        }
+        for (JsonElement item : removedEl.getAsJsonArray()) {
+            if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].removed contains a non-string — skipping",
+                    sourceLabel, poolId);
+                continue;
+            }
+            String text = item.getAsString();
+            if (text.isEmpty()) continue;
+            entries.removeText(poolId, text);
+        }
+    }
+
+    private static void readAddedEntries(JsonObject body, ResourceLocation poolId,
+                                         EntryOverrides entries, String sourceLabel) {
+        JsonElement addedEl = body.get("added");
+        if (addedEl == null) return;
+        if (!addedEl.isJsonArray()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added is not an array — ignoring",
+                sourceLabel, poolId);
+            return;
+        }
+        for (JsonElement el : addedEl.getAsJsonArray()) {
+            if (!el.isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added has a non-object entry — skipping",
+                    sourceLabel, poolId);
+                continue;
+            }
+            JsonObject ent = el.getAsJsonObject();
+            JsonElement textEl = ent.get("text");
+            if (textEl == null || !textEl.isJsonPrimitive() || !textEl.getAsJsonPrimitive().isString()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added entry missing 'text' — skipping",
+                    sourceLabel, poolId);
+                continue;
+            }
+            String text = textEl.getAsString().trim();
+            if (text.isEmpty()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added entry has empty 'text' — skipping",
+                    sourceLabel, poolId);
+                continue;
+            }
+            if (text.length() > MAX_ENTRY_TEXT_LEN) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added entry text exceeds {} chars — clamping",
+                    sourceLabel, poolId, MAX_ENTRY_TEXT_LEN);
+                text = text.substring(0, MAX_ENTRY_TEXT_LEN);
+            }
+            List<ResourceLocation> itemTypes = readItemTypes(ent.get("item_types"), poolId, sourceLabel);
+            entries.addEntry(poolId, new NamePool.PoolEntry(text, itemTypes));
+        }
+    }
+
+    private static List<ResourceLocation> readItemTypes(JsonElement el, ResourceLocation poolId, String sourceLabel) {
+        if (el == null) return List.of();
+        if (!el.isJsonArray()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added entry item_types is not an array — ignoring",
+                sourceLabel, poolId);
+            return List.of();
+        }
+        JsonArray arr = el.getAsJsonArray();
+        List<ResourceLocation> out = new ArrayList<>(arr.size());
+        for (JsonElement item : arr) {
+            if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added item_types contains a non-string — skipping",
+                    sourceLabel, poolId);
+                continue;
+            }
+            ResourceLocation rl = ResourceLocation.tryParse(item.getAsString());
+            if (rl == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' pool_entry_overrides['{}'].added item_types entry '{}' is not a valid resource location — skipping",
+                    sourceLabel, poolId, item.getAsString());
+                continue;
+            }
+            out.add(rl);
+        }
+        return List.copyOf(out);
     }
 
     public static LoadedConfig parse(InputStream in, String sourceLabel) {
