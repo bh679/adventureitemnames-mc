@@ -1,6 +1,7 @@
 package games.brennan.adventureitemnames.client;
 
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NameComposer;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
@@ -67,11 +68,12 @@ public final class PreviewRoller {
 
     /** Bulk roll for every supplied stack, applying buffer overrides once across the batch. */
     public static List<Result> rollBatch(List<ItemStack> stacks, List<Boolean> enchanted,
-                                         EditBuffer buffer, ResourceLocation forcePoolForSegment1) {
+                                         EditBuffer buffer, ResourceLocation forcePoolForSegment1,
+                                         boolean gateByChance) {
         NamingConfig.ApiSnapshot snap = NamingConfig.snapshotApiLayer();
         try {
             applyBufferToApi(buffer, forcePoolForSegment1);
-            return doBatchRolls(stacks, enchanted);
+            return doBatchRolls(stacks, enchanted, gateByChance);
         } catch (Exception ex) {
             LOGGER.warn("[AdventureItemNames] preview batch roll failed: {}", ex.getMessage());
             return Collections.emptyList();
@@ -82,11 +84,12 @@ public final class PreviewRoller {
 
     /** Roll one stack with the buffer applied. Used for click-to-cycle on a single slot. */
     public static Result rollSingle(ItemStack stack, boolean enchanted,
-                                    EditBuffer buffer, ResourceLocation forcePoolForSegment1) {
+                                    EditBuffer buffer, ResourceLocation forcePoolForSegment1,
+                                    boolean gateByChance) {
         NamingConfig.ApiSnapshot snap = NamingConfig.snapshotApiLayer();
         try {
             applyBufferToApi(buffer, forcePoolForSegment1);
-            return doSingleRoll(stack, enchanted);
+            return doSingleRoll(stack, enchanted, gateByChance);
         } catch (Exception ex) {
             LOGGER.warn("[AdventureItemNames] preview single roll failed: {}", ex.getMessage());
             return new Result(stack, "—");
@@ -107,6 +110,21 @@ public final class PreviewRoller {
         }
         for (var poolId : buffer.snapshotEnabledPools()) {
             NamingConfig.enablePool(poolId);
+        }
+        for (var entry : buffer.snapshotChances().entrySet()) {
+            NamingConfig.overrideChance(entry.getKey(), entry.getValue());
+        }
+        for (var selectorEntry : buffer.snapshotSelectorTiers().entrySet()) {
+            for (var tierEntry : selectorEntry.getValue().entrySet()) {
+                NamingConfig.overrideSelectorTier(
+                    selectorEntry.getKey(), tierEntry.getKey(), tierEntry.getValue());
+            }
+        }
+        for (var selectorId : buffer.snapshotDisabledSelectors()) {
+            NamingConfig.disableSelector(selectorId);
+        }
+        for (var selectorId : buffer.snapshotEnabledSelectors()) {
+            NamingConfig.enableSelector(selectorId);
         }
 
         var pendingEntries = buffer.snapshotEntryOverrides();
@@ -130,27 +148,33 @@ public final class PreviewRoller {
         }
     }
 
-    private static List<Result> doBatchRolls(List<ItemStack> stacks, List<Boolean> enchanted) {
+    private static List<Result> doBatchRolls(List<ItemStack> stacks, List<Boolean> enchanted, boolean gateByChance) {
         Minecraft mc = Minecraft.getInstance();
         RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
         List<Result> out = new ArrayList<>(stacks.size());
         for (int i = 0; i < stacks.size(); i++) {
             ItemStack stack = stacks.get(i).copy();
             boolean ench = enchanted.get(i);
-            String name = NameComposer.composePreview(stack, ench, rng);
-            if (name.isEmpty()) logEmptyPreview(stack);
-            out.add(new Result(stack, name.isEmpty() ? "—" : name));
+            out.add(rollOne(stack, ench, rng, gateByChance));
         }
         return out;
     }
 
-    private static Result doSingleRoll(ItemStack stack, boolean enchanted) {
+    private static Result doSingleRoll(ItemStack stack, boolean enchanted, boolean gateByChance) {
         Minecraft mc = Minecraft.getInstance();
         RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
-        ItemStack copy = stack.copy();
-        String name = NameComposer.composePreview(copy, enchanted, rng);
-        if (name.isEmpty()) logEmptyPreview(copy);
-        return new Result(copy, name.isEmpty() ? "—" : name);
+        return rollOne(stack.copy(), enchanted, rng, gateByChance);
+    }
+
+    private static Result rollOne(ItemStack stack, boolean enchanted, RandomSource rng, boolean gateByChance) {
+        if (gateByChance) {
+            float chance = enchanted ? NamingConfig.chanceFor(ChanceKind.ENCHANTED)
+                                     : NamingConfig.chanceFor(ChanceKind.PLAIN);
+            if (rng.nextFloat() >= chance) return new Result(stack, "—");
+        }
+        String name = NameComposer.composePreview(stack, enchanted, rng);
+        if (name.isEmpty()) logEmptyPreview(stack);
+        return new Result(stack, name.isEmpty() ? "—" : name);
     }
 
     /**

@@ -1,0 +1,27 @@
+{
+  "id": "adventureitemnames:adventuretime_titles",
+  "entries": [
+    { "text": "Mathematician" },
+    { "text": "Hero" },
+    { "text": "Earl" },
+    { "text": "Ruler" },
+    { "text": "Master" },
+    { "text": "Champion" },
+    { "text": "Knight" },
+    { "text": "Bath Boy" },
+    { "text": "Banana Guard" },
+    { "text": "Cosmic Owl" },
+    { "text": "Demon Lord" },
+    { "text": "Time Bandit" },
+    { "text": "Magic Man" },
+    { "text": "Vampire Hunter" },
+    { "text": "Dungeon Master" },
+    { "text": "Goblin King" },
+    { "text": "Wizard's Apprentice" },
+    { "text": "Hyooman Hero" },
+    { "text": "Lich Slayer" },
+    { "text": "Sky Witch" },
+    { "text": "Door Lord" },
+    { "text": "Crystal Guardian" }
+  ]
+}

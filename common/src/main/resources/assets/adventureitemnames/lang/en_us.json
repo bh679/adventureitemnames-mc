@@ -13,8 +13,16 @@
   "screen.adventureitemnames.entries.add_placeholder": "Add new entry…",
   "screen.adventureitemnames.entries.last_entry_tooltip": "Cannot remove the last entry — pool would be empty.",
 
-  "screen.adventureitemnames.placeholder.spawn_chances": "Spawn Chances",
-  "screen.adventureitemnames.placeholder.spawn_chances.body": "Coming in v2. Edit the per-tier and per-mob-category spawn probabilities for naming.",
+  "screen.adventureitemnames.spawn_chances.title": "Spawn Chances",
+  "screen.adventureitemnames.spawn_chances.plain": "Plain item naming",
+  "screen.adventureitemnames.spawn_chances.enchanted": "Enchanted item naming",
+  "screen.adventureitemnames.spawn_chances.mob_passive": "Passive mob naming",
+  "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
+  "screen.adventureitemnames.spawn_chances.configure_selectors": "Configure selectors →",
+
+  "screen.adventureitemnames.selectors.title": "Selectors",
+  "screen.adventureitemnames.selectors.tier.none": "(none)",
+
   "screen.adventureitemnames.placeholder.chains": "Chains",
   "screen.adventureitemnames.placeholder.chains.body": "Coming in v3. Edit per-segment chance, connection string, newline flag, and per-ref weights for every naming chain.",
 
@@ -23,6 +31,7 @@
   "screen.adventureitemnames.action.edit_entries": "Edit",
   "screen.adventureitemnames.action.add": "+ Add",
   "screen.adventureitemnames.action.delete": "✕",
+  "screen.adventureitemnames.action.reset": "↺",
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
 

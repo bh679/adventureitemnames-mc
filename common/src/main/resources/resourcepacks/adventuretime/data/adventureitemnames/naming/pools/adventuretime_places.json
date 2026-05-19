@@ -1,0 +1,31 @@
+{
+  "id": "adventureitemnames:adventuretime_places",
+  "entries": [
+    { "text": "the Land of Ooo" },
+    { "text": "the Candy Kingdom" },
+    { "text": "the Ice Kingdom" },
+    { "text": "the Fire Kingdom" },
+    { "text": "the Tree Fort" },
+    { "text": "Lumpy Space" },
+    { "text": "the Nightosphere" },
+    { "text": "the Crystal Dimension" },
+    { "text": "the Cloud Kingdom" },
+    { "text": "Wildberry Kingdom" },
+    { "text": "Wizard City" },
+    { "text": "the Goblin Kingdom" },
+    { "text": "Marceline's House" },
+    { "text": "the Time Room" },
+    { "text": "the Mushroom Forest" },
+    { "text": "the Cotton Candy Forest" },
+    { "text": "the Grass Lands" },
+    { "text": "the Crystal Citadel" },
+    { "text": "Mars" },
+    { "text": "Beautopia" },
+    { "text": "the Mountain Kingdom" },
+    { "text": "the Vault of Bones" },
+    { "text": "the Dungeon" },
+    { "text": "the Bath House" },
+    { "text": "the Treehouse" },
+    { "text": "the Sky Kingdom" }
+  ]
+}

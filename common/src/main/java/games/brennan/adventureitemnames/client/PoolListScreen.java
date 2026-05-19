@@ -4,9 +4,6 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
-import games.brennan.adventureitemnames.internal.UserConfigLoader;
-import games.brennan.adventureitemnames.internal.UserConfigWriter;
-import games.brennan.adventureitemnames.internal.UserEdits;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
@@ -108,21 +105,10 @@ public final class PoolListScreen extends Screen {
     }
 
     private void save() {
-        UserEdits edits = new UserEdits(
-            buffer.snapshotDisabledPools(),
-            buffer.snapshotEnabledPools(),
-            buffer.snapshotWeights(),
-            buffer.snapshotEntryOverrides());
-        boolean ok = UserConfigWriter.save(edits);
-        if (ok) {
-            UserConfigLoader.reload();
-            buffer.clear();
+        ConfigSave.commit(buffer, () -> {
             saveButton.active = false;
             preview.rerollNow();
-            LOGGER.info("[AdventureItemNames] user config saved");
-        } else {
-            LOGGER.warn("[AdventureItemNames] save failed — pending edits retained");
-        }
+        });
     }
 
     @Override

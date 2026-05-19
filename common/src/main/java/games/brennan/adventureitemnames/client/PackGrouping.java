@@ -65,11 +65,13 @@ public final class PackGrouping {
             case "vanilla" -> "Vanilla";
             case "mod/adventureitemnames", "fabric" -> "Adventure Item Names";
             case "mod/adventureitemnames/atla" -> "ATLA Pack";
+            case "mod/adventureitemnames/adventuretime" -> "Adventure Time Pack";
             default -> {
-                if (packId.startsWith("generated_")) yield "Adventure Item Names";
-                if (packId.startsWith("mod/")) yield packId.substring(4);
-                if (packId.startsWith("file/")) yield packId.substring(5);
-                yield packId;
+                String stripped = packId.startsWith("mod/") ? packId.substring(4)
+                                : packId.startsWith("file/") ? packId.substring(5)
+                                : packId;
+                if (stripped.startsWith("generated_")) yield "Adventure Item Names";
+                yield stripped;
             }
         };
     }

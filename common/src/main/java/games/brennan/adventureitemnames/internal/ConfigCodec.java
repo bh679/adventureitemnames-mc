@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.MobCategory;
 import games.brennan.adventureitemnames.api.NamePool;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +16,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Parses an enable/disable + weight-override config JSON into a
@@ -39,6 +41,18 @@ import java.util.List;
  *   },
  *   "weight_overrides": {
  *     "adventureitemnames:title_combinations#1#adventureitemnames:mc_technoblade": 0.10
+ *   },
+ *   "chances": {
+ *     "plain":        0.30,
+ *     "enchanted":    0.50,
+ *     "mob_passive":  0.05,
+ *     "mob_villager": 1.00
+ *   },
+ *   "selector_overrides": {
+ *     "adventureitemnames:sword": {
+ *       "plain":     "adventureitemnames:weapon_name_full",
+ *       "enchanted": null
+ *     }
  *   }
  * }
  * }</pre>
@@ -58,11 +72,13 @@ public final class ConfigCodec {
         DisableSet disables = new DisableSet();
         WeightOverrides weights = new WeightOverrides();
         EntryOverrides entries = new EntryOverrides();
+        ChanceOverrides chances = new ChanceOverrides();
+        SelectorOverrides selectorOverrides = new SelectorOverrides();
         if (root == null || !root.isJsonObject()) {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return new LoadedConfig(disables, weights, entries);
+            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
         }
         JsonObject obj = root.getAsJsonObject();
 
@@ -154,7 +170,11 @@ public final class ConfigCodec {
         } else if (entriesEl != null) {
             LOGGER.warn("[AdventureItemNames] config '{}' 'pool_entry_overrides' is not an object — ignoring", sourceLabel);
         }
-        return new LoadedConfig(disables, weights, entries);
+
+        readChances(obj, chances, sourceLabel);
+        readSelectorOverrides(obj, selectorOverrides, sourceLabel);
+
+        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
     }
 
     private static void readRemovedTexts(JsonObject body, ResourceLocation poolId,
@@ -240,6 +260,87 @@ public final class ConfigCodec {
             out.add(rl);
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * Parse the {@code chances} block. Out-of-range entries are clamped
+     * to {@code [0, 1]} (with a warning); non-numeric / unknown keys are
+     * logged and skipped.
+     */
+    private static void readChances(JsonObject root, ChanceOverrides dest, String sourceLabel) {
+        JsonElement el = root.get("chances");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'chances' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            ChanceKind kind = ChanceKind.fromKey(entry.getKey());
+            if (kind == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' unknown chance key '{}'", sourceLabel, entry.getKey());
+                continue;
+            }
+            JsonElement vEl = entry.getValue();
+            if (vEl == null || !vEl.isJsonPrimitive() || !vEl.getAsJsonPrimitive().isNumber()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' chances['{}'] is not a number — ignoring", sourceLabel, entry.getKey());
+                continue;
+            }
+            float v = vEl.getAsFloat();
+            if (v < 0f || v > 1f) {
+                LOGGER.warn("[AdventureItemNames] config '{}' chances['{}'] {} out of range [0,1] — clamping",
+                    sourceLabel, entry.getKey(), v);
+                v = Math.max(0f, Math.min(1f, v));
+            }
+            dest.values.put(kind, v);
+        }
+    }
+
+    /**
+     * Parse the {@code selector_overrides} block. Per-selector object, per-tier
+     * value either a {@link ResourceLocation} string or JSON {@code null} (the
+     * {@code (none)} sentinel — naming suppressed for that tier).
+     */
+    private static void readSelectorOverrides(JsonObject root, SelectorOverrides dest, String sourceLabel) {
+        JsonElement el = root.get("selector_overrides");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'selector_overrides' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            ResourceLocation selectorId = ResourceLocation.tryParse(entry.getKey());
+            if (selectorId == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' selector_overrides key '{}' is not a valid id",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            if (!entry.getValue().isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' selector_overrides['{}'] is not an object — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            for (var tierEntry : entry.getValue().getAsJsonObject().entrySet()) {
+                String tierKey = tierEntry.getKey();
+                JsonElement tierVal = tierEntry.getValue();
+                Optional<ResourceLocation> override;
+                if (tierVal == null || tierVal.isJsonNull()) {
+                    override = Optional.empty();
+                } else if (tierVal.isJsonPrimitive() && tierVal.getAsJsonPrimitive().isString()) {
+                    ResourceLocation chainId = ResourceLocation.tryParse(tierVal.getAsString());
+                    if (chainId == null) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' selector_overrides['{}']['{}'] '{}' is not a valid id — ignoring",
+                            sourceLabel, entry.getKey(), tierKey, tierVal.getAsString());
+                        continue;
+                    }
+                    override = Optional.of(chainId);
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' selector_overrides['{}']['{}'] must be a string or null — ignoring",
+                        sourceLabel, entry.getKey(), tierKey);
+                    continue;
+                }
+                dest.put(selectorId, tierKey, override);
+            }
+        }
     }
 
     public static LoadedConfig parse(InputStream in, String sourceLabel) {

@@ -45,6 +45,8 @@ public final class UserConfigLoader {
             NamingConfig.setUserLayer(cfg.disables());
             NamingConfig.setUserWeightOverrides(cfg.weights());
             NamingConfig.setUserEntryOverrides(cfg.entries());
+            NamingConfig.setUserChances(cfg.chances());
+            NamingConfig.setUserSelectorOverrides(cfg.selectorOverrides());
             LOGGER.info("[AdventureItemNames] user config loaded from {}", file);
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to read {}: {}", file, ex.getMessage());
@@ -56,5 +58,7 @@ public final class UserConfigLoader {
         NamingConfig.setUserLayer(new DisableSet());
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
         NamingConfig.setUserEntryOverrides(new EntryOverrides());
+        NamingConfig.setUserChances(new ChanceOverrides());
+        NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
     }
 }
