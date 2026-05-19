@@ -7,6 +7,7 @@ import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
@@ -42,9 +43,9 @@ public final class PreviewRoller {
      * pieces) come first so the default mapping is one-to-one; the four
      * "extras" (shovel / bow / leggings / shield) appear after, so
      * clicking past boots cycles through them and wraps back to sword.
-     * Bow has no selector in v1 — its slot renders the icon with a
-     * {@code —} name, a useful signal that the mod doesn't cover bows
-     * yet.
+     * The bow slot is the live preview for {@code adventureitemnames:bow}
+     * (covers vanilla bow + crossbow via the {@code adventureitemnames:bows}
+     * item tag).
      */
     public static final ItemStack[] DEFAULT_SAMPLES = new ItemStack[] {
         new ItemStack(Items.IRON_SWORD),
@@ -129,6 +130,7 @@ public final class PreviewRoller {
             ItemStack stack = stacks.get(i).copy();
             boolean ench = enchanted.get(i);
             String name = NameComposer.composePreview(stack, ench, rng);
+            if (name.isEmpty()) logEmptyPreview(stack);
             out.add(new Result(stack, name.isEmpty() ? "—" : name));
         }
         return out;
@@ -139,7 +141,26 @@ public final class PreviewRoller {
         RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
         ItemStack copy = stack.copy();
         String name = NameComposer.composePreview(copy, enchanted, rng);
+        if (name.isEmpty()) logEmptyPreview(copy);
         return new Result(copy, name.isEmpty() ? "—" : name);
+    }
+
+    /**
+     * Diagnostic: surface which item the preview couldn't name and
+     * whether the failure was at selector match or downstream compose.
+     * The most common cause on first-render is the client-side tag
+     * registry not yet being synced from the integrated server when
+     * the screen mounts — distinguished here from "matched but
+     * produced empty name" so it's obvious which path failed.
+     */
+    private static void logEmptyPreview(ItemStack stack) {
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (NameRegistry.findMatching(stack).isEmpty()) {
+            LOGGER.info("[AdventureItemNames] preview: no selector matches '{}' "
+                + "(tag registry may not be synced yet — try Reroll or /reload)", itemId);
+        } else {
+            LOGGER.info("[AdventureItemNames] preview: selector matched '{}' but chain composed empty", itemId);
+        }
     }
 
     private record KeyParts(ResourceLocation chainId, int segIdx, ResourceLocation refId) {}

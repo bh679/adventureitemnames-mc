@@ -1,0 +1,8 @@
+{
+  "id": "adventureitemnames:bow",
+  "applies_to": "adventureitemnames:bows",
+  "tiers": {
+    "plain": "adventureitemnames:weapon_name_short",
+    "enchanted": "adventureitemnames:weapon_name_full"
+  }
+}

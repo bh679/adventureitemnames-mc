@@ -16,9 +16,10 @@ import java.util.List;
 /**
  * Two-stage modal picker rendered on top of a host screen. The user
  * first picks an item <em>kind</em> (sword / axe / pickaxe / shovel /
- * hoe / bow / helmet / chestplate / leggings / boots / shield), then a
- * <em>material</em> where applicable. Items without a material variant
- * (bow, shield) skip stage 2 and resolve immediately.
+ * hoe / bow / crossbow / helmet / chestplate / leggings / boots /
+ * shield), then a <em>material</em> where applicable. Items without a
+ * material variant (bow, crossbow, shield) skip stage 2 and resolve
+ * immediately.
  *
  * <p>The picker carries its own bounds + hit-testing — the host screen
  * delegates {@link #mouseClicked} and {@link #render} but no other
@@ -46,6 +47,7 @@ public final class ItemPicker {
         SHOVEL("shovel", "Shovel"),
         HOE("hoe", "Hoe"),
         BOW("bow", "Bow"),
+        CROSSBOW("crossbow", "Crossbow"),
         HELMET("helmet", "Helmet"),
         CHESTPLATE("chestplate", "Chestplate"),
         LEGGINGS("leggings", "Leggings"),
@@ -58,7 +60,7 @@ public final class ItemPicker {
             this.pathSuffix = pathSuffix;
             this.label = label;
         }
-        public boolean isFixed() { return this == BOW || this == SHIELD; }
+        public boolean isFixed() { return this == BOW || this == CROSSBOW || this == SHIELD; }
         public boolean isArmor() {
             return this == HELMET || this == CHESTPLATE || this == LEGGINGS || this == BOOTS;
         }
@@ -201,7 +203,7 @@ public final class ItemPicker {
             Component.literal(label), x + BTN_W / 2, y + 5, 0xFFFFFFFF);
     }
 
-    private int gridCols() { return stage == Stage.PICK_KIND ? 6 : 4; }
+    private int gridCols() { return stage == Stage.PICK_KIND ? 7 : 4; }
     private int gridOriginX() {
         int gridW = gridCols() * CELL;
         return panelX + (PANEL_W - gridW) / 2;
