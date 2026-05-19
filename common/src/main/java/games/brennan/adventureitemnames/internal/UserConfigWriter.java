@@ -3,9 +3,12 @@ package games.brennan.adventureitemnames.internal;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.ChanceKind;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -18,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -46,16 +50,23 @@ public final class UserConfigWriter {
     /**
      * Merge edits into the on-disk config file. Existing unrelated fields
      * are preserved. Disable-pool toggles are reflected by adding /
-     * removing entries from {@code pools[]}. Weight overrides go into the
+     * removing entries from {@code pools[]}; selector toggles similarly
+     * touch {@code selectors[]}. Weight overrides go into the
      * {@code weight_overrides} map; passing a negative value removes the
-     * override for that key.
+     * override for that key. Chance overrides go into the {@code chances}
+     * object; selector tier overrides into {@code selector_overrides}.
+     * Passing {@code null} for a value clears that override.
      *
      * @return true on success; false if the config dir is unset or write
      *     failed. The error is logged.
      */
     public static synchronized boolean save(Set<ResourceLocation> disabledPools,
                                             Set<ResourceLocation> enabledPools,
-                                            Map<String, Float> weightOverrides) {
+                                            Set<ResourceLocation> disabledSelectors,
+                                            Set<ResourceLocation> enabledSelectors,
+                                            Map<String, Float> weightOverrides,
+                                            Map<ChanceKind, Float> chanceOverrides,
+                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides) {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — cannot save user config");
@@ -64,13 +75,16 @@ public final class UserConfigWriter {
         Path file = configDir.resolve(FILE_NAME);
         JsonObject root = readRootOrEmpty(file);
 
-        applyDisableEdits(root, disabledPools, enabledPools);
+        applyIdListEdits(root, "pools", disabledPools, enabledPools);
+        applyIdListEdits(root, "selectors", disabledSelectors, enabledSelectors);
         applyWeightEdits(root, weightOverrides);
+        applyChanceEdits(root, chanceOverrides);
+        applySelectorTierEdits(root, selectorTierOverrides);
 
         try {
             Files.createDirectories(configDir);
             Path tmp = configDir.resolve(FILE_NAME + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return true;
@@ -91,25 +105,118 @@ public final class UserConfigWriter {
         }
     }
 
-    private static void applyDisableEdits(JsonObject root, Set<ResourceLocation> disable, Set<ResourceLocation> enable) {
+    /**
+     * Merge disable / enable edits into a top-level id-array (currently
+     * used for both {@code pools[]} and {@code selectors[]}). Idempotent —
+     * absent edits are a no-op.
+     */
+    private static void applyIdListEdits(JsonObject root, String key,
+                                         Set<ResourceLocation> disable, Set<ResourceLocation> enable) {
         if ((disable == null || disable.isEmpty()) && (enable == null || enable.isEmpty())) return;
-        JsonArray pools;
-        JsonElement existing = root.get("pools");
-        if (existing != null && existing.isJsonArray()) {
-            pools = existing.getAsJsonArray();
+        JsonArray existing;
+        JsonElement el = root.get(key);
+        if (el != null && el.isJsonArray()) {
+            existing = el.getAsJsonArray();
         } else {
-            pools = new JsonArray();
+            existing = new JsonArray();
         }
         Set<String> ids = new LinkedHashSet<>();
-        for (JsonElement el : pools) {
-            if (el.isJsonPrimitive()) ids.add(el.getAsString());
+        for (JsonElement item : existing) {
+            if (item.isJsonPrimitive()) ids.add(item.getAsString());
         }
         if (disable != null) for (ResourceLocation rl : disable) ids.add(rl.toString());
         if (enable != null) for (ResourceLocation rl : enable) ids.remove(rl.toString());
 
         JsonArray rebuilt = new JsonArray();
         for (String s : ids) rebuilt.add(s);
-        root.add("pools", rebuilt);
+        root.add(key, rebuilt);
+    }
+
+    /**
+     * Merge chance edits into the {@code chances} block. A {@code null} or
+     * negative value clears that key. Values equal to {@link ChanceKind#defaultValue}
+     * are also removed so the file stays minimal — defaults reapply on next load.
+     * If the resulting block is empty, the {@code chances} key is dropped entirely.
+     */
+    private static void applyChanceEdits(JsonObject root, Map<ChanceKind, Float> edits) {
+        if (edits == null || edits.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("chances");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : edits.entrySet()) {
+            ChanceKind kind = entry.getKey();
+            Float v = entry.getValue();
+            if (v == null || v < 0f) {
+                existing.remove(kind.key());
+                continue;
+            }
+            float clamped = Math.min(1f, v);
+            if (clamped == kind.defaultValue()) {
+                existing.remove(kind.key());
+            } else {
+                existing.add(kind.key(), new JsonPrimitive(clamped));
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("chances");
+        } else {
+            root.add("chances", existing);
+        }
+    }
+
+    /**
+     * Merge selector tier edits into the {@code selector_overrides} block.
+     * Entries with {@code null} as the {@link Optional} clear the key. Entries
+     * with {@code Optional.empty()} write JSON {@code null} ((none) sentinel).
+     * Entries with {@code Optional.of(rl)} write the chain id string. Selectors
+     * whose object becomes empty are dropped; the block itself is dropped when
+     * empty.
+     */
+    private static void applySelectorTierEdits(JsonObject root,
+                                               Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> edits) {
+        if (edits == null || edits.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("selector_overrides");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : edits.entrySet()) {
+            String selectorKey = entry.getKey().toString();
+            JsonObject perTier;
+            JsonElement perEl = existing.get(selectorKey);
+            if (perEl != null && perEl.isJsonObject()) {
+                perTier = perEl.getAsJsonObject();
+            } else {
+                perTier = new JsonObject();
+            }
+            for (var tierEntry : entry.getValue().entrySet()) {
+                String tierKey = tierEntry.getKey();
+                Optional<ResourceLocation> val = tierEntry.getValue();
+                if (val == null) {
+                    perTier.remove(tierKey);
+                } else if (val.isEmpty()) {
+                    perTier.add(tierKey, JsonNull.INSTANCE);
+                } else {
+                    perTier.add(tierKey, new JsonPrimitive(val.get().toString()));
+                }
+            }
+            if (perTier.size() == 0) {
+                existing.remove(selectorKey);
+            } else {
+                existing.add(selectorKey, perTier);
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("selector_overrides");
+        } else {
+            root.add("selector_overrides", existing);
+        }
     }
 
     private static void applyWeightEdits(JsonObject root, Map<String, Float> edits) {

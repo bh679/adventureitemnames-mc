@@ -47,16 +47,6 @@ public final class NameComposer {
     /** Cap chain recursion depth so a circular ref can't blow the stack. */
     private static final int MAX_DEPTH = 16;
 
-    /** Naming probability for plain (unenchanted) items that match a selector. */
-    private static final float CHANCE_PLAIN = 0.30f;
-    /** Naming probability for enchanted items that match a selector. */
-    private static final float CHANCE_ENCHANTED = 0.50f;
-
-    /** Naming probability for non-aggressive mobs (Animal, WaterAnimal, AmbientCreature, AbstractGolem, Allay). */
-    private static final float CHANCE_MOB_PASSIVE = 0.05f;
-    /** Naming probability for villagers (AbstractVillager — Villager + WanderingTrader). */
-    private static final float CHANCE_MOB_VILLAGER = 1.00f;
-
     /** Virtual ref resolved from the stack's item id rather than a JSON pool. */
     public static final ResourceLocation REF_ITEM_MATERIAL =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/item_material");
@@ -80,7 +70,8 @@ public final class NameComposer {
         if (sel == null) return;
 
         boolean enchanted = stack.isEnchanted();
-        if (rng.nextFloat() >= (enchanted ? CHANCE_ENCHANTED : CHANCE_PLAIN)) return;
+        float chance = enchanted ? NamingConfig.chanceEnchanted() : NamingConfig.chancePlain();
+        if (rng.nextFloat() >= chance) return;
 
         composeAndApply(stack, sel, enchanted, rng);
     }
@@ -109,8 +100,7 @@ public final class NameComposer {
 
     private static void composeAndApply(ItemStack stack, NameSelector sel, boolean enchanted, RandomSource rng) {
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
-        ResourceLocation chainId = sel.tiers().get(tier.key());
-        if (chainId == null) chainId = sel.tiers().get(NameTier.PLAIN.key());
+        ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return;
 
         String name = compose(chainId, stack, sel.appliesTo(), rng, 0);
@@ -119,6 +109,22 @@ public final class NameComposer {
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+    }
+
+    /**
+     * Walk overrides + shipped JSON to find the chain id for one tier on
+     * one selector. ENCHANTED falls back to PLAIN only when no explicit
+     * override is set — an explicit {@code (none)} override on ENCHANTED
+     * suppresses naming for enchanted items without spilling into PLAIN.
+     */
+    private static Optional<ResourceLocation> resolveTierChain(NameSelector sel, NameTier tier) {
+        Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(
+            sel.id(), tier.key(), sel.tiers().get(tier.key()));
+        if (chain.isPresent()) return chain;
+        if (NamingConfig.hasTierOverride(sel.id(), tier.key())) return chain;
+        if (tier == NameTier.PLAIN) return chain;
+        return NamingConfig.effectiveTierChain(
+            sel.id(), NameTier.PLAIN.key(), sel.tiers().get(NameTier.PLAIN.key()));
     }
 
     /**
@@ -134,8 +140,7 @@ public final class NameComposer {
         NameSelector sel = maybeSel.get();
 
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
-        ResourceLocation chainId = sel.tiers().get(tier.key());
-        if (chainId == null) chainId = sel.tiers().get(NameTier.PLAIN.key());
+        ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return "";
 
         String name = compose(chainId, stack, sel.appliesTo(), rng, 0);
@@ -149,7 +154,7 @@ public final class NameComposer {
      * on {@code Mob.finalizeSpawn(...)} so it fires exactly once per
      * fresh spawn (never on chunk reload).
      *
-     * <p>Probability:
+     * <p>Probability (configurable via {@link NamingConfig}; defaults shown):
      * <ul>
      *   <li>{@link AbstractVillager} (Villager + WanderingTrader): 100%, name
      *       <em>hover-only</em> (every villager is named — floating plates
@@ -175,8 +180,8 @@ public final class NameComposer {
         float chance;
         boolean nameVisible;
         switch (cat) {
-            case VILLAGER -> { chance = CHANCE_MOB_VILLAGER; nameVisible = false; }
-            case PASSIVE  -> { chance = CHANCE_MOB_PASSIVE;  nameVisible = true; }
+            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; }
+            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true; }
             default -> { return; }
         }
 

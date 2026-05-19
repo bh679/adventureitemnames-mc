@@ -1,6 +1,8 @@
 package games.brennan.adventureitemnames.api;
 
+import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
+import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -10,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Public configuration surface for enabling/disabling parts of the naming
@@ -53,6 +56,12 @@ public final class NamingConfig {
     private static final WeightOverrides USER_WEIGHTS = new WeightOverrides();
     private static final WeightOverrides API_WEIGHTS = new WeightOverrides();
 
+    private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
+    private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
+
+    private static final SelectorOverrides USER_SELECTORS = new SelectorOverrides();
+    private static final SelectorOverrides API_SELECTORS = new SelectorOverrides();
+
     private NamingConfig() {}
 
     // ─────────────────────────────────────────────────────────────
@@ -80,6 +89,22 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_WEIGHTS.clear();
             if (newOverrides != null) USER_WEIGHTS.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer chance overrides. Internal — called by the user-config loader. */
+    public static void setUserChances(ChanceOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_CHANCES.clear();
+            if (newOverrides != null) USER_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer selector tier overrides. Internal — called by the user-config loader. */
+    public static void setUserSelectorOverrides(SelectorOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_SELECTORS.clear();
+            if (newOverrides != null) USER_SELECTORS.mergeFrom(newOverrides);
         }
     }
 
@@ -143,13 +168,51 @@ public final class NamingConfig {
         synchronized (LOCK) { API_WEIGHTS.weights.remove(key); }
     }
 
+    /**
+     * Set an API-layer chance override. Value is clamped to {@code [0, 1]};
+     * a negative value clears the override and lets the user-config /
+     * default take effect.
+     */
+    public static void overrideChance(ChanceKind kind, float value) {
+        if (kind == null) return;
+        synchronized (LOCK) {
+            if (value < 0f) API_CHANCES.values.remove(kind);
+            else API_CHANCES.values.put(kind, Math.min(1f, value));
+        }
+    }
+
+    public static void clearChanceOverride(ChanceKind kind) {
+        if (kind == null) return;
+        synchronized (LOCK) { API_CHANCES.values.remove(kind); }
+    }
+
+    /**
+     * Set an API-layer selector tier override. {@code Optional.empty()}
+     * suppresses naming for that tier even when the selector is enabled.
+     */
+    public static void overrideSelectorTier(ResourceLocation selectorId, String tierKey,
+                                            Optional<ResourceLocation> chainId) {
+        if (selectorId == null || tierKey == null || chainId == null) return;
+        synchronized (LOCK) { API_SELECTORS.put(selectorId, tierKey, chainId); }
+    }
+
+    public static void clearSelectorTierOverride(ResourceLocation selectorId, String tierKey) {
+        if (selectorId == null || tierKey == null) return;
+        synchronized (LOCK) { API_SELECTORS.remove(selectorId, tierKey); }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // API-layer snapshot/restore — preview roller uses these to apply
     // pending UI edits non-destructively. Not for general consumption.
     // ─────────────────────────────────────────────────────────────
 
     /** Internal snapshot of the API layer. Restore via {@link #restoreApiLayer}. */
-    public record ApiSnapshot(DisableSet disables, WeightOverrides weights) {}
+    public record ApiSnapshot(
+        DisableSet disables,
+        WeightOverrides weights,
+        ChanceOverrides chances,
+        SelectorOverrides selectorTiers
+    ) {}
 
     public static ApiSnapshot snapshotApiLayer() {
         synchronized (LOCK) {
@@ -157,7 +220,11 @@ public final class NamingConfig {
             d.mergeFrom(API);
             WeightOverrides w = new WeightOverrides();
             w.mergeFrom(API_WEIGHTS);
-            return new ApiSnapshot(d, w);
+            ChanceOverrides c = new ChanceOverrides();
+            c.mergeFrom(API_CHANCES);
+            SelectorOverrides s = new SelectorOverrides();
+            s.mergeFrom(API_SELECTORS);
+            return new ApiSnapshot(d, w, c, s);
         }
     }
 
@@ -168,6 +235,10 @@ public final class NamingConfig {
             API.mergeFrom(snapshot.disables());
             API_WEIGHTS.clear();
             API_WEIGHTS.mergeFrom(snapshot.weights());
+            API_CHANCES.clear();
+            API_CHANCES.mergeFrom(snapshot.chances());
+            API_SELECTORS.clear();
+            API_SELECTORS.mergeFrom(snapshot.selectorTiers());
         }
     }
 
@@ -256,6 +327,81 @@ public final class NamingConfig {
      */
     public static Map<String, Float> snapshotUserWeightOverrides() {
         synchronized (LOCK) { return USER_WEIGHTS.snapshot(); }
+    }
+
+    /**
+     * Effective probability for one {@link ChanceKind} gate. Precedence
+     * API → user → {@link ChanceKind#defaultValue()}. Returned value is
+     * already clamped to {@code [0, 1]}.
+     */
+    public static float chanceFor(ChanceKind kind) {
+        if (kind == null) return 0f;
+        synchronized (LOCK) {
+            Float api = API_CHANCES.values.get(kind);
+            if (api != null) return clamp01(api);
+            Float user = USER_CHANCES.values.get(kind);
+            if (user != null) return clamp01(user);
+        }
+        return kind.defaultValue();
+    }
+
+    public static float chancePlain()       { return chanceFor(ChanceKind.PLAIN); }
+    public static float chanceEnchanted()   { return chanceFor(ChanceKind.ENCHANTED); }
+    public static float chanceMobPassive()  { return chanceFor(ChanceKind.MOB_PASSIVE); }
+    public static float chanceMobVillager() { return chanceFor(ChanceKind.MOB_VILLAGER); }
+
+    private static float clamp01(float v) {
+        if (v < 0f) return 0f;
+        if (v > 1f) return 1f;
+        return v;
+    }
+
+    /** Read-only snapshot of user-layer chance overrides. UI uses this to seed edit widgets. */
+    public static Map<ChanceKind, Float> snapshotUserChances() {
+        synchronized (LOCK) { return USER_CHANCES.snapshot(); }
+    }
+
+    /**
+     * Effective chain id for {@code selectorId}'s {@code tierKey}, with
+     * precedence API → user → shipped (the {@code shippedChainId}). A
+     * non-null override with {@code Optional.empty()} represents the
+     * {@code (none)} sentinel — naming is suppressed for that tier even
+     * if the selector is enabled. A null {@code shippedChainId} signals
+     * the shipped JSON didn't define this tier (legitimate for selectors
+     * that only specify plain).
+     */
+    public static Optional<ResourceLocation> effectiveTierChain(ResourceLocation selectorId,
+                                                                String tierKey,
+                                                                ResourceLocation shippedChainId) {
+        if (selectorId == null || tierKey == null) {
+            return Optional.ofNullable(shippedChainId);
+        }
+        synchronized (LOCK) {
+            Optional<ResourceLocation> api = API_SELECTORS.get(selectorId, tierKey);
+            if (api != null) return api;
+            Optional<ResourceLocation> user = USER_SELECTORS.get(selectorId, tierKey);
+            if (user != null) return user;
+        }
+        return Optional.ofNullable(shippedChainId);
+    }
+
+    /** Read-only snapshot of user-layer selector tier overrides. */
+    public static Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> snapshotUserSelectorOverrides() {
+        synchronized (LOCK) { return USER_SELECTORS.snapshot(); }
+    }
+
+    /**
+     * True when any layer carries an explicit override (including
+     * {@code (none)}) for this selector's tier. Used by the composer to
+     * decide whether to honour a {@code (none)} suppression vs fall back
+     * to the {@code PLAIN} tier when {@code ENCHANTED} is unset.
+     */
+    public static boolean hasTierOverride(ResourceLocation selectorId, String tierKey) {
+        if (selectorId == null || tierKey == null) return false;
+        synchronized (LOCK) {
+            return API_SELECTORS.get(selectorId, tierKey) != null
+                || USER_SELECTORS.get(selectorId, tierKey) != null;
+        }
     }
 
     public static boolean isMobCategoryEnabled(MobCategory cat) {
