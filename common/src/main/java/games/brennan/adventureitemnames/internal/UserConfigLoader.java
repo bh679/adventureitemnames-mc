@@ -32,25 +32,31 @@ public final class UserConfigLoader {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — skipping user config load");
-            NamingConfig.setUserLayer(new DisableSet());
-            NamingConfig.setUserWeightOverrides(new WeightOverrides());
+            resetUserLayers();
             return;
         }
         Path file = configDir.resolve(FILE_NAME);
         if (!Files.exists(file)) {
-            NamingConfig.setUserLayer(new DisableSet());
-            NamingConfig.setUserWeightOverrides(new WeightOverrides());
+            resetUserLayers();
             return;
         }
         try (InputStream in = Files.newInputStream(file)) {
             LoadedConfig cfg = ConfigCodec.parse(in, "user(" + file.getFileName() + ")");
             NamingConfig.setUserLayer(cfg.disables());
             NamingConfig.setUserWeightOverrides(cfg.weights());
+            NamingConfig.setUserChances(cfg.chances());
+            NamingConfig.setUserSelectorOverrides(cfg.selectorOverrides());
             LOGGER.info("[AdventureItemNames] user config loaded from {}", file);
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to read {}: {}", file, ex.getMessage());
-            NamingConfig.setUserLayer(new DisableSet());
-            NamingConfig.setUserWeightOverrides(new WeightOverrides());
+            resetUserLayers();
         }
+    }
+
+    private static void resetUserLayers() {
+        NamingConfig.setUserLayer(new DisableSet());
+        NamingConfig.setUserWeightOverrides(new WeightOverrides());
+        NamingConfig.setUserChances(new ChanceOverrides());
+        NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
     }
 }

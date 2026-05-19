@@ -1,9 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
-import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NamingConfig;
-import games.brennan.adventureitemnames.internal.UserConfigLoader;
-import games.brennan.adventureitemnames.internal.UserConfigWriter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
@@ -17,7 +14,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.slf4j.Logger;
 
 import java.util.List;
 
@@ -34,8 +30,6 @@ import java.util.List;
  */
 @Environment(EnvType.CLIENT)
 public final class PoolListScreen extends Screen {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     /** Column right-edge offsets shared by header + row, so they always align. */
     static final int COL_W_PREVIEW = 28;
@@ -103,19 +97,10 @@ public final class PoolListScreen extends Screen {
     }
 
     private void save() {
-        boolean ok = UserConfigWriter.save(
-            buffer.snapshotDisabledPools(),
-            buffer.snapshotEnabledPools(),
-            buffer.snapshotWeights());
-        if (ok) {
-            UserConfigLoader.reload();
-            buffer.clear();
+        ConfigSave.commit(buffer, () -> {
             saveButton.active = false;
             preview.rerollNow();
-            LOGGER.info("[AdventureItemNames] user config saved");
-        } else {
-            LOGGER.warn("[AdventureItemNames] save failed — pending edits retained");
-        }
+        });
     }
 
     @Override

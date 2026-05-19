@@ -44,9 +44,7 @@ public final class ConfigScreen extends Screen {
 
         addRenderableWidget(Button.builder(
             Component.translatable("screen.adventureitemnames.config.spawn_chances"),
-            b -> Minecraft.getInstance().setScreen(new PlaceholderScreen(this,
-                Component.translatable("screen.adventureitemnames.placeholder.spawn_chances"),
-                Component.translatable("screen.adventureitemnames.placeholder.spawn_chances.body")))
+            b -> Minecraft.getInstance().setScreen(new SpawnChancesScreen(this, buffer))
         ).bounds(cx - btnW / 2, cy - btnH / 2, btnW, btnH).build());
 
         addRenderableWidget(Button.builder(
