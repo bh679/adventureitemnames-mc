@@ -13,7 +13,8 @@
   "license": "${mod_license}",
   "environment": "*",
   "entrypoints": {
-    "main": ["games.brennan.adventureitemnames.fabric.AdventureItemNamesFabric"]
+    "main": ["games.brennan.adventureitemnames.fabric.AdventureItemNamesFabric"],
+    "client": ["games.brennan.adventureitemnames.fabric.client.AdventureItemNamesFabricClient"]
   },
   "mixins": [
     "adventureitemnames.mixins.json"

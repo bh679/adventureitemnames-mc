@@ -8,6 +8,7 @@ import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.tags.TagKey;
@@ -16,6 +17,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +48,20 @@ public final class NameRegistry {
     private static final Map<ResourceLocation, NameChain> CHAINS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, NameSelector> SELECTORS = new LinkedHashMap<>();
 
+    /**
+     * Pack-id side tables, populated during reload from
+     * {@code Resource.sourcePackId()}. Kept off the public records so the
+     * {@link NamePool} / {@link NameChain} / {@link NameSelector} record
+     * constructors remain a non-breaking API. The config UI groups rows
+     * by these ids.
+     */
+    private static final Map<ResourceLocation, String> POOL_PACKS = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, String> CHAIN_PACKS = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, String> SELECTOR_PACKS = new LinkedHashMap<>();
+
+    /** Returned by the {@code packIdOf*} lookups when the resource manager couldn't pin a source. */
+    public static final String UNKNOWN_PACK = "unknown";
+
     private NameRegistry() {}
 
     public static SimpleJsonResourceReloadListener poolListener()     { return new PoolListener(); }
@@ -59,6 +75,31 @@ public final class NameRegistry {
 
     public static synchronized Optional<NameChain> chain(ResourceLocation id) {
         return Optional.ofNullable(CHAINS.get(id));
+    }
+
+    /** Immutable view of every registered pool — keyed by id, insertion-order preserved. */
+    public static synchronized Map<ResourceLocation, NamePool> allPools() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(POOLS));
+    }
+
+    public static synchronized Map<ResourceLocation, NameChain> allChains() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(CHAINS));
+    }
+
+    public static synchronized Map<ResourceLocation, NameSelector> allSelectors() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(SELECTORS));
+    }
+
+    public static synchronized String packIdOfPool(ResourceLocation id) {
+        return POOL_PACKS.getOrDefault(id, UNKNOWN_PACK);
+    }
+
+    public static synchronized String packIdOfChain(ResourceLocation id) {
+        return CHAIN_PACKS.getOrDefault(id, UNKNOWN_PACK);
+    }
+
+    public static synchronized String packIdOfSelector(ResourceLocation id) {
+        return SELECTOR_PACKS.getOrDefault(id, UNKNOWN_PACK);
     }
 
     /**
@@ -76,22 +117,43 @@ public final class NameRegistry {
         return Optional.empty();
     }
 
-    private static synchronized void replacePools(Map<ResourceLocation, NamePool> next) {
+    private static synchronized void replacePools(Map<ResourceLocation, NamePool> next,
+                                                  Map<ResourceLocation, String> packs) {
         POOLS.clear();
         POOLS.putAll(next);
+        POOL_PACKS.clear();
+        POOL_PACKS.putAll(packs);
         LOGGER.info("[AdventureItemNames] pools reloaded — {}", POOLS.size());
     }
 
-    private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next) {
+    private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next,
+                                                   Map<ResourceLocation, String> packs) {
         CHAINS.clear();
         CHAINS.putAll(next);
+        CHAIN_PACKS.clear();
+        CHAIN_PACKS.putAll(packs);
         LOGGER.info("[AdventureItemNames] chains reloaded — {}", CHAINS.size());
     }
 
-    private static synchronized void replaceSelectors(Map<ResourceLocation, NameSelector> next) {
+    private static synchronized void replaceSelectors(Map<ResourceLocation, NameSelector> next,
+                                                      Map<ResourceLocation, String> packs) {
         SELECTORS.clear();
         SELECTORS.putAll(next);
+        SELECTOR_PACKS.clear();
+        SELECTOR_PACKS.putAll(packs);
         LOGGER.info("[AdventureItemNames] selectors reloaded — {}", SELECTORS.size());
+    }
+
+    /**
+     * Resolve which loaded pack contributes {@code fileId}. Returns
+     * {@link #UNKNOWN_PACK} on lookup failure — vanilla resource manager
+     * may report empty if the resource was filtered post-prepare or if
+     * pack-source bookkeeping was lost during reload teardown.
+     */
+    private static String resolvePackId(ResourceManager mgr, ResourceLocation fileId, String subpath) {
+        ResourceLocation diskPath = ResourceLocation.fromNamespaceAndPath(
+            fileId.getNamespace(), "naming/" + subpath + "/" + fileId.getPath() + ".json");
+        return mgr.getResource(diskPath).map(Resource::sourcePackId).orElse(UNKNOWN_PACK);
     }
 
     private static final class PoolListener extends SimpleJsonResourceReloadListener {
@@ -100,6 +162,7 @@ public final class NameRegistry {
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
             Map<ResourceLocation, NamePool> out = new LinkedHashMap<>();
+            Map<ResourceLocation, String> packs = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
                 ResourceLocation fileId = e.getKey();
                 ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
@@ -107,11 +170,12 @@ public final class NameRegistry {
                 try {
                     NamePool pool = NameCodec.parsePool(e.getValue(), id);
                     out.put(pool.id(), pool);
+                    packs.put(pool.id(), resolvePackId(mgr, fileId, "pools"));
                 } catch (NameCodec.NameParseException ex) {
                     LOGGER.error("[AdventureItemNames] pool {} failed to parse — {}", fileId, ex.getMessage());
                 }
             }
-            replacePools(out);
+            replacePools(out, packs);
         }
     }
 
@@ -121,6 +185,7 @@ public final class NameRegistry {
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
             Map<ResourceLocation, NameChain> out = new LinkedHashMap<>();
+            Map<ResourceLocation, String> packs = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
                 ResourceLocation fileId = e.getKey();
                 ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
@@ -128,11 +193,12 @@ public final class NameRegistry {
                 try {
                     NameChain chain = NameCodec.parseChain(e.getValue(), id);
                     out.put(chain.id(), chain);
+                    packs.put(chain.id(), resolvePackId(mgr, fileId, "chains"));
                 } catch (NameCodec.NameParseException ex) {
                     LOGGER.error("[AdventureItemNames] chain {} failed to parse — {}", fileId, ex.getMessage());
                 }
             }
-            replaceChains(out);
+            replaceChains(out, packs);
         }
     }
 
@@ -142,6 +208,7 @@ public final class NameRegistry {
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
             Map<ResourceLocation, NameSelector> out = new LinkedHashMap<>();
+            Map<ResourceLocation, String> packs = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
                 ResourceLocation fileId = e.getKey();
                 ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
@@ -149,11 +216,12 @@ public final class NameRegistry {
                 try {
                     NameSelector sel = NameCodec.parseSelector(e.getValue(), id);
                     out.put(sel.id(), sel);
+                    packs.put(sel.id(), resolvePackId(mgr, fileId, "selectors"));
                 } catch (NameCodec.NameParseException ex) {
                     LOGGER.error("[AdventureItemNames] selector {} failed to parse — {}", fileId, ex.getMessage());
                 }
             }
-            replaceSelectors(out);
+            replaceSelectors(out, packs);
         }
     }
 }

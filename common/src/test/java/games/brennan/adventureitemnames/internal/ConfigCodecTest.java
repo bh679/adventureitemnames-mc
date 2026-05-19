@@ -21,6 +21,11 @@ class ConfigCodecTest {
 
     private static DisableSet parse(String json) {
         JsonElement el = JsonParser.parseString(json);
+        return ConfigCodec.parse(el, "test").disables();
+    }
+
+    private static LoadedConfig parseFull(String json) {
+        JsonElement el = JsonParser.parseString(json);
         return ConfigCodec.parse(el, "test");
     }
 
@@ -116,8 +121,9 @@ class ConfigCodecTest {
 
     @Test
     void malformedRootDoesNotCrash() {
-        DisableSet ds = ConfigCodec.parse(JsonParser.parseString("\"not an object\""), "test");
-        assertTrue(ds.pools.isEmpty());
+        LoadedConfig cfg = ConfigCodec.parse(JsonParser.parseString("\"not an object\""), "test");
+        assertTrue(cfg.disables().pools.isEmpty());
+        assertTrue(cfg.weights().isEmpty());
     }
 
     @Test
@@ -164,5 +170,75 @@ class ConfigCodecTest {
         assertTrue(ds.selectors.contains(rl("adventureitemnames:sword")));
         assertTrue(ds.selectors.contains(rl("adventureitemnames:shield")));
         assertFalse(ds.selectors.contains(rl("adventureitemnames:axe")));
+    }
+
+    @Test
+    void parsesWeightOverrides() {
+        LoadedConfig cfg = parseFull("""
+            {
+              "weight_overrides": {
+                "adventureitemnames:title_combinations#1#adventureitemnames:mc_technoblade": 0.10,
+                "adventureitemnames:title_combinations#1#adventureitemnames:discord_people": 0
+              }
+            }
+            """);
+        assertEquals(0.10f,
+            cfg.weights().weights.get("adventureitemnames:title_combinations#1#adventureitemnames:mc_technoblade"),
+            1e-6f);
+        assertEquals(0f,
+            cfg.weights().weights.get("adventureitemnames:title_combinations#1#adventureitemnames:discord_people"),
+            1e-6f);
+    }
+
+    @Test
+    void weightOverridesRejectsMalformedKeys() {
+        LoadedConfig cfg = parseFull("""
+            {
+              "weight_overrides": {
+                "no-hash-at-all": 0.5,
+                "only#one#hash": 0.5,
+                "adventureitemnames:title_combinations#abc#adventureitemnames:food": 0.5,
+                "adventureitemnames:title_combinations#1#adventureitemnames:food": 0.5
+              }
+            }
+            """);
+        assertEquals(1, cfg.weights().weights.size(),
+            "only the well-formed key survives");
+        assertTrue(cfg.weights().weights.containsKey(
+            "adventureitemnames:title_combinations#1#adventureitemnames:food"));
+    }
+
+    @Test
+    void weightOverridesRejectsNegativeAndClampsHuge() {
+        LoadedConfig cfg = parseFull("""
+            {
+              "weight_overrides": {
+                "adventureitemnames:title_combinations#1#adventureitemnames:food": -1.0,
+                "adventureitemnames:title_combinations#1#adventureitemnames:names": 99999.0
+              }
+            }
+            """);
+        assertFalse(cfg.weights().weights.containsKey(
+            "adventureitemnames:title_combinations#1#adventureitemnames:food"),
+            "negative is dropped");
+        Float clamped = cfg.weights().weights.get(
+            "adventureitemnames:title_combinations#1#adventureitemnames:names");
+        assertNotNull(clamped);
+        assertEquals(1000f, clamped, 1e-3f, "huge values clamp to MAX_WEIGHT");
+    }
+
+    @Test
+    void disablesAndWeightsCoexist() {
+        LoadedConfig cfg = parseFull("""
+            {
+              "pools": ["adventureitemnames:discord_people"],
+              "weight_overrides": {
+                "adventureitemnames:title_combinations#1#adventureitemnames:food": 0.5
+              }
+            }
+            """);
+        assertTrue(cfg.disables().pools.contains(rl("adventureitemnames:discord_people")));
+        assertEquals(0.5f, cfg.weights().weights.get(
+            "adventureitemnames:title_combinations#1#adventureitemnames:food"), 1e-6f);
     }
 }

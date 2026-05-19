@@ -48,6 +48,10 @@ public final class AdventureItemNamesNeoForge {
 
         NeoForge.EVENT_BUS.addListener(AdventureItemNamesNeoForge::onAddReloadListeners);
         modBus.addListener(AdventureItemNamesNeoForge::onAddPackFinders);
+
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
+            games.brennan.adventureitemnames.neoforge.client.AdventureItemNamesNeoForgeClient.register(modBus);
+        }
     }
 
     private static void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {

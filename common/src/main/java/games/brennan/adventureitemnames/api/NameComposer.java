@@ -100,6 +100,28 @@ public final class NameComposer {
     }
 
     /**
+     * Variant of {@link #applyName} that bypasses the per-tier
+     * probability gate so a single roll always returns a name (or an
+     * empty string if no selector matches / chain resolves empty). Used
+     * by the config UI's live preview — see
+     * {@code client/PreviewRoller}.
+     */
+    public static String composePreview(ItemStack stack, boolean enchanted, RandomSource rng) {
+        Optional<NameSelector> maybeSel = NameRegistry.findMatching(stack);
+        if (maybeSel.isEmpty()) return "";
+        NameSelector sel = maybeSel.get();
+
+        NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
+        ResourceLocation chainId = sel.tiers().get(tier.key());
+        if (chainId == null) chainId = sel.tiers().get(NameTier.PLAIN.key());
+        if (chainId == null) return "";
+
+        String name = compose(chainId, stack, sel.appliesTo(), rng, 0);
+        if (name == null || name.isBlank()) return "";
+        return applyTypeSynonym(name, stack, sel.appliesTo(), rng);
+    }
+
+    /**
      * Generate a name for a freshly-spawned {@link Mob} and apply it as
      * the vanilla {@code CustomName}. Intended to be called from a mixin
      * on {@code Mob.finalizeSpawn(...)} so it fires exactly once per
@@ -218,20 +240,22 @@ public final class NameComposer {
             return "";
         }
         StringBuilder out = new StringBuilder();
+        int segIdx = 0;
         for (NameSegment seg : maybeChain.get().segments()) {
-            if (seg.chance() < 1f && rng.nextFloat() >= seg.chance()) continue;
+            if (seg.chance() < 1f && rng.nextFloat() >= seg.chance()) { segIdx++; continue; }
 
-            NameSegment.WeightedRef picked = pickWeighted(seg.refs(), rng);
-            if (picked == null) continue;
+            NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, seg.refs(), rng);
+            if (picked == null) { segIdx++; continue; }
 
             String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
-            if (fragment == null || fragment.isEmpty()) continue;
+            if (fragment == null || fragment.isEmpty()) { segIdx++; continue; }
 
             if (out.length() > 0) {
                 out.append(seg.connection());
                 if (seg.newline()) out.append('\n');
             }
             out.append(fragment);
+            segIdx++;
         }
         return out.toString();
     }
@@ -267,19 +291,24 @@ public final class NameComposer {
     }
 
     /**
-     * Cumulative-weight pick over a list of weighted refs. Returns the
+     * Cumulative-weight pick over a list of weighted refs, consulting
+     * {@link NamingConfig#effectiveWeight} per ref so user / API
+     * overrides take precedence over the shipped weight. Returns the
      * last ref when float drift carries past the total — never returns
-     * null for a non-empty input.
+     * null for a non-empty input that has any non-zero effective weight.
      */
-    private static NameSegment.WeightedRef pickWeighted(List<NameSegment.WeightedRef> refs, RandomSource rng) {
+    private static NameSegment.WeightedRef pickWeighted(ResourceLocation chainId, int segIdx,
+                                                        List<NameSegment.WeightedRef> refs, RandomSource rng) {
         if (refs.isEmpty()) return null;
         float total = 0f;
-        for (NameSegment.WeightedRef r : refs) total += r.weight();
+        for (NameSegment.WeightedRef r : refs) {
+            total += NamingConfig.effectiveWeight(chainId, segIdx, r.ref(), r.weight());
+        }
         if (total <= 0f) return null;
         float roll = rng.nextFloat() * total;
         float cum = 0f;
         for (NameSegment.WeightedRef r : refs) {
-            cum += r.weight();
+            cum += NamingConfig.effectiveWeight(chainId, segIdx, r.ref(), r.weight());
             if (roll < cum) return r;
         }
         return refs.get(refs.size() - 1);
