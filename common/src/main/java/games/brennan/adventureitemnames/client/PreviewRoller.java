@@ -14,6 +14,7 @@ import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -35,27 +36,59 @@ public final class PreviewRoller {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final ItemStack[] SAMPLES = new ItemStack[] {
+    /**
+     * Sample stacks reachable via the preview panel's click-to-cycle.
+     * Order: the six primary slots (weapon / two tools / three armor
+     * pieces) come first so the default mapping is one-to-one; the four
+     * "extras" (shovel / bow / leggings / shield) appear after, so
+     * clicking past boots cycles through them and wraps back to sword.
+     * Bow has no selector in v1 — its slot renders the icon with a
+     * {@code —} name, a useful signal that the mod doesn't cover bows
+     * yet.
+     */
+    public static final ItemStack[] DEFAULT_SAMPLES = new ItemStack[] {
         new ItemStack(Items.IRON_SWORD),
         new ItemStack(Items.DIAMOND_PICKAXE),
         new ItemStack(Items.NETHERITE_AXE),
         new ItemStack(Items.IRON_HELMET),
         new ItemStack(Items.DIAMOND_CHESTPLATE),
         new ItemStack(Items.NETHERITE_BOOTS),
+        new ItemStack(Items.IRON_SHOVEL),
+        new ItemStack(Items.BOW),
+        new ItemStack(Items.IRON_LEGGINGS),
         new ItemStack(Items.SHIELD),
     };
 
     private PreviewRoller() {}
 
-    /** Roll {@code count} sample names. Returns plaintext strings. */
-    public static List<String> roll(int count, EditBuffer buffer, ResourceLocation forcePoolForSegment1) {
+    /** One roll's worth of preview state — the icon to draw + the rolled name. */
+    public record Result(ItemStack icon, String name) {}
+
+    /** Bulk roll for every supplied stack, applying buffer overrides once across the batch. */
+    public static List<Result> rollBatch(List<ItemStack> stacks, List<Boolean> enchanted,
+                                         EditBuffer buffer, ResourceLocation forcePoolForSegment1) {
         NamingConfig.ApiSnapshot snap = NamingConfig.snapshotApiLayer();
         try {
             applyBufferToApi(buffer, forcePoolForSegment1);
-            return doRolls(count);
+            return doBatchRolls(stacks, enchanted);
         } catch (Exception ex) {
-            LOGGER.warn("[AdventureItemNames] preview roll failed: {}", ex.getMessage());
-            return List.of();
+            LOGGER.warn("[AdventureItemNames] preview batch roll failed: {}", ex.getMessage());
+            return Collections.emptyList();
+        } finally {
+            NamingConfig.restoreApiLayer(snap);
+        }
+    }
+
+    /** Roll one stack with the buffer applied. Used for click-to-cycle on a single slot. */
+    public static Result rollSingle(ItemStack stack, boolean enchanted,
+                                    EditBuffer buffer, ResourceLocation forcePoolForSegment1) {
+        NamingConfig.ApiSnapshot snap = NamingConfig.snapshotApiLayer();
+        try {
+            applyBufferToApi(buffer, forcePoolForSegment1);
+            return doSingleRoll(stack, enchanted);
+        } catch (Exception ex) {
+            LOGGER.warn("[AdventureItemNames] preview single roll failed: {}", ex.getMessage());
+            return new Result(stack, "—");
         } finally {
             NamingConfig.restoreApiLayer(snap);
         }
@@ -88,17 +121,25 @@ public final class PreviewRoller {
         }
     }
 
-    private static List<String> doRolls(int count) {
+    private static List<Result> doBatchRolls(List<ItemStack> stacks, List<Boolean> enchanted) {
         Minecraft mc = Minecraft.getInstance();
         RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
-        List<String> out = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            ItemStack stack = SAMPLES[i % SAMPLES.length].copy();
-            boolean enchanted = (i % 2 == 0);
-            String name = NameComposer.composePreview(stack, enchanted, rng);
-            out.add(name.isEmpty() ? "—" : name);
+        List<Result> out = new ArrayList<>(stacks.size());
+        for (int i = 0; i < stacks.size(); i++) {
+            ItemStack stack = stacks.get(i).copy();
+            boolean ench = enchanted.get(i);
+            String name = NameComposer.composePreview(stack, ench, rng);
+            out.add(new Result(stack, name.isEmpty() ? "—" : name));
         }
         return out;
+    }
+
+    private static Result doSingleRoll(ItemStack stack, boolean enchanted) {
+        Minecraft mc = Minecraft.getInstance();
+        RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        ItemStack copy = stack.copy();
+        String name = NameComposer.composePreview(copy, enchanted, rng);
+        return new Result(copy, name.isEmpty() ? "—" : name);
     }
 
     private record KeyParts(ResourceLocation chainId, int segIdx, ResourceLocation refId) {}

@@ -51,6 +51,29 @@ public final class PackGrouping {
 
     private PackGrouping() {}
 
+    /**
+     * Human-readable label for a resource-pack id. Vanilla pack ids are
+     * stable runtime strings ({@code mod/...}, {@code file/...},
+     * {@code vanilla}) but Fabric's dev launcher synthesizes the mod's
+     * own resources as {@code generated_<short hash>} — that hash changes
+     * every run, so we map any unrecognised "generated_" id to a
+     * built-in label.
+     */
+    public static String friendlyPackName(String packId) {
+        if (packId == null || packId.isEmpty()) return "(unknown)";
+        return switch (packId) {
+            case "vanilla" -> "Vanilla";
+            case "mod/adventureitemnames", "fabric" -> "Adventure Item Names";
+            case "mod/adventureitemnames/atla" -> "ATLA Pack";
+            default -> {
+                if (packId.startsWith("generated_")) yield "Adventure Item Names";
+                if (packId.startsWith("mod/")) yield packId.substring(4);
+                if (packId.startsWith("file/")) yield packId.substring(5);
+                yield packId;
+            }
+        };
+    }
+
     /** Group every currently-registered pool by its source pack id. */
     public static Map<String, PackView> snapshot() {
         Map<ResourceLocation, NamePool> pools = NameRegistry.allPools();

@@ -37,6 +37,15 @@ public final class PoolListScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    /** Column right-edge offsets shared by header + row, so they always align. */
+    static final int COL_W_PREVIEW = 28;
+    static final int COL_W_ENABLED = 60;
+    static final int COL_W_ENTRIES = 100;
+    static final int COL_W_PCT     = 156;
+    static final int COL_W_WEIGHT  = 224;
+    private static final int HEADER_Y = 44;
+    private static final int LIST_TOP = 58;
+
     private final Screen parent;
     private final EditBuffer buffer;
     private final PackGrouping.PackView pack;
@@ -53,7 +62,8 @@ public final class PoolListScreen extends Screen {
 
     @Override
     protected void init() {
-        list = new PoolList(minecraft, width, height - 80 - PreviewPanel.HEIGHT, 44, this);
+        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        list = new PoolList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
         addRenderableWidget(Button.builder(
@@ -77,16 +87,16 @@ public final class PoolListScreen extends Screen {
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font,
-            Component.translatable("screen.adventureitemnames.pools.title", pack.packId()),
-            width / 2, 12, 0xFFFFFFFF);
+            Component.translatable("screen.adventureitemnames.pools.title",
+                PackGrouping.friendlyPackName(pack.packId())),
+            width / 2, 18, 0xFFFFFFFF);
 
-        int headerY = 30;
-        gfx.drawString(font, "Pool",       16,              headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Weight",     width - 360,     headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "%",          width - 280,     headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Entries",    width - 220,     headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Enabled",    width - 150,     headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Preview",    width - 70,      headerY, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Pool",    16,                       HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Weight",  width - COL_W_WEIGHT,     HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "%",       width - COL_W_PCT,        HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Entries", width - COL_W_ENTRIES,    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Enabled", width - COL_W_ENABLED,    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "🎲",      width - COL_W_PREVIEW,    HEADER_Y, 0xFFA0A0A0, false);
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
         preview.render(gfx, mouseX, mouseY, partial);
@@ -106,6 +116,18 @@ public final class PoolListScreen extends Screen {
         } else {
             LOGGER.warn("[AdventureItemNames] save failed — pending edits retained");
         }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (preview != null && preview.keyPressed(keyCode)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
@@ -139,7 +161,7 @@ public final class PoolListScreen extends Screen {
         }
 
         @Override
-        public int getRowWidth() { return Math.min(width - 32, 700); }
+        public int getRowWidth() { return width - 32; }
 
         @Override
         protected int getScrollbarPosition() { return width - 12; }
@@ -151,10 +173,12 @@ public final class PoolListScreen extends Screen {
             private final EditBox weightBox;
             private final Checkbox enabledBox;
             private final Button preview;
+            private final int screenWidth;
 
             Entry(PackGrouping.PoolView pv, PoolListScreen host) {
                 this.pv = pv;
                 this.host = host;
+                this.screenWidth = host.width;
                 this.weightBox = new EditBox(Minecraft.getInstance().font, 0, 0, 56, 16,
                     Component.literal("weight"));
                 if (pv.titleSlot() == null) {
@@ -220,29 +244,27 @@ public final class PoolListScreen extends Screen {
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
                 int textY = rowTop + 8;
-                int rowRight = rowLeft + rowWidth;
                 String poolName = pv.poolId().getPath();
                 gfx.drawString(Minecraft.getInstance().font,
                     Component.literal(poolName).withStyle(ChatFormatting.WHITE),
-                    rowLeft, textY, 0xFFFFFFFF, false);
+                    16, textY, 0xFFFFFFFF, false);
 
-                weightBox.setX(rowRight - 364);
+                weightBox.setX(screenWidth - COL_W_WEIGHT);
                 weightBox.setY(rowTop + 3);
                 weightBox.render(gfx, mouseX, mouseY, partial);
 
-                String pct = formatPct();
                 gfx.drawString(Minecraft.getInstance().font,
-                    pct, rowRight - 284, textY, 0xFFE0E0E0, false);
+                    formatPct(), screenWidth - COL_W_PCT, textY, 0xFFE0E0E0, false);
 
                 gfx.drawString(Minecraft.getInstance().font,
                     Integer.toString(pv.entryCount()),
-                    rowRight - 224, textY, 0xFFE0E0E0, false);
+                    screenWidth - COL_W_ENTRIES, textY, 0xFFE0E0E0, false);
 
-                enabledBox.setX(rowRight - 150);
+                enabledBox.setX(screenWidth - COL_W_ENABLED);
                 enabledBox.setY(rowTop + 3);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
 
-                preview.setX(rowRight - 70);
+                preview.setX(screenWidth - COL_W_PREVIEW - 16);
                 preview.setY(rowTop + 3);
                 preview.render(gfx, mouseX, mouseY, partial);
             }

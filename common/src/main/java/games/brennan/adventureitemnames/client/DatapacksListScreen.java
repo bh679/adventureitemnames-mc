@@ -43,10 +43,19 @@ public final class DatapacksListScreen extends Screen {
         this.buffer = buffer;
     }
 
+    /** Column X anchors are right-edge offsets from the screen width. Shared by header + row. */
+    static final int COL_W_OPEN     = 72;
+    static final int COL_W_SUM      = 124;
+    static final int COL_W_ENTRIES  = 176;
+    static final int COL_W_POOLS    = 232;
+    private static final int HEADER_Y = 44;
+    private static final int LIST_TOP = 58;
+
     @Override
     protected void init() {
         Map<String, PackGrouping.PackView> packs = PackGrouping.snapshot();
-        list = new DatapackList(minecraft, width, height - 56 - PreviewPanel.HEIGHT, 32,
+        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        list = new DatapackList(minecraft, width, listBottom - LIST_TOP, LIST_TOP,
             new ArrayList<>(packs.values()), this);
         addRenderableWidget(list);
 
@@ -63,20 +72,30 @@ public final class DatapacksListScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         super.render(gfx, mouseX, mouseY, partial);
-        gfx.drawCenteredString(font, title, width / 2, 12, 0xFFFFFFFF);
-        // Column headers
-        int headerY = 28;
-        int x = 16;
-        gfx.drawString(font, "Pack", x, headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Pools", width - 260, headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Entries", width - 190, headerY, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Σ weight", width - 110, headerY, 0xFFA0A0A0, false);
+        gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
+
+        gfx.drawString(font, "Pack",     16,                 HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Pools",    width - COL_W_POOLS,    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Entries",  width - COL_W_ENTRIES,  HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Σ weight", width - COL_W_SUM,      HEADER_Y, 0xFFA0A0A0, false);
 
         preview.render(gfx, mouseX, mouseY, partial);
     }
 
     void openPack(PackGrouping.PackView pack) {
         Minecraft.getInstance().setScreen(new PoolListScreen(this, buffer, pack));
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (preview != null && preview.keyPressed(keyCode)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
@@ -97,7 +116,7 @@ public final class DatapacksListScreen extends Screen {
         }
 
         @Override
-        public int getRowWidth() { return Math.min(width - 32, 600); }
+        public int getRowWidth() { return width - 32; }
 
         @Override
         protected int getScrollbarPosition() { return width - 12; }
@@ -106,9 +125,11 @@ public final class DatapacksListScreen extends Screen {
 
             private final PackGrouping.PackView pack;
             private final Button openButton;
+            private final int screenWidth;
 
             Entry(PackGrouping.PackView pack, DatapacksListScreen host) {
                 this.pack = pack;
+                this.screenWidth = host.width;
                 this.openButton = Button.builder(
                     Component.translatable("screen.adventureitemnames.action.open"),
                     b -> host.openPack(pack)
@@ -125,22 +146,28 @@ public final class DatapacksListScreen extends Screen {
             public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
-                openButton.setX(rowLeft + rowWidth - 64);
+                openButton.setX(screenWidth - COL_W_OPEN);
                 openButton.setY(rowTop + 3);
 
                 int textY = rowTop + 8;
+                int packMaxWidth = (screenWidth - COL_W_POOLS) - 16 - 8;
+                String packName = PackGrouping.friendlyPackName(pack.packId());
+                String truncated = Minecraft.getInstance().font.plainSubstrByWidth(packName, packMaxWidth);
+                if (!truncated.equals(packName) && truncated.length() > 1) {
+                    truncated = Minecraft.getInstance().font.plainSubstrByWidth(packName, packMaxWidth - 6) + "…";
+                }
                 gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(pack.packId()).withStyle(ChatFormatting.WHITE),
-                    rowLeft, textY, 0xFFFFFFFF, false);
+                    Component.literal(truncated).withStyle(ChatFormatting.WHITE),
+                    16, textY, 0xFFFFFFFF, false);
                 gfx.drawString(Minecraft.getInstance().font,
                     Integer.toString(pack.pools().size()),
-                    rowLeft + rowWidth - 264, textY, 0xFFE0E0E0, false);
+                    screenWidth - COL_W_POOLS, textY, 0xFFE0E0E0, false);
                 gfx.drawString(Minecraft.getInstance().font,
                     Integer.toString(pack.totalEntries()),
-                    rowLeft + rowWidth - 194, textY, 0xFFE0E0E0, false);
+                    screenWidth - COL_W_ENTRIES, textY, 0xFFE0E0E0, false);
                 gfx.drawString(Minecraft.getInstance().font,
                     String.format("%.3f", pack.titleCombinationsSum()),
-                    rowLeft + rowWidth - 114, textY, 0xFFE0E0E0, false);
+                    screenWidth - COL_W_SUM, textY, 0xFFE0E0E0, false);
 
                 openButton.render(gfx, mouseX, mouseY, partial);
                 RenderSystem.disableBlend();

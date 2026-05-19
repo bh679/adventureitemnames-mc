@@ -39,8 +39,15 @@ public final class ClientInit {
         return any;
     }
 
-    /** Push the hub screen onto the client. Safe to call from any tick. */
+    /**
+     * Push the hub screen onto the client. Deferred to the next tick via
+     * {@link Minecraft#tell} so {@code setScreen} runs after any
+     * in-flight chat-close (which itself calls {@code setScreen(null)}).
+     * Without the defer, invoking from a client-command executor opens
+     * the hub and then loses it to the chat-close stomp on the same tick.
+     */
     public static void openConfigScreen() {
-        Minecraft.getInstance().setScreen(new ConfigScreen(null));
+        Minecraft mc = Minecraft.getInstance();
+        mc.tell(() -> mc.setScreen(new ConfigScreen(null)));
     }
 }

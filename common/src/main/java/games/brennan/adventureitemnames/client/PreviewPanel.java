@@ -8,52 +8,181 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Bottom-docked preview strip used on every config screen. Holds the
- * last batch of 10 rolled names plus a 🎲 re-roll button. Stateless
- * across screen navigations — caller passes the {@link EditBuffer} so
- * pending edits show through.
+ * Bottom-docked preview strip used on every config screen. Six slots,
+ * each showing an item icon plus the name a roll produced. Clicking an
+ * icon opens a two-stage {@link ItemPicker} so the user can switch the
+ * slot to any kind+material combo — useful for comparing "Netherite
+ * Sword" vs "Wooden Sword" naming pressure.
  *
- * <p>This widget is rendered + interactive but is not a child of a
- * vanilla list/layout — the host screen positions it at a fixed
- * {@code height - h} y offset and rebuilds it on {@link #rebuild}.
+ * <p>Each slot can be one of three configurations:
+ * <ul>
+ *   <li>{@code SLOT_SPECIFIC} — a fixed item stack.</li>
+ *   <li>{@code SLOT_RANDOM_ITEM} — re-rolls kind + material on every name re-roll.</li>
+ *   <li>{@code SLOT_RANDOM_MATERIAL} — kind locked, material re-rolls on every re-roll.</li>
+ * </ul>
+ * Random configs materialise to a fresh {@link ItemStack} per re-roll
+ * via {@link #materialize}; the rolled-name display thus shows the
+ * actual item that produced that line.
  */
 @Environment(EnvType.CLIENT)
 public final class PreviewPanel {
 
-    public static final int HEIGHT = 64;
+    public static final int HEIGHT = 86;
+    public static final int SLOT_COUNT = 6;
     private static final int PADDING_X = 8;
-    private static final int LINE_HEIGHT = 9;
+    private static final int HEADER_H = 14;
+    private static final int ICON_SIZE = 16;
+    private static final int LINE_H = 22;
+    private static final int TEXT_LINE_H = 9;
+    private static final int TEXT_OFFSET_Y = 1;
+    private static final int MAX_TEXT_LINES = 2;
+
+    /** One slot's source configuration — feeds {@link #materialize}. */
+    public sealed interface SlotConfig {
+        record Specific(ItemStack stack) implements SlotConfig {}
+        record RandomItem() implements SlotConfig {}
+        record RandomMaterial(ItemPicker.Kind kind) implements SlotConfig {}
+    }
 
     private final EditBuffer buffer;
     private final ResourceLocation forcePool;
-    private List<String> names = List.of();
+    private final SlotConfig[] slotConfigs = new SlotConfig[SLOT_COUNT];
+    private List<PreviewRoller.Result> results = List.of();
     private Button reroll;
     private int screenWidth;
     private int screenHeight;
+    private ItemPicker activePicker;
 
     public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool) {
         this.buffer = buffer;
         this.forcePool = forcePool;
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            slotConfigs[i] = new SlotConfig.Specific(PreviewRoller.DEFAULT_SAMPLES[i].copy());
+        }
     }
 
-    /** Re-position the embedded re-roll button and roll an initial batch. */
     public void rebuild(int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
         rerollNow();
         reroll = Button.builder(Component.literal("🎲"), b -> rerollNow())
-            .bounds(screenWidth - 32 - PADDING_X, screenHeight - HEIGHT + 4, 32, 16)
+            .bounds(screenWidth - 32 - PADDING_X, screenHeight - HEIGHT + 2, 32, 16)
             .build();
     }
 
     public Button button() { return reroll; }
 
     public void rerollNow() {
-        names = PreviewRoller.roll(10, buffer, forcePool);
+        RandomSource rng = pickRng();
+        List<ItemStack> stacks = new ArrayList<>(SLOT_COUNT);
+        List<Boolean> enchanted = new ArrayList<>(SLOT_COUNT);
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            stacks.add(materialize(slotConfigs[i], rng));
+            enchanted.add(isSlotEnchanted(i));
+        }
+        results = PreviewRoller.rollBatch(stacks, enchanted, buffer, forcePool);
+    }
+
+    private void rerollSlot(int slot) {
+        if (slot < 0 || slot >= SLOT_COUNT) return;
+        RandomSource rng = pickRng();
+        ItemStack stack = materialize(slotConfigs[slot], rng);
+        PreviewRoller.Result rolled = PreviewRoller.rollSingle(
+            stack, isSlotEnchanted(slot), buffer, forcePool);
+        List<PreviewRoller.Result> next = new ArrayList<>(results);
+        while (next.size() <= slot) {
+            next.add(new PreviewRoller.Result(materialize(slotConfigs[next.size()], rng), "—"));
+        }
+        next.set(slot, rolled);
+        results = next;
+    }
+
+    /** Resolve a {@link SlotConfig} to a fresh {@link ItemStack}. Random configs re-roll each call. */
+    private ItemStack materialize(SlotConfig config, RandomSource rng) {
+        if (config instanceof SlotConfig.Specific s) return s.stack();
+        if (config instanceof SlotConfig.RandomItem) return rollRandomItem(rng);
+        if (config instanceof SlotConfig.RandomMaterial rm) return rollRandomMaterial(rm.kind(), rng);
+        return ItemStack.EMPTY;
+    }
+
+    private ItemStack rollRandomItem(RandomSource rng) {
+        ItemPicker.Kind[] all = ItemPicker.Kind.values();
+        ItemPicker.Kind k = all[rng.nextInt(all.length)];
+        if (k.isFixed()) return new ItemStack(k.iconItem());
+        var mats = k.materials();
+        return ItemPicker.resolve(k, mats.get(rng.nextInt(mats.size())));
+    }
+
+    private ItemStack rollRandomMaterial(ItemPicker.Kind k, RandomSource rng) {
+        if (k.isFixed()) return new ItemStack(k.iconItem());
+        var mats = k.materials();
+        return ItemPicker.resolve(k, mats.get(rng.nextInt(mats.size())));
+    }
+
+    private RandomSource pickRng() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.random : RandomSource.create();
+    }
+
+    private boolean isSlotEnchanted(int slot) { return slot % 2 == 0; }
+
+    /** Forward a screen-level click to the panel. Returns true when consumed. */
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activePicker != null) {
+            activePicker.mouseClicked(mouseX, mouseY, button);
+            return true;
+        }
+        if (button != 0 || screenWidth == 0) return false;
+        int y0 = screenHeight - HEIGHT + HEADER_H;
+        int columnWidth = (screenWidth - PADDING_X * 2) / 2;
+        for (int i = 0; i < results.size() && i < SLOT_COUNT; i++) {
+            int col = i % 2;
+            int row = i / 2;
+            int iconX = PADDING_X + col * columnWidth;
+            int iconY = y0 + row * LINE_H;
+            if (mouseX >= iconX && mouseX < iconX + ICON_SIZE
+                && mouseY >= iconY && mouseY < iconY + ICON_SIZE) {
+                openPickerForSlot(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Forward a screen-level key press. Returns true when consumed. */
+    public boolean keyPressed(int keyCode) {
+        if (activePicker == null) return false;
+        return activePicker.keyPressed(keyCode);
+    }
+
+    private void openPickerForSlot(int slot) {
+        activePicker = new ItemPicker(screenWidth, screenHeight, new ItemPicker.Listener() {
+            @Override public void onSpecific(ItemStack stack) {
+                slotConfigs[slot] = new SlotConfig.Specific(stack);
+                activePicker = null;
+                rerollSlot(slot);
+            }
+            @Override public void onRandomItem() {
+                slotConfigs[slot] = new SlotConfig.RandomItem();
+                activePicker = null;
+                rerollSlot(slot);
+            }
+            @Override public void onRandomMaterial(ItemPicker.Kind kind) {
+                slotConfigs[slot] = new SlotConfig.RandomMaterial(kind);
+                activePicker = null;
+                rerollSlot(slot);
+            }
+            @Override public void onCancelled() {
+                activePicker = null;
+            }
+        });
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
@@ -63,23 +192,50 @@ public final class PreviewPanel {
         gfx.fill(0, y0, screenWidth, y0 + 1, 0xFF606060);
 
         gfx.drawString(Minecraft.getInstance().font,
-            Component.literal("Preview · 10 rolled names"),
+            Component.literal("Preview · click an icon to change item"),
             PADDING_X, y0 + 4, 0xFFA0A0A0, false);
 
-        int lineY = y0 + 16;
-        int colWidth = (screenWidth - PADDING_X * 2) / 2;
-        for (int i = 0; i < names.size() && i < 10; i++) {
+        int rowsStartY = y0 + HEADER_H;
+        int columnWidth = (screenWidth - PADDING_X * 2) / 2;
+        int hoveredSlot = -1;
+        for (int i = 0; i < results.size() && i < SLOT_COUNT; i++) {
             int col = i % 2;
             int row = i / 2;
-            int x = PADDING_X + col * colWidth;
-            int y = lineY + row * LINE_HEIGHT;
-            String prefix = (i + 1) + ". ";
-            String label = prefix + names.get(i);
-            List<FormattedCharSequence> trimmed = Minecraft.getInstance().font.split(
-                Component.literal(label), colWidth - 8);
-            if (!trimmed.isEmpty()) {
-                gfx.drawString(Minecraft.getInstance().font, trimmed.get(0), x, y, 0xFFE0E0E0, false);
+            int x = PADDING_X + col * columnWidth;
+            int y = rowsStartY + row * LINE_H;
+            boolean iconHover = mouseX >= x && mouseX < x + ICON_SIZE
+                && mouseY >= y && mouseY < y + ICON_SIZE;
+            if (iconHover) hoveredSlot = i;
+
+            PreviewRoller.Result r = results.get(i);
+            if (iconHover) gfx.fill(x - 1, y - 1, x + ICON_SIZE + 1, y + ICON_SIZE + 1, 0x40FFFFFF);
+            gfx.renderItem(r.icon(), x, y);
+
+            if (slotConfigs[i] instanceof SlotConfig.RandomItem
+                || slotConfigs[i] instanceof SlotConfig.RandomMaterial) {
+                gfx.fill(x + ICON_SIZE - 5, y + ICON_SIZE - 5, x + ICON_SIZE, y + ICON_SIZE, 0xFF6A4A8A);
+                gfx.drawString(Minecraft.getInstance().font,
+                    Component.literal("?"), x + ICON_SIZE - 4, y + ICON_SIZE - 5, 0xFFFFFFFF, false);
             }
+
+            int textX = x + ICON_SIZE + 4;
+            int textMaxWidth = columnWidth - ICON_SIZE - 8;
+            List<FormattedCharSequence> trimmed = Minecraft.getInstance().font.split(
+                Component.literal(r.name()), textMaxWidth);
+            int lines = Math.min(MAX_TEXT_LINES, trimmed.size());
+            for (int li = 0; li < lines; li++) {
+                gfx.drawString(Minecraft.getInstance().font, trimmed.get(li),
+                    textX, y + TEXT_OFFSET_Y + li * TEXT_LINE_H, 0xFFE0E0E0, false);
+            }
+        }
+
+        if (hoveredSlot >= 0 && hoveredSlot < results.size() && activePicker == null) {
+            gfx.renderTooltip(Minecraft.getInstance().font,
+                results.get(hoveredSlot).icon(), mouseX, mouseY);
+        }
+
+        if (activePicker != null) {
+            activePicker.render(gfx, mouseX, mouseY);
         }
     }
 }
