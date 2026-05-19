@@ -77,6 +77,24 @@ public final class AdventureItemNamesFabric implements ModInitializer {
 
         FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container -> {
             ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mc_names"),
+                container,
+                Component.literal("Adventure Item Names — Minecraft Pack"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            );
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "wholesome"),
+                container,
+                Component.literal("Adventure Item Names — Wholesome Pack"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            );
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "discord"),
+                container,
+                Component.literal("Adventure Item Names — Discord Supporters"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            );
+            ResourceManagerHelper.registerBuiltinResourcePack(
                 ResourceLocation.fromNamespaceAndPath("adventureitemnames", "atla"),
                 container,
                 Component.literal("Adventure Item Names — ATLA Pack"),

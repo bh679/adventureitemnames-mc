@@ -1,0 +1,14 @@
+{
+  "id": "adventureitemnames:title_combinations",
+  "replace": false,
+  "segments": [
+    { "refs": [] },
+    {
+      "refs": [
+        { "ref": "adventureitemnames:feelings",         "weight": 0.03 },
+        { "ref": "adventureitemnames:wholesome_things", "weight": 0.03 },
+        { "ref": "adventureitemnames:inclusion",        "weight": 0.03 }
+      ]
+    }
+  ]
+}

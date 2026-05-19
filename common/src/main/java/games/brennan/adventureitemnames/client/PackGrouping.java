@@ -64,6 +64,9 @@ public final class PackGrouping {
         return switch (packId) {
             case "vanilla" -> "Vanilla";
             case "mod/adventureitemnames", "fabric" -> "Adventure Item Names";
+            case "mod/adventureitemnames/mc_names" -> "Minecraft Pack";
+            case "mod/adventureitemnames/wholesome" -> "Wholesome Pack";
+            case "mod/adventureitemnames/discord" -> "Discord Supporters Pack";
             case "mod/adventureitemnames/atla" -> "ATLA Pack";
             case "mod/adventureitemnames/adventuretime" -> "Adventure Time Pack";
             default -> {

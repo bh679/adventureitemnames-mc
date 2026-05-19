@@ -87,6 +87,7 @@ public final class NameCodec {
 
     private static NameChain parseChainObj(JsonObject root, ResourceLocation fallbackId) throws NameParseException {
         ResourceLocation id = idOrFallback(root, fallbackId);
+        boolean replace = !root.has("replace") || root.get("replace").getAsBoolean();
         List<NameSegment> segments = new ArrayList<>();
         JsonElement segEl = root.get("segments");
         if (segEl == null || !segEl.isJsonArray()) {
@@ -115,7 +116,7 @@ public final class NameCodec {
             boolean newline = obj.has("newline") && obj.get("newline").getAsBoolean();
             segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline));
         }
-        return new NameChain(id, List.copyOf(segments));
+        return new NameChain(id, List.copyOf(segments), replace);
     }
 
     public static NameSelector parseSelector(InputStream in, ResourceLocation fallbackId) throws NameParseException {
