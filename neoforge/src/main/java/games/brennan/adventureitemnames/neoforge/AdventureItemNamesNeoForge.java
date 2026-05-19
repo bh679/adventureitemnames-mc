@@ -28,8 +28,13 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Optional;
 
 /**
@@ -92,22 +97,22 @@ public final class AdventureItemNamesNeoForge {
     private static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) return;
 
-        var modFile = ModList.get().getModFileById("adventureitemnames");
-        if (modFile == null) {
-            LOGGER.warn("[AdventureItemNames] mod file lookup failed; built-in data packs will not be registered");
-            return;
-        }
-
-        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/atla"),
-            "atla", "Adventure Item Names — ATLA Pack");
-        registerBuiltinPack(event, modFile.getFile().findResource("resourcepacks/adventuretime"),
-            "adventuretime", "Adventure Item Names — Adventure Time Pack");
+        registerBuiltinPack(event, "atla", "Adventure Item Names — ATLA Pack");
+        registerBuiltinPack(event, "adventuretime", "Adventure Item Names — Adventure Time Pack");
     }
 
-    private static void registerBuiltinPack(AddPackFindersEvent event, Path resourcePath,
+    /**
+     * Resolve the on-disk Path for a built-in pack and register it. Tries the
+     * production-jar lookup first ({@code IModFile.findResource}). When that
+     * fails (Architectury dev mode keeps {@code common/}'s resources off the
+     * neoforge mod's file root), falls back to the classpath — the same
+     * physical file via {@code Class.getResource}.
+     */
+    private static void registerBuiltinPack(AddPackFindersEvent event,
                                             String packPath, String displayName) {
+        Path resourcePath = resolvePackPath(packPath);
         if (resourcePath == null || !Files.exists(resourcePath)) {
-            LOGGER.warn("[AdventureItemNames] built-in pack 'resourcepacks/{}' not found inside mod jar", packPath);
+            LOGGER.warn("[AdventureItemNames] built-in pack 'resourcepacks/{}' not found inside mod jar or classpath", packPath);
             return;
         }
         PackLocationInfo location = new PackLocationInfo(
@@ -129,5 +134,41 @@ public final class AdventureItemNamesNeoForge {
         }
         LOGGER.info("[AdventureItemNames] registered built-in data pack '{}' from {}", packPath, resourcePath);
         event.addRepositorySource(consumer -> consumer.accept(pack));
+    }
+
+    /**
+     * Two-stage lookup for {@code resourcepacks/<packPath>}:
+     * <ol>
+     *   <li>{@code IModFile.findResource} — works when the mod is loaded
+     *       from a production jar (the pack is physically inside).</li>
+     *   <li>Classpath URL — works in Architectury dev mode where
+     *       {@code common/}'s resources sit on the runtime classpath but
+     *       outside the neoforge mod's declared file roots.</li>
+     * </ol>
+     * Returns null if neither resolves.
+     */
+    private static Path resolvePackPath(String packPath) {
+        var modFile = ModList.get().getModFileById("adventureitemnames");
+        if (modFile != null) {
+            Path p = modFile.getFile().findResource("resourcepacks/" + packPath);
+            if (p != null && Files.exists(p)) return p;
+        }
+        URL url = AdventureItemNamesNeoForge.class.getResource("/resourcepacks/" + packPath + "/pack.mcmeta");
+        if (url == null) return null;
+        try {
+            URI uri = url.toURI();
+            if ("jar".equals(uri.getScheme())) {
+                try {
+                    FileSystems.newFileSystem(uri, Collections.emptyMap());
+                } catch (Exception ignored) {
+                    // Already mounted — that's fine.
+                }
+            }
+            Path mcmeta = Path.of(uri);
+            return mcmeta.getParent();
+        } catch (URISyntaxException | java.nio.file.FileSystemNotFoundException e) {
+            LOGGER.warn("[AdventureItemNames] could not resolve classpath URL {} to a Path: {}", url, e.toString());
+            return null;
+        }
     }
 }
