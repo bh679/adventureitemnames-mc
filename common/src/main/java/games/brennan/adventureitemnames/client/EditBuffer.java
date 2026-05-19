@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
@@ -51,6 +52,11 @@ public final class EditBuffer {
 
     /** entityId → desired enabled state. Persists into {@code mobs.entity_ids[]}. */
     private final Map<ResourceLocation, Boolean> pendingEntityEnabled = new HashMap<>();
+
+    /** selectorId → user-defined NameSelector (additions / replacements). */
+    private final Map<ResourceLocation, NameSelector> pendingAddedCustomSelectors = new LinkedHashMap<>();
+    /** selectorIds the user wants to drop from the custom-selectors map. */
+    private final Set<ResourceLocation> pendingRemovedCustomSelectors = new LinkedHashSet<>();
 
     // ────────────────────────────────────────────────────────────
     // Weights (v1)
@@ -369,6 +375,59 @@ public final class EditBuffer {
     }
 
     // ────────────────────────────────────────────────────────────
+    // User-defined custom selectors (v2.x)
+    // ────────────────────────────────────────────────────────────
+
+    /**
+     * Stage a new (or replacement) user-defined selector. If the same id
+     * was sitting in the pending-removed set, the remove is unstaged —
+     * keep order-independent semantics like the pool entry buffer.
+     */
+    public void addCustomSelector(NameSelector selector) {
+        if (selector == null || selector.id() == null) return;
+        pendingRemovedCustomSelectors.remove(selector.id());
+        pendingAddedCustomSelectors.put(selector.id(), selector);
+    }
+
+    /**
+     * Stage the removal of a user-defined selector by id. If the id was
+     * sitting in pending-added, just drop the pending add. Otherwise
+     * record the removal so the saver knows to delete the on-disk entry.
+     */
+    public void removeCustomSelector(ResourceLocation selectorId) {
+        if (selectorId == null) return;
+        if (pendingAddedCustomSelectors.remove(selectorId) != null) {
+            // Was a pending add — dropping it is enough. Don't add to removed
+            // set unless the id also exists in the saved user-config layer.
+            if (NamingConfig.snapshotUserCustomSelectors().containsKey(selectorId)) {
+                pendingRemovedCustomSelectors.add(selectorId);
+            }
+            return;
+        }
+        pendingRemovedCustomSelectors.add(selectorId);
+    }
+
+    /**
+     * Effective custom selectors visible to the UI = saved-user-layer
+     * minus pending-removed plus pending-added.
+     */
+    public Map<ResourceLocation, NameSelector> effectiveCustomSelectors() {
+        Map<ResourceLocation, NameSelector> out = new LinkedHashMap<>(
+            NamingConfig.snapshotUserCustomSelectors());
+        for (ResourceLocation removed : pendingRemovedCustomSelectors) out.remove(removed);
+        out.putAll(pendingAddedCustomSelectors);
+        return out;
+    }
+
+    public Map<ResourceLocation, NameSelector> snapshotAddedCustomSelectors() {
+        return new LinkedHashMap<>(pendingAddedCustomSelectors);
+    }
+
+    public Set<ResourceLocation> snapshotRemovedCustomSelectors() {
+        return new LinkedHashSet<>(pendingRemovedCustomSelectors);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Common
     // ────────────────────────────────────────────────────────────
 
@@ -380,7 +439,9 @@ public final class EditBuffer {
             || !pendingChances.isEmpty()
             || !pendingSelectorTiers.isEmpty()
             || !pendingSelectorEnabled.isEmpty()
-            || !pendingEntityEnabled.isEmpty();
+            || !pendingEntityEnabled.isEmpty()
+            || !pendingAddedCustomSelectors.isEmpty()
+            || !pendingRemovedCustomSelectors.isEmpty();
     }
 
     public void clear() {
@@ -392,5 +453,7 @@ public final class EditBuffer {
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
         pendingEntityEnabled.clear();
+        pendingAddedCustomSelectors.clear();
+        pendingRemovedCustomSelectors.clear();
     }
 }

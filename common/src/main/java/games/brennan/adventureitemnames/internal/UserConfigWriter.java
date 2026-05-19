@@ -10,6 +10,7 @@ import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -74,7 +75,9 @@ public final class UserConfigWriter {
                                             Map<ChanceKind, Float> chanceOverrides,
                                             Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides,
                                             Set<ResourceLocation> disabledEntities,
-                                            Set<ResourceLocation> enabledEntities) {
+                                            Set<ResourceLocation> enabledEntities,
+                                            Map<ResourceLocation, NameSelector> addedCustomSelectors,
+                                            Set<ResourceLocation> removedCustomSelectors) {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — cannot save user config");
@@ -90,6 +93,7 @@ public final class UserConfigWriter {
         applyChanceEdits(root, chanceOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
         applyEntityIdEdits(root, disabledEntities, enabledEntities);
+        applyCustomSelectorEdits(root, addedCustomSelectors, removedCustomSelectors);
 
         try {
             Files.createDirectories(configDir);
@@ -189,6 +193,50 @@ public final class UserConfigWriter {
         } else {
             root.add("mobs", mobs);
         }
+    }
+
+    /**
+     * Merge user-defined selector add / remove edits into the
+     * {@code custom_selectors} block. Adds overwrite any existing entry
+     * for the same id; removes drop the entry entirely. Empty block →
+     * key dropped.
+     */
+    private static void applyCustomSelectorEdits(JsonObject root,
+                                                 Map<ResourceLocation, NameSelector> added,
+                                                 Set<ResourceLocation> removed) {
+        if ((added == null || added.isEmpty()) && (removed == null || removed.isEmpty())) return;
+        JsonObject existing;
+        JsonElement el = root.get("custom_selectors");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        if (removed != null) {
+            for (ResourceLocation id : removed) existing.remove(id.toString());
+        }
+        if (added != null) {
+            for (var entry : added.entrySet()) {
+                existing.add(entry.getKey().toString(), serializeSelector(entry.getValue()));
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("custom_selectors");
+        } else {
+            root.add("custom_selectors", existing);
+        }
+    }
+
+    private static JsonObject serializeSelector(NameSelector sel) {
+        JsonObject obj = new JsonObject();
+        obj.add("id", new JsonPrimitive(sel.id().toString()));
+        obj.add("applies_to", new JsonPrimitive(sel.appliesTo().toString()));
+        JsonObject tiers = new JsonObject();
+        for (var e : sel.tiers().entrySet()) {
+            tiers.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+        }
+        obj.add("tiers", tiers);
+        return obj;
     }
 
     /**

@@ -5,6 +5,7 @@ import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
+import java.util.LinkedHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -70,6 +71,9 @@ public final class NamingConfig {
     private static final SelectorOverrides USER_SELECTORS = new SelectorOverrides();
     private static final SelectorOverrides API_SELECTORS = new SelectorOverrides();
 
+    /** User-defined custom selectors loaded from {@code adventureitemnames.json#custom_selectors}. */
+    private static final Map<ResourceLocation, NameSelector> USER_CUSTOM_SELECTORS = new LinkedHashMap<>();
+
     private NamingConfig() {}
 
     // ─────────────────────────────────────────────────────────────
@@ -122,6 +126,27 @@ public final class NamingConfig {
             USER_SELECTORS.clear();
             if (newOverrides != null) USER_SELECTORS.mergeFrom(newOverrides);
         }
+    }
+
+    /**
+     * Replace the user-config-layer custom-selectors map. Internal —
+     * called by the user-config loader on every {@code /reload}. Selectors
+     * registered here are merged into {@link NameRegistry#allSelectors()}
+     * and {@link NameRegistry#findMatching(net.minecraft.world.item.ItemStack)}
+     * alongside shipped JSON selectors. Shipped selectors keep priority
+     * when an id collides — the user can't shadow a shipped id, only add
+     * new ones.
+     */
+    public static void setUserCustomSelectors(Map<ResourceLocation, NameSelector> newSelectors) {
+        synchronized (LOCK) {
+            USER_CUSTOM_SELECTORS.clear();
+            if (newSelectors != null) USER_CUSTOM_SELECTORS.putAll(newSelectors);
+        }
+    }
+
+    /** Read-only snapshot of every user-defined custom selector. */
+    public static Map<ResourceLocation, NameSelector> snapshotUserCustomSelectors() {
+        synchronized (LOCK) { return new LinkedHashMap<>(USER_CUSTOM_SELECTORS); }
     }
 
     // ─────────────────────────────────────────────────────────────

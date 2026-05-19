@@ -39,8 +39,13 @@ import java.util.Optional;
  * dropdown for the {@link NameTier} corresponding to the {@link ChanceKind}
  * the user clicked through.
  *
- * <p>Layout per row: icon · chain dropdown · enable checkbox. Two rows
- * per list entry, side-by-side, matching the old grid feel.
+ * <p>The list also exposes a {@code + Add custom selector} row at the
+ * bottom that routes to {@link AddSelectorScreen}, and a {@code ✕} delete
+ * button on user-added rows that drops them from the {@code custom_selectors}
+ * map on save.
+ *
+ * <p>Layout per row: icon · chain dropdown · enable checkbox · (✕ delete
+ * on user rows).
  */
 @Environment(EnvType.CLIENT)
 public final class CategorySelectorsScreen extends Screen {
@@ -52,6 +57,7 @@ public final class CategorySelectorsScreen extends Screen {
 
     private static final int ICON_SIZE       = 16;
     private static final int CHECKBOX_SIZE   = 18;
+    private static final int DELETE_W        = 16;
     private static final int CELL_PAD        = 4;
     private static final int CELL_GAP        = 4;
     private static final int GAP_BETWEEN     = 6;
@@ -135,6 +141,7 @@ public final class CategorySelectorsScreen extends Screen {
         ConfigSave.commit(buffer, () -> {
             if (saveButton != null) saveButton.active = false;
             if (preview != null) preview.rerollNow();
+            rebuildWidgets();
         });
     }
 
@@ -180,6 +187,18 @@ public final class CategorySelectorsScreen extends Screen {
             });
     }
 
+    /** Open the "Add custom selector" form. */
+    void openAddSelectorScreen() {
+        Minecraft.getInstance().setScreen(new AddSelectorScreen(this, buffer, this::rebuildWidgets));
+    }
+
+    /** Drop a staged-or-saved user-defined selector by id. */
+    void deleteCustomSelector(ResourceLocation id) {
+        buffer.removeCustomSelector(id);
+        rebuildWidgets();
+        if (preview != null) preview.rerollNow();
+    }
+
     @Override
     public void onClose() {
         Minecraft.getInstance().setScreen(parent);
@@ -190,20 +209,23 @@ public final class CategorySelectorsScreen extends Screen {
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
     /**
-     * Every registered selector, ordered by {@link #SELECTOR_PATH_ORDER}
-     * first and then alphabetically by id. Includes user-datapack
-     * selectors (any namespace) so a third-party selector auto-appears
-     * in the grid without a code change.
+     * Every visible selector — shipped selectors in
+     * {@link #SELECTOR_PATH_ORDER}, then alphabetically by id, then user-added
+     * selectors from the buffer's effective view.
      */
     private List<NameSelector> orderedSelectors() {
-        Map<ResourceLocation, NameSelector> remaining = new LinkedHashMap<>(NameRegistry.allSelectors());
+        Map<ResourceLocation, NameSelector> remainingShipped = new LinkedHashMap<>(NameRegistry.shippedSelectors());
         List<NameSelector> ordered = new ArrayList<>();
         for (String path : SELECTOR_PATH_ORDER) {
             ResourceLocation id = ResourceLocation.fromNamespaceAndPath("adventureitemnames", path);
-            NameSelector sel = remaining.remove(id);
+            NameSelector sel = remainingShipped.remove(id);
             if (sel != null) ordered.add(sel);
         }
-        remaining.values().stream()
+        remainingShipped.values().stream()
+            .sorted(Comparator.comparing(s -> s.id().toString()))
+            .forEach(ordered::add);
+        // Custom selectors from saved-user-layer + pending buffer.
+        buffer.effectiveCustomSelectors().values().stream()
             .sorted(Comparator.comparing(s -> s.id().toString()))
             .forEach(ordered::add);
         return ordered;
@@ -247,6 +269,7 @@ public final class CategorySelectorsScreen extends Screen {
                 NameSelector right = i + 1 < selectors.size() ? selectors.get(i + 1) : null;
                 addEntry(new PairEntry(left, right, host));
             }
+            addEntry(new AddEntry(host));
         }
 
         @Override
@@ -295,17 +318,58 @@ public final class CategorySelectorsScreen extends Screen {
             }
         }
 
-        /** One selector in the 2-column grid: icon · chain dropdown · enabled. */
+        /**
+         * Bottom-of-list {@code + Add custom selector} entry. Click routes
+         * to {@link AddSelectorScreen}.
+         */
+        static final class AddEntry extends Entry {
+
+            private final Button addButton;
+
+            AddEntry(CategorySelectorsScreen host) {
+                this.addButton = Button.builder(
+                    Component.literal("+ Add custom selector"),
+                    b -> host.openAddSelectorScreen()
+                ).bounds(0, 0, 200, DROPDOWN_H).build();
+            }
+
+            @Override
+            public List<? extends NarratableEntry> narratables() { return List.of(addButton); }
+
+            @Override
+            public List<? extends GuiEventListener> children() { return List.of(addButton); }
+
+            @Override
+            public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
+                               int rowWidth, int rowHeight, int mouseX, int mouseY,
+                               boolean hovered, float partial) {
+                int dividerY = rowTop + 2;
+                gfx.fill(rowLeft + 8, dividerY, rowLeft + rowWidth - 8, dividerY + 1, 0xFF505050);
+
+                int btnW = Math.min(rowWidth - 32, 220);
+                int btnX = rowLeft + (rowWidth - btnW) / 2;
+                int btnY = rowTop + (rowHeight - DROPDOWN_H) / 2 + 1;
+                addButton.setX(btnX);
+                addButton.setY(btnY);
+                addButton.setWidth(btnW);
+                addButton.render(gfx, mouseX, mouseY, partial);
+            }
+        }
+
+        /** One selector in the 2-column grid: icon · chain dropdown · enabled · (delete if user-defined). */
         static final class Cell {
 
             private final NameSelector sel;
+            private final boolean isUserDefined;
             private final CategorySelectorsScreen host;
             private final Button chainButton;
             private final Checkbox enabledBox;
+            private final Button deleteButton;
 
             Cell(NameSelector sel, CategorySelectorsScreen host) {
                 this.sel = sel;
                 this.host = host;
+                this.isUserDefined = !NameRegistry.shippedSelectors().containsKey(sel.id());
 
                 this.chainButton = makeCycleButton();
 
@@ -320,9 +384,17 @@ public final class CategorySelectorsScreen extends Screen {
                         host.rerollPreview();
                     })
                     .build();
+
+                this.deleteButton = isUserDefined
+                    ? Button.builder(
+                        Component.literal("✕"),
+                        b -> host.deleteCustomSelector(sel.id())
+                    ).bounds(0, 0, DELETE_W, DROPDOWN_H).build()
+                    : null;
             }
 
             List<? extends net.minecraft.client.gui.components.AbstractWidget> widgets() {
+                if (deleteButton != null) return List.of(chainButton, enabledBox, deleteButton);
                 return List.of(chainButton, enabledBox);
             }
 
@@ -360,7 +432,9 @@ public final class CategorySelectorsScreen extends Screen {
                 int iconX = x;
                 x += ICON_SIZE + CELL_GAP;
 
-                int dropdownAvail = cellLeft + cellWidth - CELL_PAD - CHECKBOX_SIZE - CELL_GAP - x;
+                int rightReserve = CELL_PAD + CHECKBOX_SIZE + CELL_GAP;
+                if (deleteButton != null) rightReserve += DELETE_W + CELL_GAP;
+                int dropdownAvail = cellLeft + cellWidth - rightReserve - x;
                 int dropdownW = Math.max(48, dropdownAvail);
                 int btnY = rowTop + (rowHeight - DROPDOWN_H) / 2;
 
@@ -373,6 +447,13 @@ public final class CategorySelectorsScreen extends Screen {
                 enabledBox.setX(x);
                 enabledBox.setY(rowTop + (rowHeight - CHECKBOX_SIZE) / 2);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
+                x += CHECKBOX_SIZE + CELL_GAP;
+
+                if (deleteButton != null) {
+                    deleteButton.setX(x);
+                    deleteButton.setY(btnY);
+                    deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
 
                 boolean hoverIcon = mouseX >= iconX && mouseX < iconX + ICON_SIZE
                     && mouseY >= iconY && mouseY < iconY + ICON_SIZE;

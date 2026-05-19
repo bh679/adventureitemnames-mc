@@ -7,6 +7,7 @@ import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NameSelector;
+import games.brennan.adventureitemnames.api.NamingConfig;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -104,6 +105,16 @@ public final class NameRegistry {
     }
 
     public static synchronized Map<ResourceLocation, NameSelector> allSelectors() {
+        LinkedHashMap<ResourceLocation, NameSelector> merged = new LinkedHashMap<>(SELECTORS);
+        for (var e : NamingConfig.snapshotUserCustomSelectors().entrySet()) {
+            // Shipped selectors win on id collision — user can only add new ids.
+            merged.putIfAbsent(e.getKey(), e.getValue());
+        }
+        return Collections.unmodifiableMap(merged);
+    }
+
+    /** Read-only view of just the SHIPPED selectors (no user custom layer). */
+    public static synchronized Map<ResourceLocation, NameSelector> shippedSelectors() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(SELECTORS));
     }
 
@@ -128,6 +139,14 @@ public final class NameRegistry {
     public static synchronized Optional<NameSelector> findMatching(ItemStack stack) {
         if (stack.isEmpty()) return Optional.empty();
         for (NameSelector sel : SELECTORS.values()) {
+            TagKey<Item> tagKey = TagKey.create(Registries.ITEM, sel.appliesTo());
+            if (stack.is(tagKey)) return Optional.of(sel);
+        }
+        // Shipped selectors come first so they retain priority. User-defined
+        // selectors only catch items that no shipped selector covers — they
+        // can add naming for new item kinds (e.g. tridents) without
+        // shadowing the default sword/axe/etc. mapping.
+        for (NameSelector sel : NamingConfig.snapshotUserCustomSelectors().values()) {
             TagKey<Item> tagKey = TagKey.create(Registries.ITEM, sel.appliesTo());
             if (stack.is(tagKey)) return Optional.of(sel);
         }

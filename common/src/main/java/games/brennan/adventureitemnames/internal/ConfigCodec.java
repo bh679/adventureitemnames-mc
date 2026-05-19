@@ -8,6 +8,7 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.MobCategory;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -15,7 +16,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -74,11 +77,12 @@ public final class ConfigCodec {
         EntryOverrides entries = new EntryOverrides();
         ChanceOverrides chances = new ChanceOverrides();
         SelectorOverrides selectorOverrides = new SelectorOverrides();
+        Map<ResourceLocation, NameSelector> customSelectors = new LinkedHashMap<>();
         if (root == null || !root.isJsonObject()) {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
+            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, customSelectors);
         }
         JsonObject obj = root.getAsJsonObject();
 
@@ -173,8 +177,40 @@ public final class ConfigCodec {
 
         readChances(obj, chances, sourceLabel);
         readSelectorOverrides(obj, selectorOverrides, sourceLabel);
+        readCustomSelectors(obj, customSelectors, sourceLabel);
 
-        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
+        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, customSelectors);
+    }
+
+    /**
+     * Parse the {@code custom_selectors} block — a user-defined map of
+     * selector id → selector body (same shape as a shipped selector JSON
+     * file). Malformed entries are skipped with a WARN.
+     */
+    private static void readCustomSelectors(JsonObject root,
+                                            Map<ResourceLocation, NameSelector> dest,
+                                            String sourceLabel) {
+        JsonElement el = root.get("custom_selectors");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'custom_selectors' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
+            if (id == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors key '{}' is not a valid id — skipping",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            try {
+                NameSelector sel = NameCodec.parseSelector(entry.getValue(), id);
+                dest.put(id, sel);
+            } catch (NameCodec.NameParseException ex) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'] malformed — {}",
+                    sourceLabel, id, ex.getMessage());
+            }
+        }
     }
 
     private static void readRemovedTexts(JsonObject body, ResourceLocation poolId,
