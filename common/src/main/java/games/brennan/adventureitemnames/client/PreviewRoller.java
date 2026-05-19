@@ -42,9 +42,9 @@ public final class PreviewRoller {
      * pieces) come first so the default mapping is one-to-one; the four
      * "extras" (shovel / bow / leggings / shield) appear after, so
      * clicking past boots cycles through them and wraps back to sword.
-     * Bow has no selector in v1 — its slot renders the icon with a
-     * {@code —} name, a useful signal that the mod doesn't cover bows
-     * yet.
+     * The bow slot is the live preview for {@code adventureitemnames:bow}
+     * (covers vanilla bow + crossbow via the {@code adventureitemnames:bows}
+     * item tag).
      */
     public static final ItemStack[] DEFAULT_SAMPLES = new ItemStack[] {
         new ItemStack(Items.IRON_SWORD),
