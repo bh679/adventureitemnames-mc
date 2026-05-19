@@ -41,7 +41,19 @@ public final class AdventureItemNamesFabric implements ModInitializer {
     public static final Item RANDOM_CHEST = Registry.register(
         BuiltInRegistries.ITEM,
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_chest"),
-        new RandomChestItem(new Item.Properties())
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.DEFAULT)
+    );
+
+    public static final Item RANDOM_NAMED_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_named_chest"),
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ALWAYS_NAMED)
+    );
+
+    public static final Item RANDOM_ENCHANTED_CHEST = Registry.register(
+        BuiltInRegistries.ITEM,
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_enchanted_chest"),
+        new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ENCHANTED)
     );
 
     @Override
@@ -56,7 +68,11 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
 
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
-            .register(entries -> entries.accept(RANDOM_CHEST));
+            .register(entries -> {
+                entries.accept(RANDOM_CHEST);
+                entries.accept(RANDOM_NAMED_CHEST);
+                entries.accept(RANDOM_ENCHANTED_CHEST);
+            });
 
         FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container ->
             ResourceManagerHelper.registerBuiltinResourcePack(
