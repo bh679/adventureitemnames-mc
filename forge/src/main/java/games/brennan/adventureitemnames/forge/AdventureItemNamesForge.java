@@ -73,6 +73,10 @@ public final class AdventureItemNamesForge {
 
         MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForge::onAddReloadListeners);
         modBus.addListener(AdventureItemNamesForge::onAddPackFinders);
+
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+            games.brennan.adventureitemnames.forge.client.AdventureItemNamesForgeClient.register(modBus);
+        }
     }
 
     private static void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {

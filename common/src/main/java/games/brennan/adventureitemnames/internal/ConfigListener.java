@@ -40,8 +40,10 @@ public final class ConfigListener extends SimpleJsonResourceReloadListener {
     protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
         DisableSet merged = new DisableSet();
         for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
-            DisableSet fileSet = ConfigCodec.parse(e.getValue(), e.getKey().toString());
-            merged.mergeFrom(fileSet);
+            LoadedConfig fileCfg = ConfigCodec.parse(e.getValue(), e.getKey().toString());
+            merged.mergeFrom(fileCfg.disables());
+            // Datapack-shipped weight overrides are not supported: ship a chain JSON
+            // override instead. We deliberately do not merge fileCfg.weights() here.
         }
         NamingConfig.setDatapackLayer(merged);
         LOGGER.info("[AdventureItemNames] disabled layer reloaded — {} file(s)", objects.size());

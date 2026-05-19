@@ -1,12 +1,15 @@
 package games.brennan.adventureitemnames.api;
 
 import games.brennan.adventureitemnames.internal.DisableSet;
+import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.Map;
 
 /**
  * Public configuration surface for enabling/disabling parts of the naming
@@ -47,6 +50,9 @@ public final class NamingConfig {
     private static final DisableSet USER = new DisableSet();
     private static final DisableSet API = new DisableSet();
 
+    private static final WeightOverrides USER_WEIGHTS = new WeightOverrides();
+    private static final WeightOverrides API_WEIGHTS = new WeightOverrides();
+
     private NamingConfig() {}
 
     // ─────────────────────────────────────────────────────────────
@@ -66,6 +72,14 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER.clear();
             if (newLayer != null) USER.mergeFrom(newLayer);
+        }
+    }
+
+    /** Replace the user-config-layer weight overrides. Internal — called by the user-config loader. */
+    public static void setUserWeightOverrides(WeightOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_WEIGHTS.clear();
+            if (newOverrides != null) USER_WEIGHTS.mergeFrom(newOverrides);
         }
     }
 
@@ -103,6 +117,58 @@ public final class NamingConfig {
     }
     public static void enableEntityTag(TagKey<EntityType<?>> tag) {
         if (tag != null) synchronized (LOCK) { API.entityTags.remove(tag.location()); }
+    }
+
+    /**
+     * Set an API-layer weight override on one weighted ref of one chain
+     * segment. Takes precedence over user-config overrides. Setting
+     * {@code weight} to a negative value clears the API override and lets
+     * the user-config / shipped value take effect.
+     */
+    public static void overrideWeight(ResourceLocation chainId, int segmentIndex,
+                                      ResourceLocation refId, float weight) {
+        if (chainId == null || refId == null) return;
+        String key = WeightOverrides.key(chainId, segmentIndex, refId);
+        synchronized (LOCK) {
+            if (weight < 0f) API_WEIGHTS.weights.remove(key);
+            else API_WEIGHTS.weights.put(key, weight);
+        }
+    }
+
+    /** Clear an API-layer weight override — falls through to user / shipped value. */
+    public static void clearWeightOverride(ResourceLocation chainId, int segmentIndex,
+                                           ResourceLocation refId) {
+        if (chainId == null || refId == null) return;
+        String key = WeightOverrides.key(chainId, segmentIndex, refId);
+        synchronized (LOCK) { API_WEIGHTS.weights.remove(key); }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // API-layer snapshot/restore — preview roller uses these to apply
+    // pending UI edits non-destructively. Not for general consumption.
+    // ─────────────────────────────────────────────────────────────
+
+    /** Internal snapshot of the API layer. Restore via {@link #restoreApiLayer}. */
+    public record ApiSnapshot(DisableSet disables, WeightOverrides weights) {}
+
+    public static ApiSnapshot snapshotApiLayer() {
+        synchronized (LOCK) {
+            DisableSet d = new DisableSet();
+            d.mergeFrom(API);
+            WeightOverrides w = new WeightOverrides();
+            w.mergeFrom(API_WEIGHTS);
+            return new ApiSnapshot(d, w);
+        }
+    }
+
+    public static void restoreApiLayer(ApiSnapshot snapshot) {
+        if (snapshot == null) return;
+        synchronized (LOCK) {
+            API.clear();
+            API.mergeFrom(snapshot.disables());
+            API_WEIGHTS.clear();
+            API_WEIGHTS.mergeFrom(snapshot.weights());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -159,6 +225,37 @@ public final class NamingConfig {
             });
             return !disabledByTag[0];
         }
+    }
+
+    /**
+     * Effective weight for one weighted ref inside one chain segment,
+     * with precedence API → user-config → shipped. Returns the
+     * {@code shippedWeight} unchanged when no layer carries an override.
+     *
+     * <p>Negative override values are clamped to {@code 0f} (treated as
+     * a "suppress this ref" marker). The shipped value is returned as-is
+     * even if it's negative — that's an upstream JSON issue, not for this
+     * method to second-guess.
+     */
+    public static float effectiveWeight(ResourceLocation chainId, int segmentIndex,
+                                        ResourceLocation refId, float shippedWeight) {
+        if (chainId == null || refId == null) return shippedWeight;
+        String key = WeightOverrides.key(chainId, segmentIndex, refId);
+        synchronized (LOCK) {
+            Float api = API_WEIGHTS.weights.get(key);
+            if (api != null) return Math.max(0f, api);
+            Float user = USER_WEIGHTS.weights.get(key);
+            if (user != null) return Math.max(0f, user);
+        }
+        return shippedWeight;
+    }
+
+    /**
+     * Read-only snapshot of every active user-layer weight override.
+     * Used by the config UI to show which weights have been edited.
+     */
+    public static Map<String, Float> snapshotUserWeightOverrides() {
+        synchronized (LOCK) { return USER_WEIGHTS.snapshot(); }
     }
 
     public static boolean isMobCategoryEnabled(MobCategory cat) {
