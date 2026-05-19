@@ -137,34 +137,55 @@ public final class AdventureItemNamesNeoForge {
     }
 
     /**
-     * Two-stage lookup for {@code resourcepacks/<packPath>}:
+     * Three-stage lookup for {@code resourcepacks/<packPath>}:
      * <ol>
-     *   <li>{@code IModFile.findResource} — works when the mod is loaded
-     *       from a production jar (the pack is physically inside).</li>
-     *   <li>Classpath URL — works in Architectury dev mode where
-     *       {@code common/}'s resources sit on the runtime classpath but
-     *       outside the neoforge mod's declared file roots.</li>
+     *   <li>The adventureitemnames mod's own {@code IModFile.findResource}
+     *       — works in production jar (the pack is physically inside).</li>
+     *   <li>Every other loaded mod's {@code IModFile.findResource} — works
+     *       in Architectury dev where common's resources live inside the
+     *       synthetic {@code generated_<hash>} mod, not in the neoforge
+     *       mod's declared roots.</li>
+     *   <li>Classpath URL — last-ditch fallback if the resource is on the
+     *       runtime classpath but not owned by any declared mod file.</li>
      * </ol>
-     * Returns null if neither resolves.
+     * Returns null if none resolve.
      */
     private static Path resolvePackPath(String packPath) {
-        var modFile = ModList.get().getModFileById("adventureitemnames");
-        if (modFile != null) {
-            Path p = modFile.getFile().findResource("resourcepacks/" + packPath);
-            if (p != null && Files.exists(p)) return p;
+        String relative = "resourcepacks/" + packPath;
+
+        var own = ModList.get().getModFileById("adventureitemnames");
+        if (own != null) {
+            Path p = own.getFile().findResource(relative);
+            if (p != null && Files.exists(p)) {
+                LOGGER.info("[AdventureItemNames] found '{}' in adventureitemnames mod file", relative);
+                return p;
+            }
         }
-        URL url = AdventureItemNamesNeoForge.class.getResource("/resourcepacks/" + packPath + "/pack.mcmeta");
+
+        for (var info : ModList.get().getModFiles()) {
+            var modFile = info.getFile();
+            if (modFile == null) continue;
+            try {
+                Path p = modFile.findResource(relative);
+                if (p != null && Files.exists(p)) {
+                    LOGGER.info("[AdventureItemNames] found '{}' in mod file {}", relative, modFile.getFileName());
+                    return p;
+                }
+            } catch (Exception ignored) {
+                // findResource throws on some synthetic mod files — skip and continue.
+            }
+        }
+
+        URL url = AdventureItemNamesNeoForge.class.getResource("/" + relative + "/pack.mcmeta");
         if (url == null) return null;
         try {
             URI uri = url.toURI();
             if ("jar".equals(uri.getScheme())) {
-                try {
-                    FileSystems.newFileSystem(uri, Collections.emptyMap());
-                } catch (Exception ignored) {
-                    // Already mounted — that's fine.
-                }
+                try { FileSystems.newFileSystem(uri, Collections.emptyMap()); }
+                catch (Exception ignored) { /* already mounted */ }
             }
             Path mcmeta = Path.of(uri);
+            LOGGER.info("[AdventureItemNames] found '{}' via classpath URL {}", relative, url);
             return mcmeta.getParent();
         } catch (URISyntaxException | java.nio.file.FileSystemNotFoundException e) {
             LOGGER.warn("[AdventureItemNames] could not resolve classpath URL {} to a Path: {}", url, e.toString());
