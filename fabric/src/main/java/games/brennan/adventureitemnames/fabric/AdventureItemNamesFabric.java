@@ -33,8 +33,9 @@ import java.util.concurrent.Executor;
  *
  * <p>Also pushes the Fabric config dir into {@link ConfigPaths} so the
  * common-module {@link UserConfigLoader} can find
- * {@code config/adventureitemnames.json}, and triggers an initial read
- * of that file at init.</p>
+ * {@code config/adventureitemnames.json}, registers the built-in ATLA
+ * and Adventure Time data packs (both default-enabled), and registers
+ * the {@code random_chest} creative test items.</p>
  */
 public final class AdventureItemNamesFabric implements ModInitializer {
 
@@ -74,14 +75,20 @@ public final class AdventureItemNamesFabric implements ModInitializer {
                 entries.accept(RANDOM_ENCHANTED_CHEST);
             });
 
-        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container ->
+        FabricLoader.getInstance().getModContainer("adventureitemnames").ifPresent(container -> {
             ResourceManagerHelper.registerBuiltinResourcePack(
                 ResourceLocation.fromNamespaceAndPath("adventureitemnames", "atla"),
                 container,
                 Component.literal("Adventure Item Names — ATLA Pack"),
                 ResourcePackActivationType.DEFAULT_ENABLED
-            )
-        );
+            );
+            ResourceManagerHelper.registerBuiltinResourcePack(
+                ResourceLocation.fromNamespaceAndPath("adventureitemnames", "adventuretime"),
+                container,
+                Component.literal("Adventure Item Names — Adventure Time Pack"),
+                ResourcePackActivationType.DEFAULT_ENABLED
+            );
+        });
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {

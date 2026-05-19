@@ -1,0 +1,62 @@
+{
+  "id": "adventureitemnames:title_combinations",
+  "segments": [
+    {
+      "refs": [
+        { "ref": "adventureitemnames:title_prefix",            "weight": 1.0 },
+        { "ref": "adventureitemnames:adventuretime_titles",    "weight": 0.1 }
+      ],
+      "chance": 1.0,
+      "connection": "",
+      "newline": false
+    },
+    {
+      "refs": [
+        { "ref": "adventureitemnames:title_post_prefix",       "weight": 0.12 },
+        { "ref": "adventureitemnames:food",                    "weight": 0.10 },
+        { "ref": "adventureitemnames:titles",                  "weight": 0.09 },
+        { "ref": "adventureitemnames:places",                  "weight": 0.08 },
+        { "ref": "adventureitemnames:material_or_element",     "weight": 0.10 },
+        { "ref": "adventureitemnames:animals",                 "weight": 0.10 },
+        { "ref": "adventureitemnames:technology",              "weight": 0.10 },
+        { "ref": "adventureitemnames:names",                   "weight": 0.10 },
+        { "ref": "adventureitemnames:math",                    "weight": 0.07 },
+        { "ref": "adventureitemnames:music",                   "weight": 0.07 },
+        { "ref": "adventureitemnames:discord_people",          "weight": 0.06 },
+        { "ref": "adventureitemnames:colors",                  "weight": 0.05 },
+        { "ref": "adventureitemnames:feelings",                "weight": 0.03 },
+        { "ref": "adventureitemnames:wholesome_things",        "weight": 0.03 },
+
+        { "ref": "adventureitemnames:mc_biomes",               "weight": 0.043 },
+        { "ref": "adventureitemnames:mc_technoblade",          "weight": 0.038 },
+        { "ref": "adventureitemnames:mc_dimensions",           "weight": 0.025 },
+        { "ref": "adventureitemnames:mc_hostile_mobs",         "weight": 0.024 },
+        { "ref": "adventureitemnames:mc_animals",              "weight": 0.023 },
+        { "ref": "adventureitemnames:mc_structures",           "weight": 0.023 },
+        { "ref": "adventureitemnames:mc_lore",                 "weight": 0.023 },
+        { "ref": "adventureitemnames:mc_minigames",            "weight": 0.021 },
+        { "ref": "adventureitemnames:mc_villager_professions", "weight": 0.016 },
+        { "ref": "adventureitemnames:mc_events",               "weight": 0.013 },
+        { "ref": "adventureitemnames:mc_skins",                "weight": 0.009 },
+        { "ref": "adventureitemnames:mc_music_discs",          "weight": 0.008 },
+        { "ref": "adventureitemnames:mc_potions_effects",      "weight": 0.004 },
+        { "ref": "adventureitemnames:mc_enchantments",         "weight": 0.003 },
+        { "ref": "adventureitemnames:mc_streamers",            "weight": 0.002 },
+
+        { "ref": "adventureitemnames:atla_characters",         "weight": 0.030 },
+        { "ref": "adventureitemnames:atla_places",             "weight": 0.025 },
+        { "ref": "adventureitemnames:atla_animals",            "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_elements",           "weight": 0.020 },
+        { "ref": "adventureitemnames:atla_titles",             "weight": 0.020 },
+
+        { "ref": "adventureitemnames:adventuretime_characters", "weight": 0.030 },
+        { "ref": "adventureitemnames:adventuretime_places",     "weight": 0.025 },
+        { "ref": "adventureitemnames:adventuretime_animals",    "weight": 0.020 },
+        { "ref": "adventureitemnames:adventuretime_elements",   "weight": 0.020 }
+      ],
+      "chance": 1.0,
+      "connection": " of ",
+      "newline": false
+    }
+  ]
+}
