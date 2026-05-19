@@ -6,7 +6,6 @@ import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -15,8 +14,12 @@ import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,27 +50,29 @@ public final class SelectorsScreen extends Screen {
         "sword", "axe", "pickaxe", "shovel", "hoe",
         "helmet", "chestplate", "leggings", "boots", "shield");
 
-    /** Selector path column — left-anchored, fixed text width. Tag shown as tooltip on hover. */
+    /** Selector icon column — 16x16 vanilla item icon. Path + tag shown as tooltip on hover. */
     private static final int COL_X_SELECTOR  = 8;
-    private static final int COL_W_SELECTOR  = 72;
+    private static final int COL_W_SELECTOR  = 18;
+    private static final int ICON_SIZE       = 16;
+    /** "P" / "E" tier label column — single-char prefix to the left of each dropdown. */
+    private static final int COL_W_TIER      = 10;
     /** Enabled checkbox column — fixed width on the right. */
     private static final int COL_W_ENABLED   = 24;
     private static final int GAP             = 6;
-    private static final int HEADER_Y        = 44;
-    private static final int LIST_TOP        = 58;
+    private static final int LIST_TOP        = 32;
+    /** Per-entry row height: 2 stacked dropdowns + a sliver of padding. */
+    private static final int ENTRY_H         = 44;
+    private static final int DROPDOWN_H      = 18;
 
-    /** Plain / Enchanted dropdown buttons split the remaining horizontal space evenly. */
-    private static int dropdownX(int screenWidth, boolean enchanted) {
-        int firstX = COL_X_SELECTOR + COL_W_SELECTOR + GAP;
-        int dropdownW = dropdownWidth(screenWidth);
-        if (!enchanted) return firstX;
-        return firstX + dropdownW + GAP;
+    /** Dropdown starts after icon + gap + tier label + small gap. */
+    private static int dropdownX(int screenWidth) {
+        return COL_X_SELECTOR + COL_W_SELECTOR + GAP + COL_W_TIER + 2;
     }
 
-    /** Each dropdown gets half of the space remaining after selector + enabled + gaps. */
+    /** Dropdown fills the space between its start x and the enabled checkbox. */
     private static int dropdownWidth(int screenWidth) {
-        int remaining = screenWidth - COL_X_SELECTOR - COL_W_SELECTOR - GAP - COL_W_ENABLED - GAP * 3;
-        return Math.max(40, remaining / 2);
+        int w = enabledX(screenWidth) - GAP - dropdownX(screenWidth);
+        return Math.max(40, w);
     }
 
     /** Enabled checkbox sits at the right edge with a small padding. */
@@ -119,11 +124,6 @@ public final class SelectorsScreen extends Screen {
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
-
-        gfx.drawString(font, "Selector", COL_X_SELECTOR,            HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Plain",    dropdownX(width, false),   HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Enchant",  dropdownX(width, true),    HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "On",       enabledX(width) - 4,       HEADER_Y, 0xFFA0A0A0, false);
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
         preview.render(gfx, mouseX, mouseY, partial);
@@ -199,15 +199,50 @@ public final class SelectorsScreen extends Screen {
         return chainCycle.get(next);
     }
 
+    /**
+     * Compact display name for a chain id: drops the {@code adventureitemnames:}
+     * namespace prefix, strips the literal word {@code name} that's often used
+     * as a filler in path components (so {@code weapon_name_short} reads as
+     * {@code weapon short}), and replaces remaining underscores with spaces.
+     */
     static String formatChainLabel(Optional<ResourceLocation> chain) {
-        return chain.map(rl -> rl.getPath()).orElse("(none)");
+        if (chain.isEmpty()) return "(none)";
+        ResourceLocation rl = chain.get();
+        String path = rl.getPath()
+            .replaceFirst("_name_", "_")
+            .replaceFirst("_name$", "")
+            .replaceFirst("^name_", "")
+            .replace('_', ' ');
+        if (path.isBlank()) path = rl.getPath();
+        if (!"adventureitemnames".equals(rl.getNamespace())) {
+            return rl.getNamespace() + ":" + path;
+        }
+        return path;
+    }
+
+    /**
+     * Map a selector path to a representative vanilla {@link ItemStack}.
+     * Tool / armor selectors use the iron variant (so the icon is colour-rich);
+     * shield maps to itself. Unknown paths fall through to {@link Items#AIR}.
+     */
+    private static ItemStack iconForSelector(NameSelector sel) {
+        String path = sel.id().getPath();
+        String itemPath = switch (path) {
+            case "sword", "axe", "pickaxe", "shovel", "hoe",
+                 "helmet", "chestplate", "leggings", "boots" -> "iron_" + path;
+            case "shield" -> "shield";
+            default -> path;
+        };
+        Item item = BuiltInRegistries.ITEM.getOptional(
+            ResourceLocation.fromNamespaceAndPath("minecraft", itemPath)).orElse(Items.AIR);
+        return new ItemStack(item);
     }
 
     static final class SelectorList extends ContainerObjectSelectionList<SelectorList.Entry> {
 
         SelectorList(Minecraft mc, int width, int height, int top,
                      List<NameSelector> selectors, SelectorsScreen host) {
-            super(mc, width, height, top, 24);
+            super(mc, width, height, top, ENTRY_H);
             for (NameSelector sel : selectors) addEntry(new Entry(sel, host));
         }
 
@@ -277,40 +312,43 @@ public final class SelectorsScreen extends Screen {
             public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
-                int textY = rowTop + 8;
                 int currentScreenWidth = host.width;
 
-                String pathText = sel.id().getPath();
-                String truncatedPath = Minecraft.getInstance().font.plainSubstrByWidth(pathText, COL_W_SELECTOR);
-                if (!truncatedPath.equals(pathText) && truncatedPath.length() > 1) {
-                    truncatedPath = Minecraft.getInstance().font.plainSubstrByWidth(pathText, COL_W_SELECTOR - 6) + "…";
-                }
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(truncatedPath).withStyle(ChatFormatting.WHITE),
-                    COL_X_SELECTOR, textY, 0xFFFFFFFF, false);
+                int iconX = COL_X_SELECTOR;
+                int iconY = rowTop + (rowHeight - ICON_SIZE) / 2;
+                gfx.renderItem(iconForSelector(sel), iconX, iconY);
 
+                int plainRowY = rowTop + 3;
+                int enchantedRowY = rowTop + 3 + DROPDOWN_H + 2;
+                int tierLabelX = COL_X_SELECTOR + COL_W_SELECTOR + GAP;
+                int dropdownXVal = dropdownX(currentScreenWidth);
                 int dropdownW = dropdownWidth(currentScreenWidth);
-                plainButton.setX(dropdownX(currentScreenWidth, false));
-                plainButton.setY(rowTop + 3);
+
+                gfx.drawString(Minecraft.getInstance().font, "P",
+                    tierLabelX, plainRowY + 5, 0xFFA0A0A0, false);
+                plainButton.setX(dropdownXVal);
+                plainButton.setY(plainRowY);
                 plainButton.setWidth(dropdownW);
                 plainButton.render(gfx, mouseX, mouseY, partial);
 
-                enchantedButton.setX(dropdownX(currentScreenWidth, true));
-                enchantedButton.setY(rowTop + 3);
+                gfx.drawString(Minecraft.getInstance().font, "E",
+                    tierLabelX, enchantedRowY + 5, 0xFFA0A0A0, false);
+                enchantedButton.setX(dropdownXVal);
+                enchantedButton.setY(enchantedRowY);
                 enchantedButton.setWidth(dropdownW);
                 enchantedButton.render(gfx, mouseX, mouseY, partial);
 
                 enabledBox.setX(enabledX(currentScreenWidth));
-                enabledBox.setY(rowTop + 3);
+                enabledBox.setY(rowTop + (rowHeight - 18) / 2);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
 
-                // Hover the selector path → render a tooltip with the item tag.
-                boolean hoverSelectorText = mouseX >= COL_X_SELECTOR
-                    && mouseX < COL_X_SELECTOR + COL_W_SELECTOR
-                    && mouseY >= rowTop && mouseY < rowTop + rowHeight;
-                if (hoverSelectorText) {
-                    gfx.renderTooltip(Minecraft.getInstance().font,
-                        Component.literal(sel.appliesTo().toString()), mouseX, mouseY);
+                boolean hoverIcon = mouseX >= iconX && mouseX < iconX + ICON_SIZE
+                    && mouseY >= iconY && mouseY < iconY + ICON_SIZE;
+                if (hoverIcon) {
+                    gfx.renderComponentTooltip(Minecraft.getInstance().font,
+                        List.of(Component.literal(sel.id().getPath()),
+                                Component.literal(sel.appliesTo().toString())),
+                        mouseX, mouseY);
                 }
             }
         }
