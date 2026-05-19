@@ -1,6 +1,9 @@
 package games.brennan.adventureitemnames.client;
 
+import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NamingConfig;
+import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
@@ -14,6 +17,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.slf4j.Logger;
 
 import java.util.List;
 
@@ -31,12 +35,15 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public final class PoolListScreen extends Screen {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     /** Column right-edge offsets shared by header + row, so they always align. */
     static final int COL_W_PREVIEW = 28;
-    static final int COL_W_ENABLED = 60;
-    static final int COL_W_ENTRIES = 100;
-    static final int COL_W_PCT     = 156;
-    static final int COL_W_WEIGHT  = 224;
+    static final int COL_W_EDIT    = 84;
+    static final int COL_W_ENABLED = 120;
+    static final int COL_W_ENTRIES = 160;
+    static final int COL_W_PCT     = 216;
+    static final int COL_W_WEIGHT  = 284;
     private static final int HEADER_Y = 44;
     private static final int LIST_TOP = 58;
 
@@ -56,25 +63,26 @@ public final class PoolListScreen extends Screen {
 
     @Override
     protected void init() {
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new PoolList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.HEIGHT - 26, 80, 20).build());
+        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.HEIGHT - 26, 80, 20).build();
+        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
-        preview = new PreviewPanel(buffer, null);
+        if (preview == null) preview = new PreviewPanel(buffer, null, this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
+        addRenderableWidget(preview.toggleButton());
     }
 
     @Override
@@ -90,6 +98,7 @@ public final class PoolListScreen extends Screen {
         gfx.drawString(font, "%",       width - COL_W_PCT,        HEADER_Y, 0xFFA0A0A0, false);
         gfx.drawString(font, "Entries", width - COL_W_ENTRIES,    HEADER_Y, 0xFFA0A0A0, false);
         gfx.drawString(font, "Enabled", width - COL_W_ENABLED,    HEADER_Y, 0xFFA0A0A0, false);
+        gfx.drawString(font, "Edit",    width - COL_W_EDIT,       HEADER_Y, 0xFFA0A0A0, false);
         gfx.drawString(font, "🎲",      width - COL_W_PREVIEW,    HEADER_Y, 0xFFA0A0A0, false);
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
@@ -122,17 +131,29 @@ public final class PoolListScreen extends Screen {
 
     EditBuffer buffer() { return buffer; }
 
+    void openEntryEditor(net.minecraft.resources.ResourceLocation poolId) {
+        NamePool live = NameRegistry.pool(poolId).orElse(null);
+        if (live == null) {
+            LOGGER.warn("[AdventureItemNames] pool '{}' missing from registry — cannot open entry editor", poolId);
+            return;
+        }
+        Minecraft.getInstance().setScreen(new PoolEntriesScreen(this, buffer, live));
+    }
+
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
     void rerollPreviewForcedPool(net.minecraft.resources.ResourceLocation poolId) {
         if (preview == null) return;
-        Button old = preview.button();
-        PreviewPanel forced = new PreviewPanel(buffer, poolId);
+        Button oldReroll = preview.button();
+        Button oldToggle = preview.toggleButton();
+        PreviewPanel forced = new PreviewPanel(buffer, poolId, this::rebuildWidgets);
         forced.rebuild(width, height);
         forced.rerollNow();
-        if (old != null) this.removeWidget(old);
+        if (oldReroll != null) this.removeWidget(oldReroll);
+        if (oldToggle != null) this.removeWidget(oldToggle);
         this.preview = forced;
         this.addRenderableWidget(forced.button());
+        this.addRenderableWidget(forced.toggleButton());
     }
 
     /** Vanilla {@code ContainerObjectSelectionList} with one entry per pool. */
@@ -158,6 +179,7 @@ public final class PoolListScreen extends Screen {
             private final EditBox weightBox;
             private final Checkbox enabledBox;
             private final Button preview;
+            private final Button editButton;
             private final int screenWidth;
 
             Entry(PackGrouping.PoolView pv, PoolListScreen host) {
@@ -193,6 +215,12 @@ public final class PoolListScreen extends Screen {
                     b -> host.rerollPreviewForcedPool(pv.poolId()))
                     .bounds(0, 0, 24, 16)
                     .build();
+
+                this.editButton = Button.builder(
+                    Component.translatable("screen.adventureitemnames.action.edit_entries"),
+                    b -> host.openEntryEditor(pv.poolId()))
+                    .bounds(0, 0, 36, 18)
+                    .build();
             }
 
             private void onWeightChanged(String text) {
@@ -216,12 +244,12 @@ public final class PoolListScreen extends Screen {
 
             @Override
             public List<? extends NarratableEntry> narratables() {
-                return List.of(weightBox, enabledBox, preview);
+                return List.of(weightBox, enabledBox, editButton, preview);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
-                return List.of(weightBox, enabledBox, preview);
+                return List.of(weightBox, enabledBox, editButton, preview);
             }
 
             @Override
@@ -242,16 +270,26 @@ public final class PoolListScreen extends Screen {
                     formatPct(), screenWidth - COL_W_PCT, textY, 0xFFE0E0E0, false);
 
                 gfx.drawString(Minecraft.getInstance().font,
-                    Integer.toString(pv.entryCount()),
+                    Integer.toString(liveEntryCount()),
                     screenWidth - COL_W_ENTRIES, textY, 0xFFE0E0E0, false);
 
                 enabledBox.setX(screenWidth - COL_W_ENABLED);
                 enabledBox.setY(rowTop + 3);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
 
+                editButton.setX(screenWidth - COL_W_EDIT);
+                editButton.setY(rowTop + 3);
+                editButton.render(gfx, mouseX, mouseY, partial);
+
                 preview.setX(screenWidth - COL_W_PREVIEW - 16);
                 preview.setY(rowTop + 3);
                 preview.render(gfx, mouseX, mouseY, partial);
+            }
+
+            private int liveEntryCount() {
+                NamePool live = NameRegistry.pool(pv.poolId()).orElse(null);
+                if (live == null) return pv.entryCount();
+                return host.buffer().effectiveEntryCount(live);
             }
 
             private String formatPct() {
