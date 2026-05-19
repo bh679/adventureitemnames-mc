@@ -32,6 +32,7 @@ public final class ConfigSave {
             buffer.snapshotDisabledSelectors(),
             buffer.snapshotEnabledSelectors(),
             buffer.snapshotWeights(),
+            buffer.snapshotEntryOverrides(),
             buffer.snapshotChances(),
             buffer.snapshotSelectorTiers());
         if (ok) {

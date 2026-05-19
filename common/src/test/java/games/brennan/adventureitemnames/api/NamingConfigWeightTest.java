@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.api;
 
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
+import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.resources.ResourceLocation;
@@ -31,9 +32,11 @@ class NamingConfigWeightTest {
         NamingConfig.restoreApiLayer(new NamingConfig.ApiSnapshot(
             new DisableSet(),
             new WeightOverrides(),
+            new EntryOverrides(),
             new ChanceOverrides(),
             new SelectorOverrides()));
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
+        NamingConfig.setUserEntryOverrides(new EntryOverrides());
         NamingConfig.setUserChances(new ChanceOverrides());
         NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
     }

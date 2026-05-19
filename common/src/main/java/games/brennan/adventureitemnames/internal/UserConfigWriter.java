@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
+import games.brennan.adventureitemnames.api.NamePool;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -20,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -53,9 +55,12 @@ public final class UserConfigWriter {
      * removing entries from {@code pools[]}; selector toggles similarly
      * touch {@code selectors[]}. Weight overrides go into the
      * {@code weight_overrides} map; passing a negative value removes the
-     * override for that key. Chance overrides go into the {@code chances}
-     * object; selector tier overrides into {@code selector_overrides}.
-     * Passing {@code null} for a value clears that override.
+     * override for that key. Pool entry overrides (add / remove on the
+     * entries of one pool) are merged into the {@code pool_entry_overrides}
+     * object — passing an empty {@link EntryOverrides} leaves the existing
+     * field untouched. Chance overrides go into the {@code chances} object;
+     * selector tier overrides into {@code selector_overrides}. Passing
+     * {@code null} for a value clears that override.
      *
      * @return true on success; false if the config dir is unset or write
      *     failed. The error is logged.
@@ -65,6 +70,7 @@ public final class UserConfigWriter {
                                             Set<ResourceLocation> disabledSelectors,
                                             Set<ResourceLocation> enabledSelectors,
                                             Map<String, Float> weightOverrides,
+                                            EntryOverrides entryOverrides,
                                             Map<ChanceKind, Float> chanceOverrides,
                                             Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides) {
         Path configDir = ConfigPaths.get();
@@ -78,6 +84,7 @@ public final class UserConfigWriter {
         applyIdListEdits(root, "pools", disabledPools, enabledPools);
         applyIdListEdits(root, "selectors", disabledSelectors, enabledSelectors);
         applyWeightEdits(root, weightOverrides);
+        applyEntryEdits(root, entryOverrides);
         applyChanceEdits(root, chanceOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
 
@@ -238,11 +245,155 @@ public final class UserConfigWriter {
             if (v == null || v < 0f) {
                 sorted.remove(key);
             } else {
-                sorted.put(key, new com.google.gson.JsonPrimitive(v));
+                sorted.put(key, new JsonPrimitive(v));
             }
         }
         JsonObject rebuilt = new JsonObject();
         for (var e : sorted.entrySet()) rebuilt.add(e.getKey(), e.getValue());
         root.add("weight_overrides", rebuilt);
+    }
+
+    /**
+     * Merge entry add/remove edits into the {@code pool_entry_overrides}
+     * object. Existing per-pool entries (from a previous save) are kept
+     * and the supplied {@link EntryOverrides} is unioned in. Empty
+     * per-pool bodies are pruned so the file stays tidy.
+     */
+    private static void applyEntryEdits(JsonObject root, EntryOverrides edits) {
+        if (edits == null || edits.isEmpty()) return;
+        JsonObject overrides;
+        JsonElement existing = root.get("pool_entry_overrides");
+        if (existing != null && existing.isJsonObject()) {
+            overrides = existing.getAsJsonObject();
+        } else {
+            overrides = new JsonObject();
+        }
+        TreeMap<String, JsonObject> sorted = new TreeMap<>();
+        for (var e : overrides.entrySet()) {
+            if (e.getValue().isJsonObject()) sorted.put(e.getKey(), e.getValue().getAsJsonObject());
+        }
+
+        Set<ResourceLocation> touched = new LinkedHashSet<>();
+        touched.addAll(edits.removed.keySet());
+        touched.addAll(edits.added.keySet());
+
+        for (ResourceLocation poolId : touched) {
+            String key = poolId.toString();
+            JsonObject body = sorted.computeIfAbsent(key, k -> new JsonObject());
+            mergeRemovedTexts(body, edits.removed.get(poolId));
+            mergeAddedEntries(body, edits.added.get(poolId));
+            // Purge any text that appears in BOTH added and removed — runtime
+            // would drop it anyway via the effectivePoolEntries filter, so we
+            // keep the file self-consistent. The remove entry is purged
+            // first (matching texts in `added` win over `removed`).
+            pruneConflicts(body);
+            if (isBodyEmpty(body)) sorted.remove(key);
+        }
+
+        if (sorted.isEmpty()) {
+            root.remove("pool_entry_overrides");
+            return;
+        }
+        JsonObject rebuilt = new JsonObject();
+        for (var e : sorted.entrySet()) rebuilt.add(e.getKey(), e.getValue());
+        root.add("pool_entry_overrides", rebuilt);
+    }
+
+    private static void mergeRemovedTexts(JsonObject body, Set<String> texts) {
+        if (texts == null || texts.isEmpty()) return;
+        Set<String> all = new LinkedHashSet<>();
+        JsonElement existing = body.get("removed");
+        if (existing != null && existing.isJsonArray()) {
+            for (JsonElement el : existing.getAsJsonArray()) {
+                if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) all.add(el.getAsString());
+            }
+        }
+        all.addAll(texts);
+        JsonArray arr = new JsonArray();
+        for (String s : all) arr.add(s);
+        body.add("removed", arr);
+    }
+
+    private static void mergeAddedEntries(JsonObject body, List<NamePool.PoolEntry> entries) {
+        if (entries == null || entries.isEmpty()) return;
+        JsonArray arr;
+        JsonElement existing = body.get("added");
+        if (existing != null && existing.isJsonArray()) {
+            arr = existing.getAsJsonArray();
+        } else {
+            arr = new JsonArray();
+        }
+        // Dedup by text — if the user added "Magenta" twice across sessions, keep one.
+        Set<String> existingTexts = new LinkedHashSet<>();
+        for (JsonElement el : arr) {
+            if (el.isJsonObject() && el.getAsJsonObject().has("text")) {
+                JsonElement t = el.getAsJsonObject().get("text");
+                if (t.isJsonPrimitive() && t.getAsJsonPrimitive().isString()) existingTexts.add(t.getAsString());
+            }
+        }
+        for (NamePool.PoolEntry entry : entries) {
+            if (existingTexts.contains(entry.text())) continue;
+            JsonObject obj = new JsonObject();
+            obj.addProperty("text", entry.text());
+            JsonArray types = new JsonArray();
+            for (ResourceLocation rl : entry.itemTypes()) types.add(rl.toString());
+            obj.add("item_types", types);
+            arr.add(obj);
+            existingTexts.add(entry.text());
+        }
+        body.add("added", arr);
+    }
+
+    /**
+     * Drop any text that's listed in both {@code added[]} and
+     * {@code removed[]}. Tactically the user just "re-added" something
+     * they previously removed (or vice versa); the most-recent edit
+     * wins. Since the writer can't tell which was authored later, the
+     * conservative behaviour is to drop both — letting the SHIPPED
+     * value (if any) come through. The runtime fall-through covers the
+     * fully-blanked-pool case.
+     */
+    private static void pruneConflicts(JsonObject body) {
+        JsonElement removedEl = body.get("removed");
+        JsonElement addedEl = body.get("added");
+        if (removedEl == null || !removedEl.isJsonArray() || addedEl == null || !addedEl.isJsonArray()) return;
+        JsonArray removed = removedEl.getAsJsonArray();
+        JsonArray added = addedEl.getAsJsonArray();
+        Set<String> removedTexts = new LinkedHashSet<>();
+        for (JsonElement el : removed) {
+            if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) removedTexts.add(el.getAsString());
+        }
+        if (removedTexts.isEmpty()) return;
+        Set<String> conflicting = new LinkedHashSet<>();
+        for (int i = added.size() - 1; i >= 0; i--) {
+            JsonElement el = added.get(i);
+            if (!el.isJsonObject()) continue;
+            JsonElement t = el.getAsJsonObject().get("text");
+            if (t == null || !t.isJsonPrimitive() || !t.getAsJsonPrimitive().isString()) continue;
+            String text = t.getAsString();
+            if (removedTexts.contains(text)) {
+                added.remove(i);
+                conflicting.add(text);
+            }
+        }
+        if (conflicting.isEmpty()) return;
+        JsonArray cleanedRemoved = new JsonArray();
+        for (String s : removedTexts) {
+            if (!conflicting.contains(s)) cleanedRemoved.add(s);
+        }
+        if (cleanedRemoved.isEmpty()) {
+            body.remove("removed");
+        } else {
+            body.add("removed", cleanedRemoved);
+        }
+        if (added.isEmpty()) body.remove("added");
+    }
+
+    private static boolean isBodyEmpty(JsonObject body) {
+        JsonElement removed = body.get("removed");
+        JsonElement added = body.get("added");
+        boolean removedEmpty = removed == null || (removed.isJsonArray() && removed.getAsJsonArray().isEmpty());
+        boolean addedEmpty = added == null || (added.isJsonArray() && added.getAsJsonArray().isEmpty());
+        return removedEmpty && addedEmpty;
     }
 }
