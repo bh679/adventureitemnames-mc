@@ -1,3 +1,5 @@
 {
-  "item.adventureitemnames.random_chest": "Random Chest"
+  "item.adventureitemnames.random_chest": "Random Chest",
+  "item.adventureitemnames.random_named_chest": "Random Named Chest",
+  "item.adventureitemnames.random_enchanted_chest": "Random Enchanted Chest"
 }
