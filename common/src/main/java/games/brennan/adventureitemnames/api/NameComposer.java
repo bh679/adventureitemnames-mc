@@ -76,16 +76,38 @@ public final class NameComposer {
      * unresolved.
      */
     public static void applyName(ItemStack stack, RandomSource rng) {
-        Optional<NameSelector> maybeSel = NameRegistry.findMatching(stack);
-        if (maybeSel.isEmpty()) return;
-        NameSelector sel = maybeSel.get();
-
-        if (!NamingConfig.isSelectorEnabled(sel.id())) return;
-        if (!NamingConfig.isItemEnabled(stack)) return;
+        NameSelector sel = matchAndCheckConfig(stack);
+        if (sel == null) return;
 
         boolean enchanted = stack.isEnchanted();
         if (rng.nextFloat() >= (enchanted ? CHANCE_ENCHANTED : CHANCE_PLAIN)) return;
 
+        composeAndApply(stack, sel, enchanted, rng);
+    }
+
+    /**
+     * Force a name onto {@code stack} regardless of the natural roll
+     * probability — useful for test tooling and integrators that want
+     * guaranteed naming without re-implementing the chain walk.
+     * Selector and item enable/disable in {@code NamingConfig} are still
+     * honoured. No-op when no registered selector covers the stack.
+     */
+    public static void applyNameAlways(ItemStack stack, RandomSource rng) {
+        NameSelector sel = matchAndCheckConfig(stack);
+        if (sel == null) return;
+        composeAndApply(stack, sel, stack.isEnchanted(), rng);
+    }
+
+    private static NameSelector matchAndCheckConfig(ItemStack stack) {
+        Optional<NameSelector> maybeSel = NameRegistry.findMatching(stack);
+        if (maybeSel.isEmpty()) return null;
+        NameSelector sel = maybeSel.get();
+        if (!NamingConfig.isSelectorEnabled(sel.id())) return null;
+        if (!NamingConfig.isItemEnabled(stack)) return null;
+        return sel;
+    }
+
+    private static void composeAndApply(ItemStack stack, NameSelector sel, boolean enchanted, RandomSource rng) {
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
         ResourceLocation chainId = sel.tiers().get(tier.key());
         if (chainId == null) chainId = sel.tiers().get(NameTier.PLAIN.key());

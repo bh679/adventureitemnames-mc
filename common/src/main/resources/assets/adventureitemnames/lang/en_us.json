@@ -20,5 +20,7 @@
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
 
-  "item.adventureitemnames.random_chest": "Random Chest"
+  "item.adventureitemnames.random_chest": "Random Chest",
+  "item.adventureitemnames.random_named_chest": "Random Named Chest",
+  "item.adventureitemnames.random_enchanted_chest": "Random Enchanted Chest"
 }

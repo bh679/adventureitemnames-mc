@@ -37,7 +37,13 @@ public final class AdventureItemNamesNeoForge {
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems("adventureitemnames");
 
     public static final DeferredItem<Item> RANDOM_CHEST =
-        ITEMS.register("random_chest", () -> new RandomChestItem(new Item.Properties()));
+        ITEMS.register("random_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.DEFAULT));
+
+    public static final DeferredItem<Item> RANDOM_NAMED_CHEST =
+        ITEMS.register("random_named_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ALWAYS_NAMED));
+
+    public static final DeferredItem<Item> RANDOM_ENCHANTED_CHEST =
+        ITEMS.register("random_enchanted_chest", () -> new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ENCHANTED));
 
     public AdventureItemNamesNeoForge(IEventBus modBus) {
         ConfigPaths.set(FMLPaths.CONFIGDIR.get());
@@ -57,6 +63,8 @@ public final class AdventureItemNamesNeoForge {
     private static void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(RANDOM_CHEST.get());
+            event.accept(RANDOM_NAMED_CHEST.get());
+            event.accept(RANDOM_ENCHANTED_CHEST.get());
         }
     }
 
