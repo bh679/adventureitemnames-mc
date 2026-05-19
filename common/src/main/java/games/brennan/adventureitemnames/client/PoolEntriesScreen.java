@@ -72,7 +72,7 @@ public final class PoolEntriesScreen extends Screen {
 
     @Override
     protected void init() {
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
 
         addBox = new EditBox(font, 16 + 80, ADD_ROW_Y, width - 16 - 80 - 80 - 8, 18,
             Component.translatable("screen.adventureitemnames.entries.add_placeholder"));
@@ -93,12 +93,12 @@ public final class PoolEntriesScreen extends Screen {
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.HEIGHT - 26, 80, 20).build());
+        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.HEIGHT - 26, 80, 20).build();
+        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
@@ -133,7 +133,7 @@ public final class PoolEntriesScreen extends Screen {
     }
 
     private void rebuildList() {
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
         removeWidget(list);
         list = new EntriesList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
