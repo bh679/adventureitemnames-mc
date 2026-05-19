@@ -54,7 +54,7 @@ public final class DatapacksListScreen extends Screen {
     @Override
     protected void init() {
         Map<String, PackGrouping.PackView> packs = PackGrouping.snapshot();
-        int listBottom = height - PreviewPanel.HEIGHT - 32;
+        int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new DatapackList(minecraft, width, listBottom - LIST_TOP, LIST_TOP,
             new ArrayList<>(packs.values()), this);
         addRenderableWidget(list);
@@ -62,11 +62,12 @@ public final class DatapacksListScreen extends Screen {
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(width / 2 - 100, height - PreviewPanel.HEIGHT - 26, 200, 20).build());
+        ).bounds(width / 2 - 100, height - PreviewPanel.currentHeight() - 26, 200, 20).build());
 
-        preview = new PreviewPanel(buffer, null);
+        if (preview == null) preview = new PreviewPanel(buffer, null, this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
+        addRenderableWidget(preview.toggleButton());
     }
 
     @Override
