@@ -41,7 +41,19 @@ public final class PerPackSplitter {
      * themed contributors in encounter order.
      */
     public static Map<String, PackLayer> split(NameChain effective) {
-        String basePackId = resolveBasePack(effective.id());
+        return split(effective, null);
+    }
+
+    /**
+     * Variant that accepts an explicit {@code basePackOverride} — used
+     * when the chain doesn't yet have a stable shipped pack (e.g.
+     * brand-new chains created via the in-game {@code + New chain} popup,
+     * where the user picked a specific themed pack as the base). When
+     * {@code basePackOverride} is {@code null}, falls back to
+     * {@link #resolveBasePack}.
+     */
+    public static Map<String, PackLayer> split(NameChain effective, String basePackOverride) {
+        String basePackId = basePackOverride != null ? basePackOverride : resolveBasePack(effective.id());
         List<NameSegment> segs = effective.segments();
 
         // Per-segment, ref → source pack id.
