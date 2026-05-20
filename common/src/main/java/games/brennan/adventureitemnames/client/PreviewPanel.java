@@ -69,10 +69,12 @@ public final class PreviewPanel {
 
     private final EditBuffer buffer;
     private final ResourceLocation forcePool;
+    private final ResourceLocation forceChain;
     private final boolean gateByChance;
     private final Runnable onLayoutChanged;
     private final SlotConfig[] slotConfigs = new SlotConfig[SLOT_COUNT];
     private List<PreviewRoller.Result> results = List.of();
+    private List<String> chainNames = List.of();
     private Button reroll;
     private Button toggle;
     private int screenWidth;
@@ -99,7 +101,8 @@ public final class PreviewPanel {
     }
 
     /**
-     * Canonical constructor.
+     * Canonical item-mode constructor — rolls full selector → chain →
+     * compose for each slot, with item icons and click-to-pick.
      *
      * @param onLayoutChanged invoked when the user toggles expand/collapse.
      *     Hosting screens pass {@code this::rebuildWidgets} so layout
@@ -107,8 +110,25 @@ public final class PreviewPanel {
      */
     public PreviewPanel(EditBuffer buffer, ResourceLocation forcePool,
                         boolean gateByChance, Runnable onLayoutChanged) {
+        this(buffer, forcePool, null, gateByChance, onLayoutChanged);
+    }
+
+    /**
+     * Chain-only constructor — when {@code forceChain != null}, the panel
+     * skips selectors and items entirely and rolls names directly from
+     * the named chain. No item icons, no click-to-pick. Used by the
+     * chain editor + ref editor previews so rolls reflect the chain
+     * under edit, not the downstream item-naming pipeline.
+     */
+    public static PreviewPanel chainOnly(EditBuffer buffer, ResourceLocation forceChain, Runnable onLayoutChanged) {
+        return new PreviewPanel(buffer, null, forceChain, false, onLayoutChanged);
+    }
+
+    private PreviewPanel(EditBuffer buffer, ResourceLocation forcePool, ResourceLocation forceChain,
+                         boolean gateByChance, Runnable onLayoutChanged) {
         this.buffer = buffer;
         this.forcePool = forcePool;
+        this.forceChain = forceChain;
         this.gateByChance = gateByChance;
         this.onLayoutChanged = onLayoutChanged;
         for (int i = 0; i < SLOT_COUNT; i++) {
@@ -119,7 +139,7 @@ public final class PreviewPanel {
     public void rebuild(int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
-        if (results.isEmpty()) rerollNow();
+        if ((forceChain == null && results.isEmpty()) || (forceChain != null && chainNames.isEmpty())) rerollNow();
         int top = screenHeight - currentHeight() + 2;
         reroll = Button.builder(Component.literal("🎲"), b -> rerollNow())
             .bounds(screenWidth - 32 - PADDING_X, top, 32, 16)
@@ -138,6 +158,10 @@ public final class PreviewPanel {
     }
 
     public void rerollNow() {
+        if (forceChain != null) {
+            chainNames = PreviewRoller.rollChainBatch(forceChain, SLOT_COUNT, buffer);
+            return;
+        }
         RandomSource rng = pickRng();
         List<ItemStack> stacks = new ArrayList<>(SLOT_COUNT);
         List<Boolean> enchanted = new ArrayList<>(SLOT_COUNT);
@@ -197,6 +221,7 @@ public final class PreviewPanel {
             activePicker.mouseClicked(mouseX, mouseY, button);
             return true;
         }
+        if (forceChain != null) return false;
         if (button != 0 || screenWidth == 0) return false;
         int y0 = screenHeight - currentHeight() + HEADER_H;
         int columnWidth = (screenWidth - PADDING_X * 2) / 2;
@@ -250,6 +275,12 @@ public final class PreviewPanel {
         gfx.fill(0, y0, screenWidth, screenHeight, 0xCC101010);
         gfx.fill(0, y0, screenWidth, y0 + 1, 0xFF606060);
 
+        if (forceChain != null) {
+            renderChainMode(gfx, y0);
+            if (activePicker != null) activePicker.render(gfx, mouseX, mouseY);
+            return;
+        }
+
         int rowsStartY = y0 + HEADER_H;
         int columnWidth = (screenWidth - PADDING_X * 2) / 2;
         int visible = visibleSlots();
@@ -293,6 +324,36 @@ public final class PreviewPanel {
 
         if (activePicker != null) {
             activePicker.render(gfx, mouseX, mouseY);
+        }
+    }
+
+    /**
+     * Chain-mode rendering: 2-column grid of text rolls, no icons. The
+     * reroll/expand buttons render on top via the host screen's widget
+     * list, so the right edge of the top row is reserved for them.
+     */
+    private void renderChainMode(GuiGraphics gfx, int y0) {
+        int rowsStartY = y0 + HEADER_H;
+        int columnWidth = (screenWidth - PADDING_X * 2) / 2;
+        int visible = visibleSlots();
+        for (int i = 0; i < chainNames.size() && i < visible; i++) {
+            int col = i % 2;
+            int row = i / 2;
+            int x = PADDING_X + col * columnWidth;
+            int y = rowsStartY + row * LINE_H;
+
+            int textMaxWidth = columnWidth - 8;
+            // Reserve room for the reroll + expand buttons on the top-right slot.
+            if (col == 1 && row == 0) textMaxWidth -= 60;
+
+            String name = chainNames.get(i);
+            List<FormattedCharSequence> trimmed = Minecraft.getInstance().font.split(
+                Component.literal(name), textMaxWidth);
+            int lines = Math.min(MAX_TEXT_LINES, trimmed.size());
+            for (int li = 0; li < lines; li++) {
+                gfx.drawString(Minecraft.getInstance().font, trimmed.get(li),
+                    x, y + TEXT_OFFSET_Y + li * TEXT_LINE_H, 0xFFE0E0E0, false);
+            }
         }
     }
 }

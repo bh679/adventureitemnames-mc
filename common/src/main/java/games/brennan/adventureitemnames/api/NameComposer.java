@@ -154,6 +154,18 @@ public final class NameComposer {
     }
 
     /**
+     * Walk one chain directly without selector / item context — used by
+     * the chain-editor preview to show what the chain would produce on
+     * its own (no item-material substitution, no type-synonym wrap).
+     * Context refs that read the stack (e.g. {@link #REF_ITEM_MATERIAL})
+     * resolve to empty and are skipped by the composer.
+     */
+    public static String composeChainPreview(ResourceLocation chainId, RandomSource rng) {
+        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0);
+        return name == null ? "" : name;
+    }
+
+    /**
      * Generate a name for a freshly-spawned {@link Mob} and apply it as
      * the vanilla {@code CustomName}. Intended to be called from a mixin
      * on {@code Mob.finalizeSpawn(...)} so it fires exactly once per
@@ -326,7 +338,12 @@ public final class NameComposer {
         }
         List<NamePool.PoolEntry> compatible = new ArrayList<>(source.size());
         for (NamePool.PoolEntry e : source) {
-            if (e.itemTypes().isEmpty() || e.itemTypes().contains(targetTagId)) {
+            // targetTagId == null means "no item context" (mob naming, chain
+            // preview) — only entries without an item_types filter qualify.
+            // Calling .contains(null) on the List.copyOf-backed itemTypes
+            // would throw, hence the explicit null guard.
+            if (e.itemTypes().isEmpty()
+                || (targetTagId != null && e.itemTypes().contains(targetTagId))) {
                 compatible.add(e);
             }
         }

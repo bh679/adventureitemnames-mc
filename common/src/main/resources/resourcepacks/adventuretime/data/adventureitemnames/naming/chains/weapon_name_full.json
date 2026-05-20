@@ -1,0 +1,49 @@
+{
+  "id": "adventureitemnames:weapon_name_full",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.19817369,
+      "connection": "",
+      "newline": false,
+      "label": "Pre Title",
+      "refs": []
+    },
+    {
+      "chance": 0.4,
+      "connection": " ",
+      "newline": false,
+      "label": "Main",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_characters",
+          "weight": 38.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_places",
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        }
+      ]
+    },
+    {
+      "chance": 0.75,
+      "connection": ", ",
+      "newline": false,
+      "refs": []
+    },
+    {
+      "chance": 0.2,
+      "connection": ". ",
+      "newline": false,
+      "refs": []
+    }
+  ]
+}
