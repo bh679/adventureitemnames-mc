@@ -86,7 +86,7 @@ public final class ChainEditorScreen extends Screen {
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
-        if (preview == null) preview = new PreviewPanel(buffer, null, true, this::rebuildWidgets);
+        if (preview == null) preview = PreviewPanel.chainOnly(buffer, chain.id(), this::rebuildWidgets);
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
         addRenderableWidget(preview.toggleButton());

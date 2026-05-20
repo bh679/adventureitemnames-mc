@@ -1,0 +1,45 @@
+{
+  "id": "adventureitemnames:weapon_name_full",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.19817369,
+      "connection": "",
+      "newline": false,
+      "label": "Pre Title",
+      "refs": []
+    },
+    {
+      "chance": 0.4,
+      "connection": " ",
+      "newline": false,
+      "label": "Main",
+      "refs": [
+        {
+          "ref": "adventureitemnames:atla_characters",
+          "weight": 34.0
+        },
+        {
+          "ref": "adventureitemnames:atla_animals",
+          "weight": 24.0
+        },
+        {
+          "ref": "adventureitemnames:atla_elements",
+          "weight": 21.0
+        }
+      ]
+    },
+    {
+      "chance": 0.75,
+      "connection": ", ",
+      "newline": false,
+      "refs": []
+    },
+    {
+      "chance": 0.2,
+      "connection": ". ",
+      "newline": false,
+      "refs": []
+    }
+  ]
+}

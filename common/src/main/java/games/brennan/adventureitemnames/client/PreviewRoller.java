@@ -82,6 +82,25 @@ public final class PreviewRoller {
         }
     }
 
+    /**
+     * Bulk roll {@code count} chain-only previews — bypasses selector
+     * matching and item context. Used by the chain editor / ref editor
+     * preview panel so the rolls reflect the chain under edit, not the
+     * downstream item-naming pipeline.
+     */
+    public static List<String> rollChainBatch(ResourceLocation chainId, int count, EditBuffer buffer) {
+        NamingConfig.ApiSnapshot snap = NamingConfig.snapshotApiLayer();
+        try {
+            applyBufferToApi(buffer, null);
+            return doChainRolls(chainId, count);
+        } catch (Exception ex) {
+            LOGGER.warn("[AdventureItemNames] preview chain batch roll failed for '{}'", chainId, ex);
+            return Collections.emptyList();
+        } finally {
+            NamingConfig.restoreApiLayer(snap);
+        }
+    }
+
     /** Roll one stack with the buffer applied. Used for click-to-cycle on a single slot. */
     public static Result rollSingle(ItemStack stack, boolean enchanted,
                                     EditBuffer buffer, ResourceLocation forcePoolForSegment1,
@@ -156,6 +175,17 @@ public final class PreviewRoller {
             ItemStack stack = stacks.get(i).copy();
             boolean ench = enchanted.get(i);
             out.add(rollOne(stack, ench, rng, gateByChance));
+        }
+        return out;
+    }
+
+    private static List<String> doChainRolls(ResourceLocation chainId, int count) {
+        Minecraft mc = Minecraft.getInstance();
+        RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        List<String> out = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            String name = NameComposer.composeChainPreview(chainId, rng);
+            out.add(name == null || name.isEmpty() ? "—" : name);
         }
         return out;
     }
