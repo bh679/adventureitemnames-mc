@@ -27,6 +27,10 @@
   "screen.adventureitemnames.selectors.tag_missing": "⚠ Tag not loaded — selector inactive until tag is available",
 
   "screen.adventureitemnames.chains.title": "Chains",
+  "screen.adventureitemnames.chains.new_chain": "+ New chain",
+  "screen.adventureitemnames.chains.new_chain.title": "New chain",
+  "screen.adventureitemnames.chains.new_chain.collision": "⚠ id already exists",
+  "screen.adventureitemnames.chains.new_chain.dev_only_tooltip": "New chains can only be created in a dev environment (project root not detected).",
   "screen.adventureitemnames.chain_editor.refs": "Refs",
   "screen.adventureitemnames.ref_editor.add": "+ Add ref",
   "screen.adventureitemnames.ref_editor.title": "%s #%d — refs",

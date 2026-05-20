@@ -74,6 +74,15 @@ public final class EditBuffer {
     /** Custom-selector ids the user removed in this session. */
     private final Set<ResourceLocation> pendingRemovedCustomSelectorIds = new LinkedHashSet<>();
 
+    /**
+     * Brand-new chains the user created in this session via the
+     * {@code + New chain} popup. Keyed by chain id, value is the target
+     * pack id (e.g. {@code mod/adventureitemnames/wholesome}) so the
+     * {@link games.brennan.adventureitemnames.internal.PerPackSplitter}
+     * can override the default base-pack resolution for that id.
+     */
+    private final Map<ResourceLocation, String> pendingNewChains = new LinkedHashMap<>();
+
     // ────────────────────────────────────────────────────────────
     // Weights (v1)
     // ────────────────────────────────────────────────────────────
@@ -593,6 +602,32 @@ public final class EditBuffer {
     }
 
     // ────────────────────────────────────────────────────────────
+    // New chains (v3.1)
+    // ────────────────────────────────────────────────────────────
+
+    /**
+     * Record a brand-new chain the user just created. {@code packId} is
+     * the canonical pack id the chain should be written to on save
+     * (e.g. {@code mod/adventureitemnames/wholesome}).
+     */
+    public void addNewChain(ResourceLocation chainId, String packId) {
+        if (chainId == null || packId == null) return;
+        pendingNewChains.put(chainId, packId);
+    }
+
+    public boolean hasPendingNewChain(ResourceLocation chainId) {
+        return chainId != null && pendingNewChains.containsKey(chainId);
+    }
+
+    public String pendingNewChainPack(ResourceLocation chainId) {
+        return chainId == null ? null : pendingNewChains.get(chainId);
+    }
+
+    public Map<ResourceLocation, String> snapshotPendingNewChains() {
+        return new LinkedHashMap<>(pendingNewChains);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Common
     // ────────────────────────────────────────────────────────────
 
@@ -609,7 +644,8 @@ public final class EditBuffer {
             || !pendingSegmentOrder.isEmpty()
             || !pendingAppendedSegments.isEmpty()
             || !pendingCustomSelectors.isEmpty()
-            || !pendingRemovedCustomSelectorIds.isEmpty();
+            || !pendingRemovedCustomSelectorIds.isEmpty()
+            || !pendingNewChains.isEmpty();
     }
 
     public void clear() {
@@ -626,5 +662,6 @@ public final class EditBuffer {
         pendingAppendedSegments.clear();
         pendingCustomSelectors.clear();
         pendingRemovedCustomSelectorIds.clear();
+        pendingNewChains.clear();
     }
 }

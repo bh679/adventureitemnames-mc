@@ -61,9 +61,10 @@ public final class ConfigSave {
             // user-config overrides applied on top of shipped) and split it
             // per source pack, writing each pack's layer file.
             Set<ResourceLocation> dirtyChains = collectDirtyChains(buffer);
+            Map<ResourceLocation, String> newChainPacks = buffer.snapshotPendingNewChains();
             boolean packWritten = false;
             if (PackPaths.projectRootAvailable() && !dirtyChains.isEmpty()) {
-                writePackFilesForDirtyChains(dirtyChains);
+                writePackFilesForDirtyChains(dirtyChains, newChainPacks);
                 // The user-config segment overlays are now baked into the
                 // pack files. Strip them from user-config so they stop
                 // double-applying on top of the new shipped data — and
@@ -91,15 +92,23 @@ public final class ConfigSave {
      * pack via {@link PerPackSplitter}, and write each pack's layer to
      * its own {@code naming/chains/<path>.json} file. Packs that
      * previously contributed but now have no refs get their file deleted.
+     *
+     * <p>{@code newChainPacks} carries any session-created chains whose
+     * base pack the user picked explicitly via the {@code + New chain}
+     * popup — passed through to {@link PerPackSplitter#split(NameChain, String)}
+     * so the new chain's metadata file lands in the user's chosen pack
+     * instead of always defaulting to the base mod.
      */
-    private static void writePackFilesForDirtyChains(Set<ResourceLocation> dirty) {
+    private static void writePackFilesForDirtyChains(Set<ResourceLocation> dirty,
+                                                     Map<ResourceLocation, String> newChainPacks) {
         for (ResourceLocation chainId : dirty) {
             NameChain effective = ChainAssembler.assembleEffective(chainId);
             if (effective == null) {
                 LOGGER.warn("[AdventureItemNames] chain {} not registered — skipping pack write", chainId);
                 continue;
             }
-            Map<String, PerPackSplitter.PackLayer> split = PerPackSplitter.split(effective);
+            String basePackOverride = newChainPacks.get(chainId);
+            Map<String, PerPackSplitter.PackLayer> split = PerPackSplitter.split(effective, basePackOverride);
             // Previously-contributing packs whose contribution is now empty
             // should have their file deleted so the runtime doesn't keep
             // loading a stale layer. Canonicalize the previous-pack ids so
@@ -137,6 +146,7 @@ public final class ConfigSave {
         for (String key : buffer.snapshotSegmentResets()) addChainFromSegmentKey(out, key);
         for (String chainStr : buffer.snapshotAppendedSegments().keySet()) addChainFromString(out, chainStr);
         for (String chainStr : buffer.snapshotSegmentOrder().keySet()) addChainFromString(out, chainStr);
+        out.addAll(buffer.snapshotPendingNewChains().keySet());
         return out;
     }
 
