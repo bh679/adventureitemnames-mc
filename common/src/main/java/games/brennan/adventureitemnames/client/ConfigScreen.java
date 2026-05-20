@@ -49,9 +49,7 @@ public final class ConfigScreen extends Screen {
 
         addRenderableWidget(Button.builder(
             Component.translatable("screen.adventureitemnames.config.chains"),
-            b -> Minecraft.getInstance().setScreen(new PlaceholderScreen(this,
-                Component.translatable("screen.adventureitemnames.placeholder.chains"),
-                Component.translatable("screen.adventureitemnames.placeholder.chains.body")))
+            b -> Minecraft.getInstance().setScreen(new ChainsListScreen(this, buffer))
         ).bounds(cx - btnW / 2, cy + btnH / 2 + gap, btnW, btnH).build());
 
         addRenderableWidget(Button.builder(

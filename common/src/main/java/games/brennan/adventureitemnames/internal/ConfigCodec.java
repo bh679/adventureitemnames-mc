@@ -8,6 +8,8 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.MobCategory;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -15,7 +17,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -53,6 +57,25 @@ import java.util.Optional;
  *       "plain":     "adventureitemnames:weapon_name_full",
  *       "enchanted": null
  *     }
+ *   },
+ *   "segment_overrides": {
+ *     "adventureitemnames:title_combinations#1": {
+ *       "chance":     0.85,
+ *       "connection": " of ",
+ *       "newline":    false,
+ *       "refs": [
+ *         { "ref": "adventureitemnames:mc_technoblade", "weight": 10.0 }
+ *       ]
+ *     }
+ *   },
+ *   "custom_selectors": {
+ *     "adventureitemnames:mace": {
+ *       "applies_to": "minecraft:maces",
+ *       "tiers": {
+ *         "plain":     "adventureitemnames:weapon_name_short",
+ *         "enchanted": "adventureitemnames:weapon_name_full"
+ *       }
+ *     }
  *   }
  * }
  * }</pre>
@@ -74,11 +97,13 @@ public final class ConfigCodec {
         EntryOverrides entries = new EntryOverrides();
         ChanceOverrides chances = new ChanceOverrides();
         SelectorOverrides selectorOverrides = new SelectorOverrides();
+        SegmentOverrides segmentOverrides = new SegmentOverrides();
+        CustomSelectors customSelectors = new CustomSelectors();
         if (root == null || !root.isJsonObject()) {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
+            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, segmentOverrides, customSelectors);
         }
         JsonObject obj = root.getAsJsonObject();
 
@@ -173,8 +198,10 @@ public final class ConfigCodec {
 
         readChances(obj, chances, sourceLabel);
         readSelectorOverrides(obj, selectorOverrides, sourceLabel);
+        readSegmentOverrides(obj, segmentOverrides, sourceLabel);
+        readCustomSelectors(obj, customSelectors, sourceLabel);
 
-        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides);
+        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, segmentOverrides, customSelectors);
     }
 
     private static void readRemovedTexts(JsonObject body, ResourceLocation poolId,
@@ -340,6 +367,318 @@ public final class ConfigCodec {
                 }
                 dest.put(selectorId, tierKey, override);
             }
+        }
+    }
+
+    /**
+     * Parse the {@code segment_overrides} block. Keys are
+     * {@code <chain_id>#<segment_index>}. Each entry is an object with
+     * optional {@code chance} (float, clamped), {@code connection} (string),
+     * {@code newline} (bool), and {@code refs} (array of
+     * {@code {ref, weight}} objects — replaces the shipped ref list when
+     * present). Empty / fully-null entries are dropped.
+     */
+    private static void readSegmentOverrides(JsonObject root, SegmentOverrides dest, String sourceLabel) {
+        JsonElement el = root.get("segment_overrides");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'segment_overrides' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            String key = entry.getKey();
+            if (!isValidSegmentKey(key)) {
+                LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides key '{}' is malformed — ignoring",
+                    sourceLabel, key);
+                continue;
+            }
+            if (!entry.getValue().isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'] is not an object — ignoring",
+                    sourceLabel, key);
+                continue;
+            }
+            JsonObject obj = entry.getValue().getAsJsonObject();
+            Float chance = null;
+            String connection = null;
+            Boolean newline = null;
+            List<NameSegment.WeightedRef> refs = null;
+
+            JsonElement chanceEl = obj.get("chance");
+            if (chanceEl != null && !chanceEl.isJsonNull()) {
+                if (chanceEl.isJsonPrimitive() && chanceEl.getAsJsonPrimitive().isNumber()) {
+                    float v = chanceEl.getAsFloat();
+                    if (v < 0f || v > 1f) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].chance {} out of [0,1] — clamping",
+                            sourceLabel, key, v);
+                        v = Math.max(0f, Math.min(1f, v));
+                    }
+                    chance = v;
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].chance is not a number — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            JsonElement connEl = obj.get("connection");
+            if (connEl != null && !connEl.isJsonNull()) {
+                if (connEl.isJsonPrimitive() && connEl.getAsJsonPrimitive().isString()) {
+                    connection = connEl.getAsString();
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].connection is not a string — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            JsonElement nlEl = obj.get("newline");
+            if (nlEl != null && !nlEl.isJsonNull()) {
+                if (nlEl.isJsonPrimitive() && nlEl.getAsJsonPrimitive().isBoolean()) {
+                    newline = nlEl.getAsBoolean();
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].newline is not a bool — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            JsonElement refsEl = obj.get("refs");
+            if (refsEl != null && !refsEl.isJsonNull()) {
+                if (refsEl.isJsonArray()) {
+                    List<NameSegment.WeightedRef> parsed = new ArrayList<>();
+                    for (JsonElement r : refsEl.getAsJsonArray()) {
+                        if (!r.isJsonObject()) continue;
+                        JsonObject rObj = r.getAsJsonObject();
+                        JsonElement refStr = rObj.get("ref");
+                        JsonElement weightEl = rObj.get("weight");
+                        if (refStr == null || !refStr.isJsonPrimitive()) continue;
+                        ResourceLocation refId = ResourceLocation.tryParse(refStr.getAsString());
+                        if (refId == null) {
+                            LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].refs[] '{}' is not a valid id — ignoring",
+                                sourceLabel, key, refStr.getAsString());
+                            continue;
+                        }
+                        float w = 1f;
+                        if (weightEl != null && weightEl.isJsonPrimitive() && weightEl.getAsJsonPrimitive().isNumber()) {
+                            w = Math.max(0f, Math.min(MAX_WEIGHT, weightEl.getAsFloat()));
+                        }
+                        parsed.add(new NameSegment.WeightedRef(refId, w));
+                    }
+                    refs = parsed;
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].refs is not an array — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            Boolean removed = null;
+            JsonElement removedEl = obj.get("removed");
+            if (removedEl != null && !removedEl.isJsonNull()) {
+                if (removedEl.isJsonPrimitive() && removedEl.getAsJsonPrimitive().isBoolean()) {
+                    removed = removedEl.getAsBoolean();
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].removed is not a bool — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            String label = null;
+            JsonElement labelEl = obj.get("label");
+            if (labelEl != null && !labelEl.isJsonNull()) {
+                if (labelEl.isJsonPrimitive() && labelEl.getAsJsonPrimitive().isString()) {
+                    label = labelEl.getAsString();
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].label is not a string — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            SegmentOverrides.SegmentEdit edit = new SegmentOverrides.SegmentEdit(chance, connection, newline, refs, removed, label);
+            if (!edit.isNoOp()) dest.edits.put(key, edit);
+        }
+
+        // Segment-order block: per-chain permutation of original indices that
+        // defines the display / composer iteration order. Length must match
+        // the chain's current effective segment count or the override is
+        // silently ignored at query time.
+        JsonElement orderEl = root.get("segment_order");
+        if (orderEl != null) {
+            if (!orderEl.isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' 'segment_order' is not an object — ignoring", sourceLabel);
+            } else {
+                for (var entry : orderEl.getAsJsonObject().entrySet()) {
+                    if (!entry.getValue().isJsonArray()) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' segment_order['{}'] is not an array — ignoring",
+                            sourceLabel, entry.getKey());
+                        continue;
+                    }
+                    List<Integer> indices = new ArrayList<>();
+                    boolean valid = true;
+                    for (JsonElement el2 : entry.getValue().getAsJsonArray()) {
+                        if (!el2.isJsonPrimitive() || !el2.getAsJsonPrimitive().isNumber()) { valid = false; break; }
+                        int idx = el2.getAsInt();
+                        if (idx < 0) { valid = false; break; }
+                        indices.add(idx);
+                    }
+                    if (!valid) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' segment_order['{}'] contains non-integer or negative entries — ignoring",
+                            sourceLabel, entry.getKey());
+                        continue;
+                    }
+                    if (!indices.isEmpty()) dest.segmentOrder.put(entry.getKey(), indices);
+                }
+            }
+        }
+
+        // Appended-segments block: per-chain ordered list of brand-new segments
+        // the UI tacked on after the shipped tail. Each appended segment is a
+        // full NameSegment record (refs + chance + connection + newline).
+        JsonElement appendedEl = root.get("appended_segments");
+        if (appendedEl != null) {
+            if (!appendedEl.isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' 'appended_segments' is not an object — ignoring", sourceLabel);
+            } else {
+                for (var entry : appendedEl.getAsJsonObject().entrySet()) {
+                    ResourceLocation chainId = ResourceLocation.tryParse(entry.getKey());
+                    if (chainId == null) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' appended_segments key '{}' is not a valid id — ignoring",
+                            sourceLabel, entry.getKey());
+                        continue;
+                    }
+                    if (!entry.getValue().isJsonArray()) {
+                        LOGGER.warn("[AdventureItemNames] config '{}' appended_segments['{}'] is not an array — ignoring",
+                            sourceLabel, entry.getKey());
+                        continue;
+                    }
+                    List<NameSegment> segs = new ArrayList<>();
+                    for (JsonElement segEl : entry.getValue().getAsJsonArray()) {
+                        if (!segEl.isJsonObject()) continue;
+                        JsonObject segObj = segEl.getAsJsonObject();
+                        float segChance = 1f;
+                        JsonElement segChanceEl = segObj.get("chance");
+                        if (segChanceEl != null && segChanceEl.isJsonPrimitive() && segChanceEl.getAsJsonPrimitive().isNumber()) {
+                            segChance = Math.max(0f, Math.min(1f, segChanceEl.getAsFloat()));
+                        }
+                        String segConn = "";
+                        JsonElement segConnEl = segObj.get("connection");
+                        if (segConnEl != null && segConnEl.isJsonPrimitive() && segConnEl.getAsJsonPrimitive().isString()) {
+                            segConn = segConnEl.getAsString();
+                        }
+                        boolean segNl = false;
+                        JsonElement segNlEl = segObj.get("newline");
+                        if (segNlEl != null && segNlEl.isJsonPrimitive() && segNlEl.getAsJsonPrimitive().isBoolean()) {
+                            segNl = segNlEl.getAsBoolean();
+                        }
+                        List<NameSegment.WeightedRef> segRefs = new ArrayList<>();
+                        JsonElement segRefsEl = segObj.get("refs");
+                        if (segRefsEl != null && segRefsEl.isJsonArray()) {
+                            for (JsonElement r : segRefsEl.getAsJsonArray()) {
+                                if (!r.isJsonObject()) continue;
+                                JsonObject rObj = r.getAsJsonObject();
+                                JsonElement refStr = rObj.get("ref");
+                                if (refStr == null || !refStr.isJsonPrimitive()) continue;
+                                ResourceLocation refId = ResourceLocation.tryParse(refStr.getAsString());
+                                if (refId == null) continue;
+                                float w = 1f;
+                                JsonElement weightEl = rObj.get("weight");
+                                if (weightEl != null && weightEl.isJsonPrimitive() && weightEl.getAsJsonPrimitive().isNumber()) {
+                                    w = Math.max(0f, Math.min(MAX_WEIGHT, weightEl.getAsFloat()));
+                                }
+                                segRefs.add(new NameSegment.WeightedRef(refId, w));
+                            }
+                        }
+                        segs.add(new NameSegment(segRefs, segChance, segConn, segNl));
+                    }
+                    if (!segs.isEmpty()) {
+                        dest.appendedSegments.put(entry.getKey(), segs);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Parse the {@code custom_selectors} block. Each top-level key is a
+     * selector id (must parse as a valid {@link ResourceLocation}); each
+     * value is an object with {@code applies_to} (item-tag id) and
+     * {@code tiers} (map of tier-key → chain id). Malformed entries log
+     * a warning and are skipped.
+     */
+    private static void readCustomSelectors(JsonObject root, CustomSelectors dest, String sourceLabel) {
+        JsonElement el = root.get("custom_selectors");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'custom_selectors' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
+            if (id == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors key '{}' is not a valid id — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            if (!entry.getValue().isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'] is not an object — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            JsonObject obj = entry.getValue().getAsJsonObject();
+            JsonElement appliesEl = obj.get("applies_to");
+            if (appliesEl == null || !appliesEl.isJsonPrimitive()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'].applies_to missing — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            ResourceLocation appliesTo = ResourceLocation.tryParse(appliesEl.getAsString());
+            if (appliesTo == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'].applies_to '{}' is not a valid id — ignoring",
+                    sourceLabel, entry.getKey(), appliesEl.getAsString());
+                continue;
+            }
+            JsonElement tiersEl = obj.get("tiers");
+            if (tiersEl == null || !tiersEl.isJsonObject()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'].tiers missing or not an object — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            Map<String, ResourceLocation> tiers = new LinkedHashMap<>();
+            for (var tierEntry : tiersEl.getAsJsonObject().entrySet()) {
+                JsonElement v = tierEntry.getValue();
+                if (v == null || v.isJsonNull()) continue;
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString()) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'].tiers['{}'] not a string — ignoring",
+                        sourceLabel, entry.getKey(), tierEntry.getKey());
+                    continue;
+                }
+                ResourceLocation chainId = ResourceLocation.tryParse(v.getAsString());
+                if (chainId == null) {
+                    LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'].tiers['{}'] '{}' is not a valid id — ignoring",
+                        sourceLabel, entry.getKey(), tierEntry.getKey(), v.getAsString());
+                    continue;
+                }
+                tiers.put(tierEntry.getKey(), chainId);
+            }
+            if (tiers.isEmpty()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' custom_selectors['{}'] has no valid tiers — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            dest.put(new NameSelector(id, appliesTo, tiers));
+        }
+    }
+
+    /** Validate a segment-override key of the form {@code <chain_id>#<segment_index>}. */
+    static boolean isValidSegmentKey(String key) {
+        if (key == null) return false;
+        int hash = key.indexOf('#');
+        if (hash <= 0 || hash == key.length() - 1) return false;
+        if (key.indexOf('#', hash + 1) >= 0) return false;
+        String chainId = key.substring(0, hash);
+        String segIdx = key.substring(hash + 1);
+        if (ResourceLocation.tryParse(chainId) == null) return false;
+        try {
+            int idx = Integer.parseInt(segIdx);
+            return idx >= 0;
+        } catch (NumberFormatException ex) {
+            return false;
         }
     }
 

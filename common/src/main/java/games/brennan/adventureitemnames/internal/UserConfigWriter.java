@@ -10,6 +10,8 @@ import com.google.gson.JsonPrimitive;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NameSelector;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -72,7 +74,13 @@ public final class UserConfigWriter {
                                             Map<String, Float> weightOverrides,
                                             EntryOverrides entryOverrides,
                                             Map<ChanceKind, Float> chanceOverrides,
-                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides) {
+                                            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides,
+                                            Map<String, SegmentOverrides.SegmentEdit> segmentOverrides,
+                                            Set<String> segmentResetKeys,
+                                            Map<String, java.util.List<NameSegment>> appendedSegments,
+                                            Map<String, java.util.List<Integer>> segmentOrder,
+                                            Map<ResourceLocation, NameSelector> customSelectorEdits,
+                                            Set<ResourceLocation> removedCustomSelectorIds) {
         Path configDir = ConfigPaths.get();
         if (configDir == null) {
             LOGGER.warn("[AdventureItemNames] config dir not set — cannot save user config");
@@ -87,6 +95,10 @@ public final class UserConfigWriter {
         applyEntryEdits(root, entryOverrides);
         applyChanceEdits(root, chanceOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
+        applySegmentEdits(root, segmentOverrides, segmentResetKeys);
+        applyAppendedSegments(root, appendedSegments);
+        applySegmentOrder(root, segmentOrder);
+        applyCustomSelectorEdits(root, customSelectorEdits, removedCustomSelectorIds);
 
         try {
             Files.createDirectories(configDir);
@@ -97,6 +109,75 @@ public final class UserConfigWriter {
             return true;
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to write {}: {}", file, ex.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Strip every segment-related entry for {@code chains} from the
+     * on-disk user-config file: {@code segment_overrides[<chainId>#*]},
+     * {@code appended_segments[<chainId>]}, and {@code segment_order[<chainId>]}.
+     * Called after a successful dev-mode pack write so the user-config
+     * layer stops double-applying on top of the freshly baked-in pack
+     * files. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeChainSegmentData(Set<ResourceLocation> chains) {
+        if (chains == null || chains.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        boolean changed = false;
+
+        // segment_overrides — keyed by "<chainId>#<segIdx>"; drop entries whose
+        // chain id is in the wipe set.
+        JsonElement segEl = root.get("segment_overrides");
+        if (segEl != null && segEl.isJsonObject()) {
+            JsonObject obj = segEl.getAsJsonObject();
+            java.util.List<String> toRemove = new java.util.ArrayList<>();
+            for (var entry : obj.entrySet()) {
+                int hash = entry.getKey().indexOf('#');
+                if (hash <= 0) continue;
+                ResourceLocation chainId = ResourceLocation.tryParse(entry.getKey().substring(0, hash));
+                if (chainId != null && chains.contains(chainId)) toRemove.add(entry.getKey());
+            }
+            if (!toRemove.isEmpty()) {
+                for (String k : toRemove) obj.remove(k);
+                changed = true;
+                if (obj.size() == 0) root.remove("segment_overrides");
+            }
+        }
+
+        // appended_segments and segment_order are both keyed by chain id directly.
+        for (String key : new String[]{"appended_segments", "segment_order"}) {
+            JsonElement el = root.get(key);
+            if (el != null && el.isJsonObject()) {
+                JsonObject obj = el.getAsJsonObject();
+                boolean blockChanged = false;
+                for (ResourceLocation chain : chains) {
+                    if (obj.has(chain.toString())) {
+                        obj.remove(chain.toString());
+                        blockChanged = true;
+                    }
+                }
+                if (blockChanged) {
+                    changed = true;
+                    if (obj.size() == 0) root.remove(key);
+                }
+            }
+        }
+
+        if (!changed) return true;
+        try {
+            Path tmp = configDir.resolve(FILE_NAME + ".tmp");
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            Files.writeString(tmp, body, StandardCharsets.UTF_8);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            LOGGER.info("[AdventureItemNames] wiped user-config segment data for {} chain(s)", chains.size());
+            return true;
+        } catch (IOException ex) {
+            LOGGER.warn("[AdventureItemNames] failed to write {} during wipe: {}", file, ex.getMessage());
             return false;
         }
     }
@@ -224,6 +305,224 @@ public final class UserConfigWriter {
         } else {
             root.add("selector_overrides", existing);
         }
+    }
+
+    /**
+     * Merge segment edits into the {@code segment_overrides} block.
+     * A {@code null} {@link SegmentOverrides.SegmentEdit} clears the entire
+     * key. Within an edit, a {@code null} field removes that override
+     * (lets it fall through); a non-null field writes it. A
+     * {@link SegmentOverrides.SegmentEdit#isNoOp()} edit drops the key.
+     * If the resulting block is empty it's removed.
+     */
+    /**
+     * Merge per-segment edits into {@code segment_overrides}. Two distinct
+     * semantics here, both critical:
+     *
+     * <ul>
+     *   <li><b>Resets</b> ({@code resetKeys}) delete the entire
+     *       {@code segment_overrides[key]} object — reverts that segment to
+     *       its shipped behaviour wholesale.</li>
+     *   <li><b>Edits</b> only touch the fields the buffer explicitly set
+     *       (i.e. non-null on the {@link SegmentOverrides.SegmentEdit}).
+     *       A {@code null} field means "the user didn't touch this in
+     *       this session" — leave whatever's already on disk alone. The
+     *       previous "null → remove from JSON" semantics destroyed
+     *       previously-saved sibling fields whenever the user edited just
+     *       one thing.</li>
+     * </ul>
+     */
+    private static void applySegmentEdits(JsonObject root,
+                                          Map<String, SegmentOverrides.SegmentEdit> edits,
+                                          Set<String> resetKeys) {
+        boolean haveResets = resetKeys != null && !resetKeys.isEmpty();
+        boolean haveEdits = edits != null && !edits.isEmpty();
+        if (!haveResets && !haveEdits) return;
+        JsonObject existing;
+        JsonElement el = root.get("segment_overrides");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+
+        // Process resets first so a reset+edit in the same session ends up
+        // with just the new edit content (no stale fields from the prior save).
+        if (haveResets) {
+            for (String key : resetKeys) existing.remove(key);
+        }
+
+        if (haveEdits) {
+            for (var entry : edits.entrySet()) {
+                String key = entry.getKey();
+                SegmentOverrides.SegmentEdit edit = entry.getValue();
+                if (edit == null || edit.isNoOp()) continue;
+                JsonObject perSeg;
+                JsonElement perEl = existing.get(key);
+                if (perEl != null && perEl.isJsonObject()) {
+                    perSeg = perEl.getAsJsonObject();
+                } else {
+                    perSeg = new JsonObject();
+                }
+                if (edit.chance() != null)     perSeg.add("chance", new JsonPrimitive(edit.chance()));
+                if (edit.connection() != null) perSeg.add("connection", new JsonPrimitive(edit.connection()));
+                if (edit.newline() != null)    perSeg.add("newline", new JsonPrimitive(edit.newline()));
+                if (edit.label() != null)      perSeg.add("label", new JsonPrimitive(edit.label()));
+                if (Boolean.TRUE.equals(edit.removed())) {
+                    perSeg.add("removed", new JsonPrimitive(true));
+                }
+                if (edit.refs() != null) {
+                    JsonArray arr = new JsonArray();
+                    for (NameSegment.WeightedRef r : edit.refs()) {
+                        JsonObject rObj = new JsonObject();
+                        rObj.add("ref", new JsonPrimitive(r.ref().toString()));
+                        rObj.add("weight", new JsonPrimitive(r.weight()));
+                        arr.add(rObj);
+                    }
+                    perSeg.add("refs", arr);
+                }
+                if (perSeg.size() == 0) {
+                    existing.remove(key);
+                } else {
+                    existing.add(key, perSeg);
+                }
+            }
+        }
+
+        if (existing.size() == 0) {
+            root.remove("segment_overrides");
+        } else {
+            root.add("segment_overrides", existing);
+        }
+    }
+
+    /**
+     * Append pending session segments onto the on-disk
+     * {@code appended_segments} array for each chain. Buffer pending list
+     * is a <em>delta</em> (only this session's adds), not a snapshot, so
+     * we extend the existing array instead of replacing it. Empty input
+     * map → no-op (leave the block intact).
+     */
+    private static void applyAppendedSegments(JsonObject root, Map<String, java.util.List<NameSegment>> appended) {
+        if (appended == null || appended.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("appended_segments");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : appended.entrySet()) {
+            java.util.List<NameSegment> segs = entry.getValue();
+            if (segs == null || segs.isEmpty()) continue;
+            JsonArray arr;
+            JsonElement existingArr = existing.get(entry.getKey());
+            if (existingArr != null && existingArr.isJsonArray()) {
+                arr = existingArr.getAsJsonArray();
+            } else {
+                arr = new JsonArray();
+            }
+            for (NameSegment seg : segs) {
+                JsonObject segObj = new JsonObject();
+                segObj.add("chance", new JsonPrimitive(seg.chance()));
+                segObj.add("connection", new JsonPrimitive(seg.connection()));
+                segObj.add("newline", new JsonPrimitive(seg.newline()));
+                JsonArray refsArr = new JsonArray();
+                for (NameSegment.WeightedRef r : seg.refs()) {
+                    JsonObject rObj = new JsonObject();
+                    rObj.add("ref", new JsonPrimitive(r.ref().toString()));
+                    rObj.add("weight", new JsonPrimitive(r.weight()));
+                    refsArr.add(rObj);
+                }
+                segObj.add("refs", refsArr);
+                arr.add(segObj);
+            }
+            existing.add(entry.getKey(), arr);
+        }
+        if (existing.size() == 0) {
+            root.remove("appended_segments");
+        } else {
+            root.add("appended_segments", existing);
+        }
+    }
+
+    /**
+     * Merge custom-selector edits into the {@code custom_selectors} block.
+     * Entries in {@code edits} are upserted; ids in {@code removedIds} are
+     * dropped. If the resulting block is empty it's removed.
+     */
+    private static void applyCustomSelectorEdits(JsonObject root,
+                                                 Map<ResourceLocation, NameSelector> edits,
+                                                 Set<ResourceLocation> removedIds) {
+        boolean hasAny = (edits != null && !edits.isEmpty()) || (removedIds != null && !removedIds.isEmpty());
+        if (!hasAny) return;
+        JsonObject existing;
+        JsonElement el = root.get("custom_selectors");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        if (removedIds != null) {
+            for (ResourceLocation id : removedIds) existing.remove(id.toString());
+        }
+        if (edits != null) {
+            for (var entry : edits.entrySet()) {
+                NameSelector sel = entry.getValue();
+                JsonObject sObj = new JsonObject();
+                sObj.add("applies_to", new JsonPrimitive(sel.appliesTo().toString()));
+                JsonObject tObj = new JsonObject();
+                for (var t : sel.tiers().entrySet()) {
+                    tObj.add(t.getKey(), new JsonPrimitive(t.getValue().toString()));
+                }
+                sObj.add("tiers", tObj);
+                existing.add(entry.getKey().toString(), sObj);
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("custom_selectors");
+        } else {
+            root.add("custom_selectors", existing);
+        }
+    }
+
+    /**
+     * Write the {@code segment_order} block — per-chain permutation of
+     * original indices. Empty list → drop that chain's entry. Empty
+     * input map → leave any existing block alone (caller didn't touch
+     * order this session).
+     */
+    private static void applySegmentOrder(JsonObject root, Map<String, java.util.List<Integer>> order) {
+        if (order == null || order.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("segment_order");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : order.entrySet()) {
+            java.util.List<Integer> indices = entry.getValue();
+            if (indices == null || indices.isEmpty()) {
+                existing.remove(entry.getKey());
+                continue;
+            }
+            JsonArray arr = new JsonArray();
+            for (Integer i : indices) arr.add(new JsonPrimitive(i));
+            existing.add(entry.getKey(), arr);
+        }
+        if (existing.size() == 0) {
+            root.remove("segment_order");
+        } else {
+            root.add("segment_order", existing);
+        }
+    }
+
+    /** If {@code v} is null, remove {@code key}; otherwise add the encoded value. */
+    private static <T> void applyOrRemove(JsonObject target, String key, T v,
+                                          java.util.function.Function<T, JsonElement> encode) {
+        if (v == null) target.remove(key);
+        else target.add(key, encode.apply(v));
     }
 
     private static void applyWeightEdits(JsonObject root, Map<String, Float> edits) {

@@ -5,6 +5,7 @@ import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
+import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.resources.ResourceLocation;
@@ -30,7 +31,7 @@ class EditBufferEntryTest {
     void resetGlobalLayers() {
         NamingConfig.restoreApiLayer(new NamingConfig.ApiSnapshot(
             new DisableSet(), new WeightOverrides(), new EntryOverrides(),
-            new ChanceOverrides(), new SelectorOverrides()));
+            new ChanceOverrides(), new SelectorOverrides(), new SegmentOverrides()));
         NamingConfig.setUserEntryOverrides(new EntryOverrides());
     }
 

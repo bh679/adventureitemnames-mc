@@ -3,6 +3,7 @@ package games.brennan.adventureitemnames.api;
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
+import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -70,6 +71,9 @@ public final class NamingConfig {
     private static final SelectorOverrides USER_SELECTORS = new SelectorOverrides();
     private static final SelectorOverrides API_SELECTORS = new SelectorOverrides();
 
+    private static final SegmentOverrides USER_SEGMENTS = new SegmentOverrides();
+    private static final SegmentOverrides API_SEGMENTS = new SegmentOverrides();
+
     private NamingConfig() {}
 
     // ─────────────────────────────────────────────────────────────
@@ -121,6 +125,14 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_SELECTORS.clear();
             if (newOverrides != null) USER_SELECTORS.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer per-segment overrides. Internal — called by the user-config loader. */
+    public static void setUserSegmentOverrides(SegmentOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_SEGMENTS.clear();
+            if (newOverrides != null) USER_SEGMENTS.mergeFrom(newOverrides);
         }
     }
 
@@ -241,6 +253,30 @@ public final class NamingConfig {
         synchronized (LOCK) { API_SELECTORS.remove(selectorId, tierKey); }
     }
 
+    /**
+     * Set an API-layer override for one chain segment. Any null field on
+     * {@code edit} leaves that aspect of the segment untouched and falls
+     * through to the lower layers. Passing a {@code SegmentEdit.isNoOp()}
+     * value clears the API-layer entry entirely.
+     */
+    public static void overrideSegment(ResourceLocation chainId, int segmentIndex,
+                                       SegmentOverrides.SegmentEdit edit) {
+        if (chainId == null) return;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            if (edit == null || edit.isNoOp()) {
+                API_SEGMENTS.edits.remove(key);
+            } else {
+                API_SEGMENTS.edits.put(key, edit);
+            }
+        }
+    }
+
+    public static void clearSegmentOverride(ResourceLocation chainId, int segmentIndex) {
+        if (chainId == null) return;
+        synchronized (LOCK) { API_SEGMENTS.edits.remove(SegmentOverrides.key(chainId, segmentIndex)); }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // API-layer snapshot/restore — preview roller uses these to apply
     // pending UI edits non-destructively. Not for general consumption.
@@ -252,7 +288,8 @@ public final class NamingConfig {
         WeightOverrides weights,
         EntryOverrides entries,
         ChanceOverrides chances,
-        SelectorOverrides selectorTiers
+        SelectorOverrides selectorTiers,
+        SegmentOverrides segments
     ) {}
 
     public static ApiSnapshot snapshotApiLayer() {
@@ -266,7 +303,9 @@ public final class NamingConfig {
             c.mergeFrom(API_CHANCES);
             SelectorOverrides s = new SelectorOverrides();
             s.mergeFrom(API_SELECTORS);
-            return new ApiSnapshot(d, w, e, c, s);
+            SegmentOverrides g = new SegmentOverrides();
+            g.mergeFrom(API_SEGMENTS);
+            return new ApiSnapshot(d, w, e, c, s, g);
         }
     }
 
@@ -283,6 +322,8 @@ public final class NamingConfig {
             API_CHANCES.mergeFrom(snapshot.chances());
             API_SELECTORS.clear();
             API_SELECTORS.mergeFrom(snapshot.selectorTiers());
+            API_SEGMENTS.clear();
+            API_SEGMENTS.mergeFrom(snapshot.segments());
         }
     }
 
@@ -482,6 +523,177 @@ public final class NamingConfig {
     /** Read-only snapshot of user-layer selector tier overrides. */
     public static Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> snapshotUserSelectorOverrides() {
         synchronized (LOCK) { return USER_SELECTORS.snapshot(); }
+    }
+
+    /**
+     * Effective per-segment chance with precedence API → user → shipped.
+     * Result is clamped to {@code [0, 1]}.
+     */
+    public static float effectiveSegmentChance(ResourceLocation chainId, int segmentIndex, float shipped) {
+        if (chainId == null) return shipped;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.chance() != null) return clamp01(api.chance());
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.chance() != null) return clamp01(user.chance());
+        }
+        return shipped;
+    }
+
+    /**
+     * Effective per-segment connection string with precedence
+     * API → user → shipped. Empty string is a legitimate override
+     * (suppresses the separator) — only {@code null} falls through.
+     */
+    public static String effectiveSegmentConnection(ResourceLocation chainId, int segmentIndex, String shipped) {
+        if (chainId == null) return shipped;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.connection() != null) return api.connection();
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.connection() != null) return user.connection();
+        }
+        return shipped;
+    }
+
+    /** Effective per-segment newline flag with precedence API → user → shipped. */
+    public static boolean effectiveSegmentNewline(ResourceLocation chainId, int segmentIndex, boolean shipped) {
+        if (chainId == null) return shipped;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.newline() != null) return api.newline();
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.newline() != null) return user.newline();
+        }
+        return shipped;
+    }
+
+    /**
+     * Effective per-segment ref list. When any layer carries a non-null
+     * refs override it <em>replaces</em> the shipped list wholesale; per-ref
+     * weight overrides are still applied on top via
+     * {@link #effectiveWeight}. Returned list is unmodifiable.
+     */
+    public static List<NameSegment.WeightedRef> effectiveSegmentRefs(ResourceLocation chainId, int segmentIndex,
+                                                                     List<NameSegment.WeightedRef> shipped) {
+        if (chainId == null) return shipped;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.refs() != null) return List.copyOf(api.refs());
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.refs() != null) return List.copyOf(user.refs());
+        }
+        return shipped;
+    }
+
+    /** Read-only snapshot of user-layer per-segment overrides. */
+    public static Map<String, SegmentOverrides.SegmentEdit> snapshotUserSegmentOverrides() {
+        synchronized (LOCK) { return USER_SEGMENTS.snapshot(); }
+    }
+
+    /**
+     * Effective label for a segment with precedence API → user → shipped.
+     * Matches the other {@code effectiveSegment*} getters' signature — pass
+     * the shipped segment's {@link NameSegment#label} as the fallback.
+     * Returns an empty string when no layer carries a label; the UI then
+     * falls back to a synthetic {@code "Seg N"} placeholder.
+     */
+    public static String effectiveSegmentLabel(ResourceLocation chainId, int segmentIndex, String shipped) {
+        if (chainId == null) return shipped == null ? "" : shipped;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.label() != null) return api.label();
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.label() != null) return user.label();
+        }
+        return shipped == null ? "" : shipped;
+    }
+
+    /** Read-only snapshot of user-layer appended-segments map. */
+    public static Map<String, List<NameSegment>> snapshotUserAppendedSegments() {
+        synchronized (LOCK) { return USER_SEGMENTS.snapshotAppended(); }
+    }
+
+    /**
+     * Effective segment count for {@code chainId}: shipped count plus any
+     * segments appended via user-config or API overrides (segments
+     * marked {@code removed} are NOT subtracted — the composer still
+     * needs to visit those indices to apply field overrides; it just
+     * skips the body).
+     */
+    public static int effectiveSegmentCount(ResourceLocation chainId, int shippedCount) {
+        if (chainId == null) return shippedCount;
+        synchronized (LOCK) {
+            return shippedCount + API_SEGMENTS.appendedCount(chainId) + USER_SEGMENTS.appendedCount(chainId);
+        }
+    }
+
+    /**
+     * Resolve the {@link NameSegment} record at {@code segmentIndex} in
+     * the effective segment list. For {@code 0 <= idx < shipped.size()}
+     * the shipped record is returned. Indices past the shipped count are
+     * looked up in the appended lists — user-config first, then API
+     * (matching the additive-only nature of appended segments).
+     * Returns {@code null} for out-of-range indices.
+     */
+    public static NameSegment effectiveSegmentAt(ResourceLocation chainId, int segmentIndex,
+                                                  List<NameSegment> shipped) {
+        if (chainId == null || segmentIndex < 0) return null;
+        if (segmentIndex < shipped.size()) return shipped.get(segmentIndex);
+        int rel = segmentIndex - shipped.size();
+        synchronized (LOCK) {
+            int userCount = USER_SEGMENTS.appendedCount(chainId);
+            if (rel < userCount) return USER_SEGMENTS.appendedAt(chainId, rel);
+            return API_SEGMENTS.appendedAt(chainId, rel - userCount);
+        }
+    }
+
+    /**
+     * Effective display/composer order for {@code chainId}. Returns a list
+     * of "original" segment indices that the composer should visit in
+     * sequence — the identity range {@code [0, totalCount)} when no
+     * reorder override is set, otherwise a permutation of that range from
+     * the highest-priority layer that carries one (API → user).
+     *
+     * <p>Length-mismatch fallback: if the stored order doesn't match
+     * {@code totalCount} (e.g. user appended a segment after saving a
+     * reorder), the identity range is returned to keep the composer
+     * sane. The UI handles append-after-reorder by editing the order
+     * array itself.
+     */
+    public static List<Integer> effectiveSegmentOrder(ResourceLocation chainId, int totalCount) {
+        if (chainId == null || totalCount <= 0) return identityRange(totalCount);
+        synchronized (LOCK) {
+            List<Integer> api = API_SEGMENTS.orderOf(chainId);
+            if (api != null && api.size() == totalCount) return List.copyOf(api);
+            List<Integer> user = USER_SEGMENTS.orderOf(chainId);
+            if (user != null && user.size() == totalCount) return List.copyOf(user);
+        }
+        return identityRange(totalCount);
+    }
+
+    private static List<Integer> identityRange(int n) {
+        if (n <= 0) return List.of();
+        Integer[] arr = new Integer[n];
+        for (int i = 0; i < n; i++) arr[i] = i;
+        return List.of(arr);
+    }
+
+    /** True when any layer has marked this segment as removed (composer will skip its body). */
+    public static boolean isSegmentRemoved(ResourceLocation chainId, int segmentIndex) {
+        if (chainId == null) return false;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && Boolean.TRUE.equals(api.removed())) return true;
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            return user != null && Boolean.TRUE.equals(user.removed());
+        }
     }
 
     /**

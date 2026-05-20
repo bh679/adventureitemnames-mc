@@ -22,9 +22,17 @@
 
   "screen.adventureitemnames.selectors.title": "Selectors",
   "screen.adventureitemnames.selectors.tier.none": "(none)",
+  "screen.adventureitemnames.selectors.add_custom": "+ Add custom selector",
+  "screen.adventureitemnames.selectors.add_custom.title": "Add custom selector",
+  "screen.adventureitemnames.selectors.tag_missing": "⚠ Tag not loaded — selector inactive until tag is available",
 
-  "screen.adventureitemnames.placeholder.chains": "Chains",
-  "screen.adventureitemnames.placeholder.chains.body": "Coming in v3. Edit per-segment chance, connection string, newline flag, and per-ref weights for every naming chain.",
+  "screen.adventureitemnames.chains.title": "Chains",
+  "screen.adventureitemnames.chain_editor.refs": "Refs",
+  "screen.adventureitemnames.ref_editor.add": "+ Add ref",
+  "screen.adventureitemnames.ref_editor.title": "%s #%d — refs",
+
+  "screen.adventureitemnames.tag_picker.title": "Pick item tag",
+  "screen.adventureitemnames.ref_picker.title": "Pick ref",
 
   "screen.adventureitemnames.action.open": "Open",
   "screen.adventureitemnames.action.save": "Save to pack",

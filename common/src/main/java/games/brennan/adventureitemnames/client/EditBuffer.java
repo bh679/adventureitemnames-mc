@@ -2,8 +2,11 @@ package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
+import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -48,6 +51,28 @@ public final class EditBuffer {
     /** selectorId → tier → Optional<chainId> (empty = (none) suppression). */
     private final Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> pendingSelectorTiers = new HashMap<>();
     private final Map<ResourceLocation, Boolean> pendingSelectorEnabled = new HashMap<>();
+
+    /** chainId#segIdx → SegmentEdit (each field nullable). */
+    private final Map<String, SegmentOverrides.SegmentEdit> pendingSegmentEdits = new LinkedHashMap<>();
+    /** chainId.toString() → ordered list of segments appended in this session. */
+    private final Map<String, List<NameSegment>> pendingAppendedSegments = new LinkedHashMap<>();
+    /**
+     * Segment keys whose entire {@code segment_overrides[key]} object should
+     * be deleted from the on-disk config (reset / revert). Processed BEFORE
+     * {@link #pendingSegmentEdits} so reset+edit in one session ends up with
+     * just the new edits.
+     */
+    private final Set<String> pendingSegmentResets = new LinkedHashSet<>();
+    /**
+     * chainId.toString() → user-modified display order (permutation of original indices).
+     * Populated lazily when the user first reorders a chain's segments —
+     * starts as the chain's current effective order.
+     */
+    private final Map<String, List<Integer>> pendingSegmentOrder = new LinkedHashMap<>();
+    /** New custom selectors added in this session. Insertion-ordered. */
+    private final Map<ResourceLocation, NameSelector> pendingCustomSelectors = new LinkedHashMap<>();
+    /** Custom-selector ids the user removed in this session. */
+    private final Set<ResourceLocation> pendingRemovedCustomSelectorIds = new LinkedHashSet<>();
 
     // ────────────────────────────────────────────────────────────
     // Weights (v1)
@@ -336,6 +361,238 @@ public final class EditBuffer {
     }
 
     // ────────────────────────────────────────────────────────────
+    // Per-segment field overrides (v3)
+    // ────────────────────────────────────────────────────────────
+
+    public void setSegmentChance(ResourceLocation chainId, int segIdx, Float chance) {
+        mutateSegment(chainId, segIdx, edit -> edit.withChance(chance));
+    }
+
+    public void setSegmentConnection(ResourceLocation chainId, int segIdx, String connection) {
+        mutateSegment(chainId, segIdx, edit -> edit.withConnection(connection));
+    }
+
+    public void setSegmentNewline(ResourceLocation chainId, int segIdx, Boolean newline) {
+        mutateSegment(chainId, segIdx, edit -> edit.withNewline(newline));
+    }
+
+    /** Pass {@code null} to clear the pending label edit; empty string is a legitimate label value. */
+    public void setSegmentLabel(ResourceLocation chainId, int segIdx, String label) {
+        mutateSegment(chainId, segIdx, edit -> edit.withLabel(label));
+    }
+
+    public String effectiveSegmentLabel(ResourceLocation chainId, int segIdx, String shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.label() != null) return pending.label();
+        return NamingConfig.effectiveSegmentLabel(chainId, segIdx, shipped);
+    }
+
+    /** Pass {@code null} to clear the refs override and fall through to the shipped list. */
+    public void setSegmentRefs(ResourceLocation chainId, int segIdx, List<NameSegment.WeightedRef> refs) {
+        mutateSegment(chainId, segIdx, edit -> edit.withRefs(refs == null ? null : List.copyOf(refs)));
+    }
+
+    /** Read the pending {@link SegmentOverrides.SegmentEdit} for this segment, or {@code null}. */
+    public SegmentOverrides.SegmentEdit pendingSegmentEdit(ResourceLocation chainId, int segIdx) {
+        return pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+    }
+
+    public boolean hasPendingSegmentEdit(ResourceLocation chainId, int segIdx) {
+        return pendingSegmentEdits.containsKey(SegmentOverrides.key(chainId, segIdx));
+    }
+
+    /** Effective chance for the UI: pending → user-layer → shipped. */
+    public float effectiveSegmentChance(ResourceLocation chainId, int segIdx, float shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.chance() != null) return clamp01(pending.chance());
+        return NamingConfig.effectiveSegmentChance(chainId, segIdx, shipped);
+    }
+
+    public String effectiveSegmentConnection(ResourceLocation chainId, int segIdx, String shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.connection() != null) return pending.connection();
+        return NamingConfig.effectiveSegmentConnection(chainId, segIdx, shipped);
+    }
+
+    public boolean effectiveSegmentNewline(ResourceLocation chainId, int segIdx, boolean shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.newline() != null) return pending.newline();
+        return NamingConfig.effectiveSegmentNewline(chainId, segIdx, shipped);
+    }
+
+    public List<NameSegment.WeightedRef> effectiveSegmentRefs(ResourceLocation chainId, int segIdx,
+                                                              List<NameSegment.WeightedRef> shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.refs() != null) return List.copyOf(pending.refs());
+        return NamingConfig.effectiveSegmentRefs(chainId, segIdx, shipped);
+    }
+
+    public Map<String, SegmentOverrides.SegmentEdit> snapshotSegmentEdits() {
+        return new LinkedHashMap<>(pendingSegmentEdits);
+    }
+
+    /**
+     * Mark a segment for removal so the composer skips it. Index applies
+     * to the effective segment range: {@code 0..(shippedCount + appendedCount - 1)}.
+     * Pass {@code false} to clear the flag.
+     */
+    public void setSegmentRemoved(ResourceLocation chainId, int segIdx, boolean removed) {
+        mutateSegment(chainId, segIdx, edit -> edit.withRemoved(removed ? Boolean.TRUE : null));
+    }
+
+    /**
+     * Append a brand-new segment to {@code chainId}. The new segment's
+     * effective index is {@code shippedCount + appendedCount(before)}.
+     * Returns the index assigned to the new segment within the appended
+     * list (zero-based).
+     */
+    public int appendSegment(ResourceLocation chainId, NameSegment seg) {
+        if (chainId == null || seg == null) return -1;
+        List<NameSegment> list = pendingAppendedSegments.computeIfAbsent(
+            chainId.toString(), k -> new ArrayList<>());
+        list.add(seg);
+        return list.size() - 1;
+    }
+
+    /**
+     * Remove an appended segment by its index in the appended list
+     * (zero-based within that list, NOT the effective chain index).
+     */
+    public void removeAppendedSegment(ResourceLocation chainId, int appendedIndex) {
+        if (chainId == null) return;
+        List<NameSegment> list = pendingAppendedSegments.get(chainId.toString());
+        if (list == null || appendedIndex < 0 || appendedIndex >= list.size()) return;
+        list.remove(appendedIndex);
+        if (list.isEmpty()) pendingAppendedSegments.remove(chainId.toString());
+    }
+
+    public List<NameSegment> pendingAppendedSegments(ResourceLocation chainId) {
+        if (chainId == null) return List.of();
+        List<NameSegment> list = pendingAppendedSegments.get(chainId.toString());
+        return list == null ? List.of() : List.copyOf(list);
+    }
+
+    /** True when this segment has been marked as removed in the pending buffer. */
+    public boolean isSegmentRemovedPending(ResourceLocation chainId, int segIdx) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        return pending != null && Boolean.TRUE.equals(pending.removed());
+    }
+
+    public Map<String, List<NameSegment>> snapshotAppendedSegments() {
+        Map<String, List<NameSegment>> out = new LinkedHashMap<>(pendingAppendedSegments.size());
+        for (var e : pendingAppendedSegments.entrySet()) out.put(e.getKey(), new ArrayList<>(e.getValue()));
+        return out;
+    }
+
+    /**
+     * Mark a segment for a full reset on save — the entire
+     * {@code segment_overrides[<chainId#segIdx>]} object will be removed
+     * from disk, reverting the segment to its shipped behaviour. Also
+     * drops any pending field edits for the same segment.
+     */
+    public void resetSegment(ResourceLocation chainId, int segIdx) {
+        if (chainId == null) return;
+        String key = SegmentOverrides.key(chainId, segIdx);
+        pendingSegmentEdits.remove(key);
+        pendingSegmentResets.add(key);
+    }
+
+    public Set<String> snapshotSegmentResets() {
+        return new LinkedHashSet<>(pendingSegmentResets);
+    }
+
+    /**
+     * Effective display order for the chain editor: pending → user-config
+     * → identity. {@code totalCount} is the chain's effective segment
+     * count including buffer-pending appends, so the returned list always
+     * has that exact size when consistent.
+     */
+    public List<Integer> effectiveSegmentOrder(ResourceLocation chainId, int totalCount) {
+        if (chainId == null || totalCount <= 0) return java.util.Collections.emptyList();
+        List<Integer> pending = pendingSegmentOrder.get(chainId.toString());
+        if (pending != null && pending.size() == totalCount) return List.copyOf(pending);
+        return NamingConfig.effectiveSegmentOrder(chainId, totalCount);
+    }
+
+    /**
+     * Move the segment currently shown at {@code displayPos} by
+     * {@code delta} positions (-1 = up, +1 = down). Initialises the
+     * pending order from the chain's current effective order on the
+     * first move. No-op when the move would push the segment out of
+     * range.
+     */
+    public void moveSegment(ResourceLocation chainId, int totalCount, int displayPos, int delta) {
+        if (chainId == null || totalCount <= 0) return;
+        int target = displayPos + delta;
+        if (displayPos < 0 || displayPos >= totalCount || target < 0 || target >= totalCount) return;
+        List<Integer> order = pendingSegmentOrder.get(chainId.toString());
+        if (order == null || order.size() != totalCount) {
+            order = new ArrayList<>(effectiveSegmentOrder(chainId, totalCount));
+            pendingSegmentOrder.put(chainId.toString(), order);
+        }
+        int tmp = order.get(displayPos);
+        order.set(displayPos, order.get(target));
+        order.set(target, tmp);
+    }
+
+    public Map<String, List<Integer>> snapshotSegmentOrder() {
+        Map<String, List<Integer>> out = new LinkedHashMap<>(pendingSegmentOrder.size());
+        for (var e : pendingSegmentOrder.entrySet()) out.put(e.getKey(), new ArrayList<>(e.getValue()));
+        return out;
+    }
+
+    private void mutateSegment(ResourceLocation chainId, int segIdx,
+                               java.util.function.Function<SegmentOverrides.SegmentEdit, SegmentOverrides.SegmentEdit> tx) {
+        if (chainId == null) return;
+        String key = SegmentOverrides.key(chainId, segIdx);
+        SegmentOverrides.SegmentEdit cur = pendingSegmentEdits.getOrDefault(key, SegmentOverrides.SegmentEdit.empty());
+        SegmentOverrides.SegmentEdit next = tx.apply(cur);
+        if (next == null || next.isNoOp()) {
+            pendingSegmentEdits.remove(key);
+        } else {
+            pendingSegmentEdits.put(key, next);
+        }
+    }
+
+    private static float clamp01(float v) {
+        if (v < 0f) return 0f;
+        if (v > 1f) return 1f;
+        return v;
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Custom selectors (v3)
+    // ────────────────────────────────────────────────────────────
+
+    public void addCustomSelector(NameSelector sel) {
+        if (sel == null) return;
+        pendingCustomSelectors.put(sel.id(), sel);
+        pendingRemovedCustomSelectorIds.remove(sel.id());
+    }
+
+    public void removeCustomSelector(ResourceLocation id) {
+        if (id == null) return;
+        pendingCustomSelectors.remove(id);
+        pendingRemovedCustomSelectorIds.add(id);
+    }
+
+    public Map<ResourceLocation, NameSelector> snapshotCustomSelectors() {
+        return new LinkedHashMap<>(pendingCustomSelectors);
+    }
+
+    public Set<ResourceLocation> snapshotRemovedCustomSelectorIds() {
+        return new LinkedHashSet<>(pendingRemovedCustomSelectorIds);
+    }
+
+    public boolean hasPendingCustomSelector(ResourceLocation id) {
+        return pendingCustomSelectors.containsKey(id);
+    }
+
+    public boolean hasPendingCustomSelectorRemoval(ResourceLocation id) {
+        return pendingRemovedCustomSelectorIds.contains(id);
+    }
+
+    // ────────────────────────────────────────────────────────────
     // Common
     // ────────────────────────────────────────────────────────────
 
@@ -346,7 +603,13 @@ public final class EditBuffer {
             || !pendingRemovedEntries.isEmpty()
             || !pendingChances.isEmpty()
             || !pendingSelectorTiers.isEmpty()
-            || !pendingSelectorEnabled.isEmpty();
+            || !pendingSelectorEnabled.isEmpty()
+            || !pendingSegmentEdits.isEmpty()
+            || !pendingSegmentResets.isEmpty()
+            || !pendingSegmentOrder.isEmpty()
+            || !pendingAppendedSegments.isEmpty()
+            || !pendingCustomSelectors.isEmpty()
+            || !pendingRemovedCustomSelectorIds.isEmpty();
     }
 
     public void clear() {
@@ -357,5 +620,11 @@ public final class EditBuffer {
         pendingChances.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
+        pendingSegmentEdits.clear();
+        pendingSegmentResets.clear();
+        pendingSegmentOrder.clear();
+        pendingAppendedSegments.clear();
+        pendingCustomSelectors.clear();
+        pendingRemovedCustomSelectorIds.clear();
     }
 }
