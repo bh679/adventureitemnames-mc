@@ -7,7 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Maps a resource-pack id (as reported by
@@ -128,6 +131,29 @@ public final class PackPaths {
     /** True when we can resolve the project root — required for any dev-mode write. */
     public static boolean projectRootAvailable() {
         return resolveProjectRoot() != null;
+    }
+
+    /**
+     * Canonical pack ids the {@code + New chain} popup offers as save
+     * targets — the base mod plus each themed built-in pack, listed in
+     * the order they should appear in the dropdown. Only includes the
+     * {@code mod/adventureitemnames[/<sub>]} form (not the Fabric
+     * {@code adventureitemnames:<sub>} alias) so the popup never offers
+     * two entries that point at the same on-disk directory.
+     */
+    public static Set<String> knownWritablePackIds() {
+        Set<String> out = new LinkedHashSet<>();
+        List<String> canonical = List.of(
+            "mod/adventureitemnames",
+            "mod/adventureitemnames/mc_names",
+            "mod/adventureitemnames/wholesome",
+            "mod/adventureitemnames/discord",
+            "mod/adventureitemnames/atla",
+            "mod/adventureitemnames/adventuretime");
+        for (String id : canonical) {
+            if (PACK_ID_TO_PATH.containsKey(id)) out.add(id);
+        }
+        return out;
     }
 
     /**

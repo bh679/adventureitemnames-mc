@@ -4,6 +4,7 @@ import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import games.brennan.adventureitemnames.internal.PackPaths;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
@@ -68,6 +70,18 @@ public final class ChainsListScreen extends Screen {
             Component.translatable("gui.back"),
             b -> onClose()
         ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
+
+        // + New chain — center button, dev-mode only.
+        Button newChainButton = Button.builder(
+            Component.translatable("screen.adventureitemnames.chains.new_chain"),
+            b -> Minecraft.getInstance().setScreen(new AddChainPopup(this, buffer))
+        ).bounds(width / 2 - 60, height - PreviewPanel.currentHeight() - 26, 120, 20).build();
+        if (!PackPaths.projectRootAvailable()) {
+            newChainButton.active = false;
+            newChainButton.setTooltip(Tooltip.create(
+                Component.translatable("screen.adventureitemnames.chains.new_chain.dev_only_tooltip")));
+        }
+        addRenderableWidget(newChainButton);
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
