@@ -43,9 +43,9 @@ public final class RefEditorScreen extends Screen {
 
     private final Screen parent;
     private final EditBuffer buffer;
-    private final NameChain chain;
+    private NameChain chain;
     private final int segIdx;
-    private final NameSegment shipped;
+    private NameSegment shipped;
     private final List<NameSegment.WeightedRef> liveRefs = new ArrayList<>();
 
     private RefList list;
@@ -64,8 +64,27 @@ public final class RefEditorScreen extends Screen {
         sortLiveRefs();
     }
 
+    /**
+     * Refresh the cached {@link #chain} / {@link #shipped} references from
+     * {@link NameRegistry} so a Save in this screen (or in a child screen
+     * we returned from) is reflected in subsequent reads. Without this,
+     * row entries built in {@link #init} would re-display the pre-save
+     * shipped refs / weights / label captured at constructor time.
+     */
+    private void refreshFromRegistry() {
+        var refreshed = NameRegistry.chain(chain.id());
+        if (refreshed.isEmpty()) return;
+        chain = refreshed.get();
+        List<NameSegment> segs = chain.segments();
+        if (segIdx >= 0 && segIdx < segs.size()) shipped = segs.get(segIdx);
+        liveRefs.clear();
+        liveRefs.addAll(buffer.effectiveSegmentRefs(chain.id(), segIdx, shipped.refs()));
+        sortLiveRefs();
+    }
+
     @Override
     protected void init() {
+        refreshFromRegistry();
         int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new RefList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
@@ -134,9 +153,9 @@ public final class RefEditorScreen extends Screen {
             .sorted(Comparator.comparing(ResourceLocation::toString))
             .forEach(rl -> entries.add(new RefPicker.Entry(rl, RefPicker.Kind.POOL)));
         activeRefPicker = new RefPicker(width, height, "Pick ref to add", entries, new RefPicker.Listener() {
-            @Override public void onPicked(ResourceLocation ref) {
+            @Override public void onPicked(java.util.Set<ResourceLocation> refs) {
                 activeRefPicker = null;
-                addRef(ref);
+                addRefs(refs);
             }
             @Override public void onCancelled() {
                 activeRefPicker = null;
@@ -144,8 +163,11 @@ public final class RefEditorScreen extends Screen {
         });
     }
 
-    private void addRef(ResourceLocation refId) {
-        liveRefs.add(new NameSegment.WeightedRef(refId, defaultWeightFor(refId)));
+    private void addRefs(java.util.Set<ResourceLocation> refIds) {
+        if (refIds == null || refIds.isEmpty()) return;
+        for (ResourceLocation refId : refIds) {
+            liveRefs.add(new NameSegment.WeightedRef(refId, defaultWeightFor(refId)));
+        }
         sortLiveRefs();
         persistRefList();
         if (list != null) list.rebuild();

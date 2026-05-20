@@ -42,7 +42,7 @@ public final class ChainEditorScreen extends Screen {
 
     private final Screen parent;
     private final EditBuffer buffer;
-    private final NameChain chain;
+    private NameChain chain;
     private SegmentList list;
     private PreviewPanel preview;
     private Button saveButton;
@@ -58,6 +58,13 @@ public final class ChainEditorScreen extends Screen {
 
     @Override
     protected void init() {
+        // Re-fetch the chain from the registry so that a Save in a child
+        // screen (which updates NameRegistry via putChainInMemory) is
+        // visible when control returns here via Back. Without this the
+        // SegEntry rows would read shipped.label() / refs() / chance from
+        // the pre-save snapshot captured at constructor time.
+        var refreshed = games.brennan.adventureitemnames.internal.NameRegistry.chain(chain.id());
+        if (refreshed.isPresent()) chain = refreshed.get();
         int listBottom = height - PreviewPanel.currentHeight() - 32;
         list = new SegmentList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, chain, this);
         addRenderableWidget(list);
@@ -267,7 +274,7 @@ public final class ChainEditorScreen extends Screen {
                 float curChance = host.buffer().effectiveSegmentChance(host.chain().id(), segIdx, shipped.chance());
                 String curConn = host.buffer().effectiveSegmentConnection(host.chain().id(), segIdx, shipped.connection());
                 boolean curNl = host.buffer().effectiveSegmentNewline(host.chain().id(), segIdx, shipped.newline());
-                String curLabel = host.buffer().effectiveSegmentLabel(host.chain().id(), segIdx);
+                String curLabel = host.buffer().effectiveSegmentLabel(host.chain().id(), segIdx, shipped.label());
 
                 this.labelBox = new EditBox(Minecraft.getInstance().font, 0, 0, 80, 18, Component.literal("label"));
                 this.labelBox.setMaxLength(40);

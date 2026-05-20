@@ -129,4 +129,20 @@ public final class PackPaths {
     public static boolean projectRootAvailable() {
         return resolveProjectRoot() != null;
     }
+
+    /**
+     * Reduce a pack id to its canonical form so that aliases referring to the
+     * same on-disk pack collapse to a single key. Loom's dev launcher
+     * synthesises a {@code generated_<hash>} pack id for the base mod every
+     * run, and Fabric also exposes the base mod's data under the literal
+     * {@code "fabric"} alias — both must collapse to {@code mod/adventureitemnames}
+     * or the {@link PerPackSplitter} writes the base chain file twice
+     * (with the second write clobbering the first via {@code replace: false}).
+     */
+    public static String canonicalize(String packId) {
+        if (packId == null) return null;
+        if (packId.startsWith("generated_")) return "mod/adventureitemnames";
+        if ("fabric".equals(packId)) return "mod/adventureitemnames";
+        return packId;
+    }
 }

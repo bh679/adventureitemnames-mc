@@ -113,6 +113,75 @@ public final class UserConfigWriter {
         }
     }
 
+    /**
+     * Strip every segment-related entry for {@code chains} from the
+     * on-disk user-config file: {@code segment_overrides[<chainId>#*]},
+     * {@code appended_segments[<chainId>]}, and {@code segment_order[<chainId>]}.
+     * Called after a successful dev-mode pack write so the user-config
+     * layer stops double-applying on top of the freshly baked-in pack
+     * files. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeChainSegmentData(Set<ResourceLocation> chains) {
+        if (chains == null || chains.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        boolean changed = false;
+
+        // segment_overrides — keyed by "<chainId>#<segIdx>"; drop entries whose
+        // chain id is in the wipe set.
+        JsonElement segEl = root.get("segment_overrides");
+        if (segEl != null && segEl.isJsonObject()) {
+            JsonObject obj = segEl.getAsJsonObject();
+            java.util.List<String> toRemove = new java.util.ArrayList<>();
+            for (var entry : obj.entrySet()) {
+                int hash = entry.getKey().indexOf('#');
+                if (hash <= 0) continue;
+                ResourceLocation chainId = ResourceLocation.tryParse(entry.getKey().substring(0, hash));
+                if (chainId != null && chains.contains(chainId)) toRemove.add(entry.getKey());
+            }
+            if (!toRemove.isEmpty()) {
+                for (String k : toRemove) obj.remove(k);
+                changed = true;
+                if (obj.size() == 0) root.remove("segment_overrides");
+            }
+        }
+
+        // appended_segments and segment_order are both keyed by chain id directly.
+        for (String key : new String[]{"appended_segments", "segment_order"}) {
+            JsonElement el = root.get(key);
+            if (el != null && el.isJsonObject()) {
+                JsonObject obj = el.getAsJsonObject();
+                boolean blockChanged = false;
+                for (ResourceLocation chain : chains) {
+                    if (obj.has(chain.toString())) {
+                        obj.remove(chain.toString());
+                        blockChanged = true;
+                    }
+                }
+                if (blockChanged) {
+                    changed = true;
+                    if (obj.size() == 0) root.remove(key);
+                }
+            }
+        }
+
+        if (!changed) return true;
+        try {
+            Path tmp = configDir.resolve(FILE_NAME + ".tmp");
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            Files.writeString(tmp, body, StandardCharsets.UTF_8);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            LOGGER.info("[AdventureItemNames] wiped user-config segment data for {} chain(s)", chains.size());
+            return true;
+        } catch (IOException ex) {
+            LOGGER.warn("[AdventureItemNames] failed to write {} during wipe: {}", file, ex.getMessage());
+            return false;
+        }
+    }
+
     private static JsonObject readRootOrEmpty(Path file) {
         if (!Files.exists(file)) return new JsonObject();
         try (InputStream in = Files.newInputStream(file)) {

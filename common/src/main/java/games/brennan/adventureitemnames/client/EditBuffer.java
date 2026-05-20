@@ -381,10 +381,10 @@ public final class EditBuffer {
         mutateSegment(chainId, segIdx, edit -> edit.withLabel(label));
     }
 
-    public String effectiveSegmentLabel(ResourceLocation chainId, int segIdx) {
+    public String effectiveSegmentLabel(ResourceLocation chainId, int segIdx, String shipped) {
         SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
         if (pending != null && pending.label() != null) return pending.label();
-        return NamingConfig.effectiveSegmentLabel(chainId, segIdx);
+        return NamingConfig.effectiveSegmentLabel(chainId, segIdx, shipped);
     }
 
     /** Pass {@code null} to clear the refs override and fall through to the shipped list. */

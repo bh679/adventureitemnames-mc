@@ -1,0 +1,73 @@
+{
+  "id": "adventureitemnames:mob_name",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.10047743,
+      "connection": " ",
+      "newline": false,
+      "label": "Title",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "First Name",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_characters",
+          "weight": 38.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        }
+      ]
+    },
+    {
+      "chance": 0.14849176,
+      "connection": " ",
+      "newline": false,
+      "label": "Last Name",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_characters",
+          "weight": 38.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_places",
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_titles",
+          "weight": 22.0
+        }
+      ]
+    },
+    {
+      "chance": 0.05292426,
+      "connection": ", ",
+      "newline": false,
+      "label": "Title",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_titles",
+          "weight": 22.0
+        }
+      ]
+    }
+  ]
+}

@@ -19,8 +19,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Centered modal popup that picks one ref {@link ResourceLocation} from
- * the merged chain + pool registry. Each row renders the human-readable
+ * Centered modal popup that picks one or more ref {@link ResourceLocation}s
+ * from the merged chain + pool registry. Each row renders the human-readable
  * ref name plus its source pack as a dim chip, mirroring the inline-tag
  * styling used on the Chains list and Ref editor screens.
  *
@@ -30,13 +30,16 @@ import java.util.Set;
  * toggles whether refs sourced from that pack are visible; all packs are
  * shown by default).
  *
- * <p>No {@code (none)} sentinel — a ref is mandatory.
+ * <p>Row click toggles selection; a footer {@code Add N} button commits
+ * every selected ref in one call. {@code Enter} also commits, {@code Esc}
+ * cancels.
  */
 @Environment(EnvType.CLIENT)
 public final class RefPicker {
 
     public interface Listener {
-        void onPicked(ResourceLocation ref);
+        /** Called when the user confirms a non-empty selection. */
+        void onPicked(Set<ResourceLocation> refs);
         void onCancelled();
     }
 
@@ -47,7 +50,7 @@ public final class RefPicker {
     private static final int PANEL_W      = 300;
     private static final int ROW_H        = 14;
     private static final int FILTER_ROW_H = 14;
-    private static final int FOOTER_PAD   = 6;
+    private static final int FOOTER_H     = 28;
     private static final int SIDE_PAD     = 6;
 
     /** Sentinel string used as the "no pack" key for context refs in the filter map. */
@@ -72,6 +75,8 @@ public final class RefPicker {
     private final Set<String> hiddenPacks = new LinkedHashSet<>();
     /** Per-pack chip bounds, recomputed on every render. Used for click hit-testing. */
     private final List<ChipRect> chipRects = new ArrayList<>();
+    /** Currently-selected refs. Persists across search / pack-filter changes. */
+    private final LinkedHashSet<ResourceLocation> selected = new LinkedHashSet<>();
 
     private record ChipRect(String packKey, int x1, int y1, int x2, int y2) {}
 
@@ -89,9 +94,9 @@ public final class RefPicker {
         this.headerH = 18 + 14 + 4 + chipLines * FILTER_ROW_H + 4;
 
         int maxPanelH = Math.max(140, screenH - 40);
-        int wantedH = headerH + Math.min(filtered.size(), 16) * ROW_H + FOOTER_PAD;
+        int wantedH = headerH + Math.min(filtered.size(), 16) * ROW_H + FOOTER_H;
         this.panelH = Math.min(maxPanelH, Math.max(180, wantedH));
-        this.visibleRows = Math.max(1, (panelH - headerH - FOOTER_PAD) / ROW_H);
+        this.visibleRows = Math.max(1, (panelH - headerH - FOOTER_H) / ROW_H);
         this.panelX = (screenW - PANEL_W) / 2;
         this.panelY = (screenH - panelH) / 2;
 
@@ -227,19 +232,28 @@ public final class RefPicker {
 
         // Refs list.
         int rowsStart = panelY + headerH;
+        int markerSlotW = font.width("✓") + 4;
         for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= filtered.size()) break;
             int rowY = rowsStart + i * ROW_H;
+            Entry e = filtered.get(idx);
+            boolean isSelected = selected.contains(e.id());
             boolean hover = mouseX >= panelX + SIDE_PAD
                 && mouseX < panelX + PANEL_W - SIDE_PAD - 4
                 && mouseY >= rowY && mouseY < rowY + ROW_H;
-            if (hover) {
-                gfx.fill(panelX + SIDE_PAD - 1, rowY, panelX + PANEL_W - SIDE_PAD + 1, rowY + ROW_H, 0x40FFFFFF);
+            int rowBg = 0;
+            if (isSelected) rowBg = hover ? 0x604080FF : 0x404080FF;
+            else if (hover) rowBg = 0x40FFFFFF;
+            if (rowBg != 0) {
+                gfx.fill(panelX + SIDE_PAD - 1, rowY, panelX + PANEL_W - SIDE_PAD + 1, rowY + ROW_H, rowBg);
             }
-            Entry e = filtered.get(idx);
+            int markerX = panelX + SIDE_PAD + 4;
+            if (isSelected) {
+                gfx.drawString(font, Component.literal("✓"), markerX, rowY + 3, 0xFF80FF80, false);
+            }
+            int nameX = markerX + markerSlotW;
             String name = formatRefName(e.id());
-            int nameX = panelX + SIDE_PAD + 4;
             int nameW = font.width(name);
             int nameColour = hover ? 0xFFFFFFFF : (e.kind() == Kind.CHAIN ? 0xFFCCD8FF : 0xFFD8FFCC);
             gfx.drawString(font, Component.literal(name), nameX, rowY + 3, nameColour, false);
@@ -267,6 +281,50 @@ public final class RefPicker {
             gfx.fill(barX, barTop, barX + 2, barBot, 0xFF303030);
             gfx.fill(barX, thumbY, barX + 2, thumbY + thumbH, 0xFFA0A0A0);
         }
+
+        // Footer: Cancel (left) + Add N (right).
+        int footerY = footerY1();
+        renderFooterButton(gfx, cancelButtonX1(), footerY, cancelButtonX2(), footerY2(),
+            "Cancel", true, mouseX, mouseY);
+        String addLabel = selected.isEmpty() ? "Add" : "Add " + selected.size();
+        renderFooterButton(gfx, addButtonX1(), footerY, addButtonX2(), footerY2(),
+            addLabel, !selected.isEmpty(), mouseX, mouseY);
+    }
+
+    private static void renderFooterButton(GuiGraphics gfx, int x1, int y1, int x2, int y2,
+                                           String label, boolean enabled, int mouseX, int mouseY) {
+        var font = Minecraft.getInstance().font;
+        boolean hover = enabled && mouseX >= x1 && mouseX < x2 && mouseY >= y1 && mouseY < y2;
+        int bg = !enabled ? 0xFF202020 : hover ? 0xFF505050 : 0xFF3A3A3A;
+        int fg = !enabled ? 0xFF606060 : 0xFFE8E8E8;
+        gfx.fill(x1, y1, x2, y2, bg);
+        gfx.fill(x1, y1 - 1, x2, y1, 0xFF707070);
+        gfx.fill(x1, y2, x2, y2 + 1, 0xFF707070);
+        gfx.fill(x1 - 1, y1, x1, y2, 0xFF707070);
+        gfx.fill(x2, y1, x2 + 1, y2, 0xFF707070);
+        int textW = font.width(label);
+        int textX = x1 + (x2 - x1 - textW) / 2;
+        int textY = y1 + (y2 - y1 - 9) / 2 + 1;
+        gfx.drawString(font, Component.literal(label), textX, textY, fg, false);
+    }
+
+    private int cancelButtonX1() { return panelX + SIDE_PAD; }
+    private int cancelButtonX2() { return panelX + SIDE_PAD + 60; }
+    private int addButtonX1()    { return panelX + PANEL_W - SIDE_PAD - 70; }
+    private int addButtonX2()    { return panelX + PANEL_W - SIDE_PAD; }
+    private int footerY1()       { return panelY + panelH - FOOTER_H + 4; }
+    private int footerY2()       { return panelY + panelH - 6; }
+
+    private boolean inCancelButton(double x, double y) {
+        return x >= cancelButtonX1() && x < cancelButtonX2() && y >= footerY1() && y < footerY2();
+    }
+    private boolean inAddButton(double x, double y) {
+        return x >= addButtonX1() && x < addButtonX2() && y >= footerY1() && y < footerY2();
+    }
+
+    private void commitSelection() {
+        if (selected.isEmpty()) return;
+        listener.onPicked(new LinkedHashSet<>(selected));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -285,7 +343,16 @@ public final class RefPicker {
                 return true;
             }
         }
-        // Row click → pick.
+        // Footer buttons take priority over rows.
+        if (inCancelButton(mouseX, mouseY)) {
+            listener.onCancelled();
+            return true;
+        }
+        if (inAddButton(mouseX, mouseY)) {
+            commitSelection();
+            return true;
+        }
+        // Row click → toggle selection.
         int rowsStart = panelY + headerH;
         for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
@@ -293,7 +360,8 @@ public final class RefPicker {
             int rowY = rowsStart + i * ROW_H;
             if (mouseX >= panelX + SIDE_PAD && mouseX < panelX + PANEL_W - SIDE_PAD
                 && mouseY >= rowY && mouseY < rowY + ROW_H) {
-                listener.onPicked(filtered.get(idx).id());
+                ResourceLocation id = filtered.get(idx).id();
+                if (!selected.add(id)) selected.remove(id);
                 return true;
             }
         }
@@ -313,6 +381,11 @@ public final class RefPicker {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256) {
             listener.onCancelled();
+            return true;
+        }
+        // Enter / numpad Enter → commit current selection.
+        if (keyCode == 257 || keyCode == 335) {
+            commitSelection();
             return true;
         }
         return searchBox.keyPressed(keyCode, scanCode, modifiers);

@@ -116,6 +116,33 @@ public final class NameRegistry {
         return Optional.ofNullable(CHAINS.get(id));
     }
 
+    /**
+     * Dev-mode overlay — chains the user has saved via the in-game editor
+     * this session. We keep them in a side map so they can be re-applied
+     * after every {@link #replaceChains} (which re-derives chains from the
+     * classpath / dev jar — those have stale base-mod data because Loom
+     * doesn't propagate {@code common/src/main/resources/} edits into the
+     * dev jar at runtime).
+     */
+    private static final Map<ResourceLocation, NameChain> CHAIN_OVERLAY = new LinkedHashMap<>();
+
+    /**
+     * Synchronously overwrite one chain in the in-memory registry and pin
+     * it as a session overlay so subsequent {@code /reload}-style refreshes
+     * don't revert it. Used by the dev-mode datapack editor so a saved
+     * chain stays visible across screens and server reloads.
+     */
+    public static synchronized void putChainInMemory(NameChain chain) {
+        if (chain == null) return;
+        CHAINS.put(chain.id(), chain);
+        CHAIN_OVERLAY.put(chain.id(), chain);
+    }
+
+    /** Drop a chain from the dev overlay (its next reload-derived form will stick). */
+    public static synchronized void clearChainOverlay(ResourceLocation id) {
+        CHAIN_OVERLAY.remove(id);
+    }
+
     /** Immutable view of every registered pool — keyed by id, insertion-order preserved. */
     public static synchronized Map<ResourceLocation, NamePool> allPools() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(POOLS));
@@ -228,11 +255,18 @@ public final class NameRegistry {
                                                    Map<ResourceLocation, List<String>> packLayers) {
         CHAINS.clear();
         CHAINS.putAll(next);
+        // Re-apply session overlay so saved in-game edits survive the reload.
+        // The dev jar/build classpath holds the pre-edit base mod data, so
+        // a vanilla reload would otherwise revert chains the user just saved.
+        for (Map.Entry<ResourceLocation, NameChain> e : CHAIN_OVERLAY.entrySet()) {
+            CHAINS.put(e.getKey(), e.getValue());
+        }
         CHAIN_PACKS.clear();
         CHAIN_PACKS.putAll(packs);
         CHAIN_PACK_LAYERS.clear();
         if (packLayers != null) CHAIN_PACK_LAYERS.putAll(packLayers);
-        LOGGER.info("[AdventureItemNames] chains reloaded — {}", CHAINS.size());
+        LOGGER.info("[AdventureItemNames] chains reloaded — {} ({} overlay)",
+            CHAINS.size(), CHAIN_OVERLAY.size());
     }
 
     private static synchronized void replaceSelectors(Map<ResourceLocation, NameSelector> next,
@@ -412,7 +446,8 @@ public final class NameRegistry {
                 List<NameSegment.WeightedRef> mergedRefs = new ArrayList<>(b.refs().size() + a.refs().size());
                 mergedRefs.addAll(b.refs());
                 mergedRefs.addAll(a.refs());
-                merged.add(new NameSegment(List.copyOf(mergedRefs), b.chance(), b.connection(), b.newline()));
+                // Label always carried from base — themed packs don't author labels.
+                merged.add(new NameSegment(List.copyOf(mergedRefs), b.chance(), b.connection(), b.newline(), b.label()));
             } else {
                 merged.add(b);
             }

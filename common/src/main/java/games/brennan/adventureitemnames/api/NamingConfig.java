@@ -596,12 +596,14 @@ public final class NamingConfig {
     }
 
     /**
-     * User's preferred display label for a segment. Returns an empty
-     * string when no override is set; the UI falls back to a synthetic
-     * {@code "Seg N"} when this is empty.
+     * Effective label for a segment with precedence API → user → shipped.
+     * Matches the other {@code effectiveSegment*} getters' signature — pass
+     * the shipped segment's {@link NameSegment#label} as the fallback.
+     * Returns an empty string when no layer carries a label; the UI then
+     * falls back to a synthetic {@code "Seg N"} placeholder.
      */
-    public static String effectiveSegmentLabel(ResourceLocation chainId, int segmentIndex) {
-        if (chainId == null) return "";
+    public static String effectiveSegmentLabel(ResourceLocation chainId, int segmentIndex, String shipped) {
+        if (chainId == null) return shipped == null ? "" : shipped;
         String key = SegmentOverrides.key(chainId, segmentIndex);
         synchronized (LOCK) {
             SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
@@ -609,7 +611,7 @@ public final class NamingConfig {
             SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
             if (user != null && user.label() != null) return user.label();
         }
-        return "";
+        return shipped == null ? "" : shipped;
     }
 
     /** Read-only snapshot of user-layer appended-segments map. */
