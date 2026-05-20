@@ -36,6 +36,9 @@ public final class ConfigSave {
             buffer.snapshotChances(),
             buffer.snapshotSelectorTiers(),
             buffer.snapshotSegmentEdits(),
+            buffer.snapshotSegmentResets(),
+            buffer.snapshotAppendedSegments(),
+            buffer.snapshotSegmentOrder(),
             buffer.snapshotCustomSelectors(),
             buffer.snapshotRemovedCustomSelectorIds());
         if (ok) {

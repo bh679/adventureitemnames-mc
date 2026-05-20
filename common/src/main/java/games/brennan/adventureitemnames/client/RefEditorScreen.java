@@ -54,13 +54,14 @@ public final class RefEditorScreen extends Screen {
     private RefPicker activeRefPicker;
 
     public RefEditorScreen(Screen parent, EditBuffer buffer, NameChain chain, int segIdx, NameSegment shipped) {
-        super(Component.literal(chain.id() + " #" + segIdx + " — refs"));
+        super(Component.literal(ChainsListScreen.formatChainName(chain.id()) + " · Seg " + segIdx + " refs"));
         this.parent = parent;
         this.buffer = buffer;
         this.chain = chain;
         this.segIdx = segIdx;
         this.shipped = shipped;
         this.liveRefs.addAll(buffer.effectiveSegmentRefs(chain.id(), segIdx, shipped.refs()));
+        sortLiveRefs();
     }
 
     @Override
@@ -113,11 +114,23 @@ public final class RefEditorScreen extends Screen {
     }
 
     private void openRefPicker() {
+        // Exclusions:
+        //   1. Refs already on THIS segment (avoids duplicates in the row
+        //      list; a ref can still appear on multiple segments of the
+        //      chain — different segments can re-use refs intentionally).
+        //   2. The chain being edited itself (self-reference would loop
+        //      in the composer).
+        java.util.Set<ResourceLocation> excluded = new java.util.HashSet<>();
+        excluded.add(chain.id());
+        for (NameSegment.WeightedRef r : liveRefs) excluded.add(r.ref());
+
         List<RefPicker.Entry> entries = new ArrayList<>();
         NameRegistry.allChains().keySet().stream()
+            .filter(rl -> !excluded.contains(rl))
             .sorted(Comparator.comparing(ResourceLocation::toString))
             .forEach(rl -> entries.add(new RefPicker.Entry(rl, RefPicker.Kind.CHAIN)));
         NameRegistry.allPools().keySet().stream()
+            .filter(rl -> !excluded.contains(rl))
             .sorted(Comparator.comparing(ResourceLocation::toString))
             .forEach(rl -> entries.add(new RefPicker.Entry(rl, RefPicker.Kind.POOL)));
         activeRefPicker = new RefPicker(width, height, "Pick ref to add", entries, new RefPicker.Listener() {
@@ -132,7 +145,8 @@ public final class RefEditorScreen extends Screen {
     }
 
     private void addRef(ResourceLocation refId) {
-        liveRefs.add(new NameSegment.WeightedRef(refId, 1.0f));
+        liveRefs.add(new NameSegment.WeightedRef(refId, defaultWeightFor(refId)));
+        sortLiveRefs();
         persistRefList();
         if (list != null) list.rebuild();
         rerollPreview();
@@ -143,9 +157,64 @@ public final class RefEditorScreen extends Screen {
         NameSegment.WeightedRef removed = liveRefs.remove(rowIdx);
         // Drop any pending weight override targeting that ref — the row is gone.
         buffer.clearWeight(chain.id(), segIdx, removed.ref());
+        sortLiveRefs();
         persistRefList();
         if (list != null) list.rebuild();
         rerollPreview();
+    }
+
+    /**
+     * Default weight for a newly-added ref: pool refs default to their
+     * entry count so each entry has roughly uniform 1/N odds across the
+     * whole segment. Chain and context refs default to {@code 1.0}.
+     */
+    private static float defaultWeightFor(ResourceLocation refId) {
+        if (refId.getPath().startsWith("context/")) return 1.0f;
+        var pool = NameRegistry.pool(refId);
+        if (pool.isPresent()) return Math.max(1, pool.get().entries().size());
+        return 1.0f;
+    }
+
+    /**
+     * Sort {@link #liveRefs} by pack → weight desc → entry-count desc →
+     * alphabetical name. Run after add / remove / initial load — not on
+     * every weight edit (that would yank the row out from under the
+     * user's cursor while typing).
+     */
+    private void sortLiveRefs() {
+        liveRefs.sort((a, b) -> {
+            int p = sortPackKey(a.ref()).compareTo(sortPackKey(b.ref()));
+            if (p != 0) return p;
+            int w = Float.compare(effectiveWeightFor(b), effectiveWeightFor(a));
+            if (w != 0) return w;
+            int e = Integer.compare(entryCountOf(b.ref()), entryCountOf(a.ref()));
+            if (e != 0) return e;
+            return ChainsListScreen.formatChainName(a.ref())
+                .compareToIgnoreCase(ChainsListScreen.formatChainName(b.ref()));
+        });
+    }
+
+    /** Sort key for the pack column: context first, then friendly pack name. Unresolved refs go last. */
+    private static String sortPackKey(ResourceLocation id) {
+        if (id.getPath().startsWith("context/")) return " ";
+        if (NameRegistry.chain(id).isPresent()) {
+            return PackGrouping.friendlyPackName(NameRegistry.packIdOfChain(id));
+        }
+        if (NameRegistry.pool(id).isPresent()) {
+            return PackGrouping.friendlyPackName(NameRegistry.packIdOfPool(id));
+        }
+        return "￿"; // unresolved
+    }
+
+    private float effectiveWeightFor(NameSegment.WeightedRef ref) {
+        Float pending = buffer.pendingWeight(chain.id(), segIdx, ref.ref());
+        if (pending != null) return Math.max(0f, pending);
+        return NamingConfig.effectiveWeight(chain.id(), segIdx, ref.ref(), ref.weight());
+    }
+
+    private static int entryCountOf(ResourceLocation id) {
+        if (id.getPath().startsWith("context/")) return 0;
+        return NameRegistry.pool(id).map(p -> p.entries().size()).orElse(0);
     }
 
     /**
@@ -238,6 +307,8 @@ public final class RefEditorScreen extends Screen {
             private final EditBox weightBox;
             private final Button deleteButton;
             private boolean suppressWeightResponder;
+            /** Last-rendered hit-box for the clickable name region (screen coords). */
+            private int nameClickX1, nameClickY1, nameClickX2, nameClickY2;
 
             RefRow(int idx, NameSegment.WeightedRef ref, RefEditorScreen host) {
                 this.idx = idx;
@@ -255,11 +326,11 @@ public final class RefEditorScreen extends Screen {
                     if (suppressWeightResponder) return;
                     Float parsed = tryParseWeight(text);
                     if (parsed == null) return;
-                    if (parsed == ref.weight()) {
-                        host.buffer().clearWeight(host.chain().id(), host.segIdx(), ref.ref());
-                    } else {
-                        host.buffer().setWeight(host.chain().id(), host.segIdx(), ref.ref(), parsed);
-                    }
+                    // Always store the weight — the previous "match shipped → clear"
+                    // shortcut silently dropped edits whenever the typed value
+                    // coincidentally matched the shipped weight. Use 🗑 to remove a
+                    // ref or the ↺ reset on the segment row to revert everything.
+                    host.buffer().setWeight(host.chain().id(), host.segIdx(), ref.ref(), parsed);
                     host.rerollPreview();
                 });
 
@@ -273,35 +344,156 @@ public final class RefEditorScreen extends Screen {
             @Override public List<? extends GuiEventListener> children() { return List.of(weightBox, deleteButton); }
 
             @Override
+            public boolean mouseClicked(double mouseX, double mouseY, int button) {
+                if (button == 0
+                    && mouseX >= nameClickX1 && mouseX < nameClickX2
+                    && mouseY >= nameClickY1 && mouseY < nameClickY2) {
+                    openDrilldown();
+                    return true;
+                }
+                return super.mouseClicked(mouseX, mouseY, button);
+            }
+
+            /** True when this ref resolves to a pool or chain — context refs are not drillable. */
+            private boolean isDrillable(ResourceLocation id) {
+                if (id.getPath().startsWith("context/")) return false;
+                return NameRegistry.pool(id).isPresent() || NameRegistry.chain(id).isPresent();
+            }
+
+            /** Open the appropriate drill-in screen for this ref (pool entries or chain editor). */
+            private void openDrilldown() {
+                ResourceLocation id = ref.ref();
+                var pool = NameRegistry.pool(id);
+                if (pool.isPresent()) {
+                    Minecraft.getInstance().setScreen(
+                        new PoolEntriesScreen(host, host.buffer(), pool.get()));
+                    return;
+                }
+                var chain = NameRegistry.chain(id);
+                if (chain.isPresent()) {
+                    Minecraft.getInstance().setScreen(
+                        new ChainEditorScreen(host, host.buffer(), chain.get()));
+                }
+            }
+
+            @Override
             public void render(GuiGraphics gfx, int rowIdx, int rowTop, int rowLeft,
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
-                int x = rowLeft + 4;
+                var font = Minecraft.getInstance().font;
                 int textY = rowTop + (rowHeight - 9) / 2;
                 int y = rowTop + (rowHeight - 18) / 2;
-
-                String idText = (NameRegistry.chain(ref.ref()).isPresent() ? "[c] " : "[p] ") + ref.ref();
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(idText), x, textY, 0xFFE0E0E0, false);
-
                 int rightX = rowLeft + rowWidth - 4;
 
-                // 🗑️ on the far right
+                // 🗑 on the far right
                 deleteButton.setX(rightX - 22);
                 deleteButton.setY(y);
-                deleteButton.render(gfx, mouseX, mouseY, partial);
 
                 // % share label
                 String shareText = formatShare(computeShare());
-                int shareW = Minecraft.getInstance().font.width(shareText);
+                int shareW = font.width(shareText);
                 int shareX = rightX - 22 - 6 - shareW;
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(shareText), shareX, textY, 0xFFB0B0B0, false);
 
                 // weight box
-                weightBox.setX(shareX - 6 - 50);
+                int weightX = shareX - 6 - 50;
+                weightBox.setX(weightX);
                 weightBox.setY(y);
+
+                // Entry / segment count (column between tags and weight box).
+                String countText = countLabelFor(ref.ref());
+                int countW = countText.isEmpty() ? 0 : font.width(countText);
+                int countX = weightX - 8 - countW;
+
+                // Name (left, bright, clickable for pools + chains) + pack tag(s) (dim).
+                int nameX = rowLeft + 4;
+                String name = formatRefName(ref.ref());
+                int nameW = font.width(name);
+                boolean clickable = isDrillable(ref.ref());
+                boolean nameHover = clickable
+                    && mouseX >= nameX && mouseX < nameX + nameW
+                    && mouseY >= textY - 2 && mouseY < textY + 11;
+                int nameColour = !clickable ? 0xFFE8E8E8
+                    : nameHover ? 0xFFFFFFFF : 0xFFCCD8FF;
+                gfx.drawString(font, Component.literal(name), nameX, textY, nameColour, false);
+                if (clickable) {
+                    int underlineY = textY + 9;
+                    gfx.fill(nameX, underlineY, nameX + nameW, underlineY + 1, nameColour);
+                }
+                nameClickX1 = clickable ? nameX : 0;
+                nameClickY1 = clickable ? textY - 2 : 0;
+                nameClickX2 = clickable ? nameX + nameW : 0;
+                nameClickY2 = clickable ? textY + 11 : 0;
+
+                int tagsX = nameX + nameW + 8;
+                int tagsMaxX = countX - 6;
+                int cursor = tagsX;
+                for (String tag : tagsFor(ref.ref())) {
+                    String chip = "[" + tag + "]";
+                    int avail = Math.max(0, tagsMaxX - cursor);
+                    if (avail <= 0) break;
+                    String trimmed = font.plainSubstrByWidth(chip, avail);
+                    gfx.drawString(font, Component.literal(trimmed), cursor, textY, 0xFF808080, false);
+                    cursor += font.width(trimmed) + 4;
+                }
+
+                if (!countText.isEmpty()) {
+                    gfx.drawString(font, Component.literal(countText), countX, textY, 0xFF909090, false);
+                }
+                gfx.drawString(font, Component.literal(shareText), shareX, textY, 0xFFB0B0B0, false);
                 weightBox.render(gfx, mouseX, mouseY, partial);
+                deleteButton.render(gfx, mouseX, mouseY, partial);
+            }
+
+            /**
+             * Right-aligned count column for a ref: pools show their entry
+             * count, chains show their segment count, context refs and
+             * unresolved refs render nothing (no fixed-size data behind them).
+             */
+            private static String countLabelFor(ResourceLocation id) {
+                if (id.getPath().startsWith("context/")) return "";
+                var pool = NameRegistry.pool(id);
+                if (pool.isPresent()) return pool.get().entries().size() + " entries";
+                var chain = NameRegistry.chain(id);
+                if (chain.isPresent()) return chain.get().segments().size() + " seg";
+                return "";
+            }
+
+            /**
+             * Human-readable name for a ref. Drops the namespace; replaces
+             * underscores with spaces; sentence-cases the leading word.
+             * Context refs (path starts with {@code context/}) drop the
+             * {@code context/} prefix too so {@code item_material} reads
+             * as "Item material".
+             */
+            private static String formatRefName(ResourceLocation id) {
+                String path = id.getPath();
+                if (path.startsWith("context/")) path = path.substring("context/".length());
+                String label = path.replace('_', ' ').replace("/", " / ");
+                if (label.isEmpty()) return id.toString();
+                return Character.toUpperCase(label.charAt(0)) + label.substring(1);
+            }
+
+            /**
+             * Tags to render next to a ref name: {@code [context]} for
+             * virtual refs, every contributing-pack label for chains, the
+             * source-pack label for pools. Empty list = no tags rendered.
+             */
+            private static List<String> tagsFor(ResourceLocation id) {
+                if (id.getPath().startsWith("context/")) return List.of("context");
+                if (NameRegistry.chain(id).isPresent()) {
+                    List<String> raw = NameRegistry.packsOfChain(id);
+                    if (raw.isEmpty()) return List.of();
+                    List<String> out = new java.util.ArrayList<>(raw.size());
+                    for (String p : raw) {
+                        String friendly = PackGrouping.friendlyPackName(p);
+                        if (out.isEmpty() || !out.get(out.size() - 1).equals(friendly)) out.add(friendly);
+                    }
+                    return out;
+                }
+                if (NameRegistry.pool(id).isPresent()) {
+                    return List.of(PackGrouping.friendlyPackName(NameRegistry.packIdOfPool(id)));
+                }
+                return List.of("unresolved");
             }
 
             private float computeShare() {

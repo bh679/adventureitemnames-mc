@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NameSegment;
+import games.brennan.adventureitemnames.api.NamingConfig;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -45,9 +46,11 @@ public final class ChainEditorScreen extends Screen {
     private SegmentList list;
     private PreviewPanel preview;
     private Button saveButton;
+    /** Active confirmation popup (e.g. before reset). {@code null} when no popup is open. */
+    private ConfirmDialog activeConfirm;
 
     public ChainEditorScreen(Screen parent, EditBuffer buffer, NameChain chain) {
-        super(Component.literal(chain.id().toString()));
+        super(Component.literal(ChainsListScreen.formatChainName(chain.id())));
         this.parent = parent;
         this.buffer = buffer;
         this.chain = chain;
@@ -64,6 +67,11 @@ public final class ChainEditorScreen extends Screen {
             b -> onClose()
         ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
+        addRenderableWidget(Button.builder(
+            Component.literal("+ Add segment"),
+            b -> appendNewSegment()
+        ).bounds(width / 2 - 60, height - PreviewPanel.currentHeight() - 26, 120, 20).build());
+
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
@@ -77,8 +85,54 @@ public final class ChainEditorScreen extends Screen {
         addRenderableWidget(preview.toggleButton());
     }
 
+    private void appendNewSegment() {
+        NameSegment fresh = new NameSegment(new java.util.ArrayList<>(), 1.0f, " ", false);
+        buffer.appendSegment(chain.id(), fresh);
+        rebuildWidgets();
+        rerollPreview();
+    }
+
+    void removeSegment(int effectiveIdx) {
+        buffer.setSegmentRemoved(chain.id(), effectiveIdx, true);
+        rebuildWidgets();
+        rerollPreview();
+    }
+
+    void moveSegment(int displayPos, int delta) {
+        int total = NamingConfig.effectiveSegmentCount(chain.id(), chain.segments().size())
+            + buffer.pendingAppendedSegments(chain.id()).size();
+        buffer.moveSegment(chain.id(), total, displayPos, delta);
+        rebuildWidgets();
+        rerollPreview();
+    }
+
+    /**
+     * Open a confirmation popup for the row's reset button. Reset removes
+     * the segment's saved overrides on next save (chance / connection /
+     * newline / refs / removed flag all drop). Destructive enough that
+     * accidental clicks should be guarded.
+     */
+    void openResetConfirm(int segIdx, Runnable onConfirm) {
+        activeConfirm = new ConfirmDialog(width, height,
+            "Reset Seg " + segIdx + "?",
+            "This will clear every saved override on this segment "
+                + "(chance, connection, newline, refs, removed flag). "
+                + "The segment falls back to its shipped behaviour. "
+                + "Pending edits for this segment are also discarded. Save to commit.",
+            "Reset",
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() { activeConfirm = null; onConfirm.run(); }
+                @Override public void onCancel()  { activeConfirm = null; }
+            });
+    }
+
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
         if (saveButton != null) saveButton.active = buffer.isDirty();
@@ -94,12 +148,14 @@ public final class ChainEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -136,8 +192,42 @@ public final class ChainEditorScreen extends Screen {
 
         SegmentList(Minecraft mc, int width, int height, int top, NameChain chain, ChainEditorScreen host) {
             super(mc, width, height, top, ENTRY_H);
-            List<NameSegment> segs = chain.segments();
-            for (int i = 0; i < segs.size(); i++) addEntry(new SegEntry(i, segs.get(i), host));
+            List<NameSegment> shipped = chain.segments();
+            int shippedCount = shipped.size();
+            int total = NamingConfig.effectiveSegmentCount(chain.id(), shippedCount)
+                + host.buffer().pendingAppendedSegments(chain.id()).size();
+            // Walk the user's effective display order (buffer pending → user-config → identity).
+            List<Integer> order = host.buffer().effectiveSegmentOrder(chain.id(), total);
+            int displayPos = 0;
+            for (int origIdx : order) {
+                if (host.buffer().isSegmentRemovedPending(chain.id(), origIdx)) { displayPos++; continue; }
+                NameSegment base = origIdx < shippedCount
+                    ? shipped.get(origIdx)
+                    : segmentAtEffective(host, chain, origIdx, shippedCount);
+                if (base == null) { displayPos++; continue; }
+                addEntry(new SegEntry(origIdx, displayPos, total, base, host));
+                displayPos++;
+            }
+        }
+
+        /**
+         * Resolve an appended segment by effective index, layering buffer
+         * pending → user-config → API. Mirrors the composer's view but
+         * inclues the unsaved buffer so brand-new segments appear in the UI.
+         */
+        private static NameSegment segmentAtEffective(ChainEditorScreen host, NameChain chain, int effIdx, int shippedCount) {
+            int rel = effIdx - shippedCount;
+            // First: anything appended in this session via the buffer.
+            // The buffer's list is the FULL pending list — it doesn't overlay
+            // saved appendeds, it sits after them. So saved appendeds come
+            // first, buffer appendeds come last.
+            var userAppended = NamingConfig.snapshotUserAppendedSegments()
+                .getOrDefault(chain.id().toString(), List.of());
+            if (rel < userAppended.size()) return userAppended.get(rel);
+            int relAfterUser = rel - userAppended.size();
+            var bufferAppended = host.buffer().pendingAppendedSegments(chain.id());
+            if (relAfterUser < bufferAppended.size()) return bufferAppended.get(relAfterUser);
+            return null;
         }
 
         @Override public int getRowWidth() { return width - 16; }
@@ -146,6 +236,9 @@ public final class ChainEditorScreen extends Screen {
         static final class SegEntry extends ContainerObjectSelectionList.Entry<SegEntry> {
 
             private final int segIdx;
+            /** 0-based position in the display order — also the index passed to moveSegment. */
+            private final int displayPos;
+            private final int totalCount;
             private final NameSegment shipped;
             private final ChainEditorScreen host;
 
@@ -155,22 +248,43 @@ public final class ChainEditorScreen extends Screen {
             private final EditBox connectionBox;
             private final Checkbox newlineBox;
             private final Button refsButton;
+            private final Button deleteButton;
+            private final Button upButton;
+            private final Button downButton;
+            private final EditBox labelBox;
 
             private boolean suppressChanceResponder;
             private boolean suppressConnectionResponder;
+            private boolean suppressLabelResponder;
 
-            SegEntry(int segIdx, NameSegment shipped, ChainEditorScreen host) {
+            SegEntry(int segIdx, int displayPos, int totalCount, NameSegment shipped, ChainEditorScreen host) {
                 this.segIdx = segIdx;
+                this.displayPos = displayPos;
+                this.totalCount = totalCount;
                 this.shipped = shipped;
                 this.host = host;
 
                 float curChance = host.buffer().effectiveSegmentChance(host.chain().id(), segIdx, shipped.chance());
                 String curConn = host.buffer().effectiveSegmentConnection(host.chain().id(), segIdx, shipped.connection());
                 boolean curNl = host.buffer().effectiveSegmentNewline(host.chain().id(), segIdx, shipped.newline());
+                String curLabel = host.buffer().effectiveSegmentLabel(host.chain().id(), segIdx);
+
+                this.labelBox = new EditBox(Minecraft.getInstance().font, 0, 0, 80, 18, Component.literal("label"));
+                this.labelBox.setMaxLength(40);
+                this.labelBox.setHint(Component.literal("Seg " + segIdx));
+                this.labelBox.setValue(curLabel);
+                this.labelBox.setResponder(text -> {
+                    if (suppressLabelResponder) return;
+                    host.buffer().setSegmentLabel(host.chain().id(), segIdx, text == null ? "" : text);
+                });
 
                 this.slider = new ChanceSlider(0, 0, 80, 18, curChance, v -> {
-                    host.buffer().setSegmentChance(host.chain().id(), segIdx,
-                        v == shipped.chance() ? null : v);
+                    // Always store the user's value, even when it matches shipped — the
+                    // reset (↺) button is the explicit way to clear an override. The
+                    // previous "match shipped → null" shortcut silently dropped edits
+                    // whenever a user happened to land on the shipped value (common for
+                    // segments with non-1.0 shipped chances like 0.05 / 0.5).
+                    host.buffer().setSegmentChance(host.chain().id(), segIdx, v);
                     setChanceBox(formatChance(v));
                     host.rerollPreview();
                 });
@@ -182,29 +296,25 @@ public final class ChainEditorScreen extends Screen {
                     if (suppressChanceResponder) return;
                     Float parsed = tryParseChance(text);
                     if (parsed == null) return;
-                    host.buffer().setSegmentChance(host.chain().id(), segIdx,
-                        parsed == shipped.chance() ? null : parsed);
+                    host.buffer().setSegmentChance(host.chain().id(), segIdx, parsed);
                     slider.setSliderValue(parsed);
                     host.rerollPreview();
                 });
 
                 this.resetButton = Button.builder(
                     Component.translatable("screen.adventureitemnames.action.reset"),
-                    b -> resetRow()
+                    b -> host.openResetConfirm(segIdx, this::resetRow)
                 ).bounds(0, 0, 18, 18).build();
+                this.resetButton.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                    Component.literal("Reset this segment's chance / connection / newline overrides")));
 
                 this.connectionBox = new EditBox(Minecraft.getInstance().font, 0, 0, 70, 18, Component.literal("conn"));
                 this.connectionBox.setMaxLength(40);
                 this.connectionBox.setValue(curConn);
                 this.connectionBox.setResponder(text -> {
                     if (suppressConnectionResponder) return;
-                    String shippedConn = shipped.connection();
                     String value = text == null ? "" : text;
-                    if (value.equals(shippedConn)) {
-                        host.buffer().setSegmentConnection(host.chain().id(), segIdx, null);
-                    } else {
-                        host.buffer().setSegmentConnection(host.chain().id(), segIdx, value);
-                    }
+                    host.buffer().setSegmentConnection(host.chain().id(), segIdx, value);
                     host.rerollPreview();
                 });
 
@@ -212,8 +322,7 @@ public final class ChainEditorScreen extends Screen {
                     .pos(0, 0)
                     .selected(curNl)
                     .onValueChange((c, v) -> {
-                        host.buffer().setSegmentNewline(host.chain().id(), segIdx,
-                            v == shipped.newline() ? null : v);
+                        host.buffer().setSegmentNewline(host.chain().id(), segIdx, v);
                         host.rerollPreview();
                     })
                     .build();
@@ -222,17 +331,41 @@ public final class ChainEditorScreen extends Screen {
                     Component.literal("Refs"),
                     b -> Minecraft.getInstance().setScreen(new RefEditorScreen(host, host.buffer(), host.chain(), segIdx, shipped))
                 ).bounds(0, 0, 44, 18).build();
+
+                this.deleteButton = Button.builder(
+                    Component.literal("🗑"),
+                    b -> host.removeSegment(segIdx)
+                ).bounds(0, 0, 22, 18).build();
+
+                this.upButton = Button.builder(
+                    Component.literal("▲"),
+                    b -> host.moveSegment(displayPos, -1)
+                ).bounds(0, 0, 16, 18).build();
+                this.upButton.active = displayPos > 0;
+
+                this.downButton = Button.builder(
+                    Component.literal("▼"),
+                    b -> host.moveSegment(displayPos, +1)
+                ).bounds(0, 0, 16, 18).build();
+                this.downButton.active = displayPos < totalCount - 1;
             }
 
             private void resetRow() {
-                host.buffer().setSegmentChance(host.chain().id(), segIdx, null);
-                host.buffer().setSegmentConnection(host.chain().id(), segIdx, null);
-                host.buffer().setSegmentNewline(host.chain().id(), segIdx, null);
+                // Full reset: drop the entire segment_overrides[chain#segIdx]
+                // entry on save so the segment falls back to shipped behaviour.
+                // Also clears any pending field edits for this segment.
+                host.buffer().resetSegment(host.chain().id(), segIdx);
                 slider.setSliderValue(shipped.chance());
                 setChanceBox(formatChance(shipped.chance()));
                 setConnectionBox(shipped.connection());
+                setLabelBox("");
                 if (newlineBox.selected() != shipped.newline()) newlineBox.onPress();
                 host.rerollPreview();
+            }
+
+            private void setLabelBox(String text) {
+                suppressLabelResponder = true;
+                try { labelBox.setValue(text); } finally { suppressLabelResponder = false; }
             }
 
             private void setChanceBox(String text) {
@@ -247,12 +380,12 @@ public final class ChainEditorScreen extends Screen {
 
             @Override
             public List<? extends NarratableEntry> narratables() {
-                return List.of(slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
-                return List.of(slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
             }
 
             @Override
@@ -263,20 +396,34 @@ public final class ChainEditorScreen extends Screen {
                 int y = rowTop + (rowHeight - 18) / 2;
                 int textY = rowTop + (rowHeight - 9) / 2;
 
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal("#" + segIdx), x, textY, 0xFFE0E0E0, false);
-                x += 22;
+                // ▲ / ▼ reorder buttons (stack the up/down for compactness).
+                upButton.setX(x); upButton.setY(y - 5);
+                upButton.setWidth(16);
+                upButton.setHeight(11);
+                upButton.render(gfx, mouseX, mouseY, partial);
+                downButton.setX(x); downButton.setY(y + 6);
+                downButton.setWidth(16);
+                downButton.setHeight(11);
+                downButton.render(gfx, mouseX, mouseY, partial);
+                x += 20;
+
+                // Editable label box (placeholder "Seg N" when empty).
+                setW(labelBox, 80); labelBox.setX(x); labelBox.setY(y); labelBox.render(gfx, mouseX, mouseY, partial);
+                x += 84;
 
                 setW(slider, 80); slider.setX(x); slider.setY(y); slider.render(gfx, mouseX, mouseY, partial); x += 84;
                 setW(chanceBox, 40); chanceBox.setX(x); chanceBox.setY(y); chanceBox.render(gfx, mouseX, mouseY, partial); x += 44;
                 setW(resetButton, 18); resetButton.setX(x); resetButton.setY(y); resetButton.render(gfx, mouseX, mouseY, partial); x += 22;
 
-                int connAvail = Math.max(40, rowLeft + rowWidth - x - 4 - 18 - 4 - 44 - 6);
+                int trailingWidgets = 18 + 4 + 44 + 4 + 22; // newlineBox + refsButton + deleteButton + spacing
+                int connAvail = Math.max(40, rowLeft + rowWidth - x - 4 - trailingWidgets);
                 setW(connectionBox, connAvail); connectionBox.setX(x); connectionBox.setY(y); connectionBox.render(gfx, mouseX, mouseY, partial); x += connAvail + 4;
 
                 newlineBox.setX(x); newlineBox.setY(y); newlineBox.render(gfx, mouseX, mouseY, partial); x += 18 + 4;
 
-                refsButton.setX(x); refsButton.setY(y); refsButton.render(gfx, mouseX, mouseY, partial);
+                refsButton.setX(x); refsButton.setY(y); refsButton.render(gfx, mouseX, mouseY, partial); x += 44 + 4;
+
+                deleteButton.setX(x); deleteButton.setY(y); deleteButton.render(gfx, mouseX, mouseY, partial);
             }
 
             private static void setW(AbstractWidget w, int newWidth) {

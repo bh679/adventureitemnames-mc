@@ -272,24 +272,29 @@ public final class NameComposer {
             return "";
         }
         StringBuilder out = new StringBuilder();
-        int segIdx = 0;
-        for (NameSegment seg : maybeChain.get().segments()) {
+        List<NameSegment> shippedSegments = maybeChain.get().segments();
+        int totalSegments = NamingConfig.effectiveSegmentCount(chainId, shippedSegments.size());
+        List<Integer> order = NamingConfig.effectiveSegmentOrder(chainId, totalSegments);
+        for (int segIdx : order) {
+            if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
+            NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
+            if (seg == null) continue;
+
             float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
-            if (chance < 1f && rng.nextFloat() >= chance) { segIdx++; continue; }
+            if (chance < 1f && rng.nextFloat() >= chance) continue;
 
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
             NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
-            if (picked == null) { segIdx++; continue; }
+            if (picked == null) continue;
 
             String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
-            if (fragment == null || fragment.isEmpty()) { segIdx++; continue; }
+            if (fragment == null || fragment.isEmpty()) continue;
 
             if (out.length() > 0) {
                 out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
                 if (NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) out.append('\n');
             }
             out.append(fragment);
-            segIdx++;
         }
         return out.toString();
     }

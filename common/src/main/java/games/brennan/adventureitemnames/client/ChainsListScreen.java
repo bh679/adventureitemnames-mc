@@ -1,6 +1,7 @@
 package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.NameChain;
+import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
@@ -22,12 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * v3 — top-level Chains screen. One row per registered
- * {@link NameChain}, sorted with first-party {@code adventureitemnames:*}
- * chains first and datapack chains after (alphabetical within each group).
- * Each row exposes: chain id, pack id, segment count, enable/disable
- * checkbox, and an Open button that descends into
- * {@link ChainEditorScreen}.
+ * v3 — top-level Chains screen. Flat list of every registered
+ * {@link NameChain} sorted alphabetically by path, with each row tagged
+ * by <em>every</em> pack that contributed a layer to the merged chain
+ * (low-priority first). Multiple tags reflect the additive-merge
+ * behaviour from the chain reload listener — {@code "replace": false}
+ * layers append refs, and each row surfaces the full provenance.
  *
  * <p>Reuses v1/v2's {@link EditBuffer} for pending edits and the gated
  * {@link PreviewPanel} for live preview. {@code Save to pack} flushes
@@ -37,7 +38,9 @@ import java.util.Map;
 public final class ChainsListScreen extends Screen {
 
     private static final int LIST_TOP = 32;
-    private static final int ENTRY_H = 22;
+    /** Row height fits two stacked text lines: chain name on top, pack tags wrapping below. */
+    private static final int ENTRY_H = 30;
+    private static final int LINE_H = 11;
     private static final int ROW_PAD = 4;
     private static final int CHECKBOX_SIZE = 18;
     private static final int OPEN_W = 50;
@@ -115,19 +118,27 @@ public final class ChainsListScreen extends Screen {
 
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
-    /** First-party chains first, then datapack chains, both alphabetical. */
+    /** Every registered chain, sorted alphabetically by path then namespace. */
     private static List<NameChain> orderedChains() {
         Map<ResourceLocation, NameChain> all = NameRegistry.allChains();
-        List<NameChain> first = new ArrayList<>();
-        List<NameChain> rest = new ArrayList<>();
-        for (Map.Entry<ResourceLocation, NameChain> e : all.entrySet()) {
-            if ("adventureitemnames".equals(e.getKey().getNamespace())) first.add(e.getValue());
-            else rest.add(e.getValue());
-        }
-        first.sort(Comparator.comparing(c -> c.id().toString()));
-        rest.sort(Comparator.comparing(c -> c.id().toString()));
-        first.addAll(rest);
-        return first;
+        List<NameChain> out = new ArrayList<>(all.values());
+        out.sort(Comparator
+            .comparing((NameChain c) -> c.id().getPath())
+            .thenComparing(c -> c.id().getNamespace()));
+        return out;
+    }
+
+    /**
+     * Human-readable chain name — drops the namespace and converts the
+     * {@code snake_case} path to "Sentence case", so
+     * {@code adventureitemnames:weapon_name_full} becomes
+     * "Weapon name full". The namespace is conveyed by the pack tag
+     * rendered next to the name.
+     */
+    static String formatChainName(ResourceLocation id) {
+        String path = id.getPath().replace('_', ' ');
+        if (path.isEmpty()) return id.toString();
+        return Character.toUpperCase(path.charAt(0)) + path.substring(1);
     }
 
     static final class ChainList extends ContainerObjectSelectionList<ChainList.RowEntry> {
@@ -157,8 +168,7 @@ public final class ChainsListScreen extends Screen {
                     .pos(0, 0)
                     .selected(enabledNow)
                     .onValueChange((c, v) -> {
-                        // No EditBuffer slot for chain enable yet — for v3 this row is read-only display.
-                        // Reset the checkbox so the visual state matches truth.
+                        // No EditBuffer slot for chain enable yet — display only.
                         c.onPress(); // toggle back
                     })
                     .build();
@@ -177,34 +187,131 @@ public final class ChainsListScreen extends Screen {
             public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
-                int x = rowLeft + ROW_PAD;
-                int y = rowTop + (rowHeight - 9) / 2;
+                var font = Minecraft.getInstance().font;
+                int rightX = rowLeft + rowWidth - ROW_PAD;
+                int verticalCenter = rowTop + rowHeight / 2;
 
-                String packId = NameRegistry.packIdOfChain(chain.id());
-                int packW = Math.min(110, Minecraft.getInstance().font.width(packId));
-                int idAvail = rowWidth - ROW_PAD * 2 - OPEN_W - CHECKBOX_SIZE - packW - 60;
-                String idText = chain.id().toString();
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(idText), x, y, 0xFFE8E8E8, false);
-                x += idAvail;
+                openButton.setX(rightX - OPEN_W);
+                openButton.setY(verticalCenter - 9);
 
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(packId), x, y, 0xFF909090, false);
-                x += packW + 8;
+                enabledBox.setX(rightX - OPEN_W - 6 - CHECKBOX_SIZE);
+                enabledBox.setY(verticalCenter - CHECKBOX_SIZE / 2);
 
-                String segCount = chain.segments().size() + " seg";
-                gfx.drawString(Minecraft.getInstance().font,
-                    Component.literal(segCount), x, y, 0xFFC0C0C0, false);
-                x += 40;
+                String segCount = effectiveSegmentCount(chain) + " seg";
+                int segCountW = font.width(segCount);
+                int segCountX = enabledBox.getX() - 6 - segCountW;
+                int segCountY = verticalCenter - 4;
 
-                enabledBox.setX(x);
-                enabledBox.setY(rowTop + (rowHeight - CHECKBOX_SIZE) / 2);
+                // Chain name on the top line, pack tags flowing inline after
+                // it and wrapping to subsequent lines if the row runs out of
+                // horizontal space.
+                String chainName = formatChainName(chain.id());
+                int nameX = rowLeft + ROW_PAD + 4;
+                int nameY = rowTop + 4;
+                int nameW = font.width(chainName);
+                gfx.drawString(font, Component.literal(chainName), nameX, nameY, 0xFFE8E8E8, false);
+
+                List<String> packLabels = packLabelsFor(chain);
+                int leftEdge = nameX;
+                int rightEdge = segCountX - 6;
+                int firstLineStart = nameX + nameW + 8;
+                drawInlineWrappedTags(gfx, font, packLabels,
+                    firstLineStart, nameY, leftEdge, rightEdge, /* maxLines = */ 2);
+
+                gfx.drawString(font, Component.literal(segCount), segCountX, segCountY, 0xFFA0A0A0, false);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
-                x += CHECKBOX_SIZE + 6;
-
-                openButton.setX(rowLeft + rowWidth - OPEN_W - ROW_PAD);
-                openButton.setY(rowTop + (rowHeight - 18) / 2);
                 openButton.render(gfx, mouseX, mouseY, partial);
+            }
+
+            /**
+             * Render {@code labels} as bracketed dim tags starting at
+             * {@code (firstX, firstY)} and flowing right. When a chip
+             * doesn't fit before {@code rightEdge}, wrap to a new line
+             * aligned to {@code leftEdge}. After {@code maxLines} total
+             * lines have been used, any remaining labels collapse into a
+             * {@code +N more} indicator.
+             */
+            private static void drawInlineWrappedTags(GuiGraphics gfx, net.minecraft.client.gui.Font font,
+                                                      List<String> labels, int firstX, int firstY,
+                                                      int leftEdge, int rightEdge, int maxLines) {
+                if (labels.isEmpty() || rightEdge <= leftEdge) return;
+                int line = 1;
+                int x = firstX;
+                int y = firstY;
+                int spacing = 4;
+                for (int i = 0; i < labels.size(); i++) {
+                    String chip = "[" + labels.get(i) + "]";
+                    int chipW = font.width(chip);
+                    if (x + chipW > rightEdge) {
+                        if (line >= maxLines) {
+                            int remaining = labels.size() - i;
+                            String overflow = "+" + remaining + " more";
+                            int ow = font.width(overflow);
+                            int overflowX = Math.min(x, rightEdge - ow);
+                            gfx.drawString(font, Component.literal(overflow),
+                                overflowX, y, 0xFF707070, false);
+                            return;
+                        }
+                        line++;
+                        x = leftEdge;
+                        y += LINE_H;
+                    }
+                    gfx.drawString(font, Component.literal(chip), x, y, 0xFF808080, false);
+                    x += chipW + spacing;
+                }
+            }
+
+            /**
+             * Every pack involved in this chain — both ones that shipped a
+             * layer file <em>and</em> ones whose pools / chains are
+             * referenced by the merged effective refs (so user-config
+             * additions surface their source packs as tags even though
+             * they didn't ship a chain layer). De-duplicated by friendly
+             * name; stable insertion order: contributors first, then refs.
+             */
+            private static List<String> packLabelsFor(NameChain chain) {
+                java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+                for (String packId : NameRegistry.packsOfChain(chain.id())) {
+                    String friendly = PackGrouping.friendlyPackName(packId);
+                    seen.add(friendly);
+                }
+                for (int segIdx = 0; segIdx < chain.segments().size(); segIdx++) {
+                    NameSegment seg = chain.segments().get(segIdx);
+                    List<NameSegment.WeightedRef> effective =
+                        NamingConfig.effectiveSegmentRefs(chain.id(), segIdx, seg.refs());
+                    for (NameSegment.WeightedRef ref : effective) {
+                        String packId = sourcePackOfRef(ref.ref());
+                        if (packId == null) continue;
+                        seen.add(PackGrouping.friendlyPackName(packId));
+                    }
+                }
+                return new ArrayList<>(seen);
+            }
+
+            /**
+             * Visible segment count for the row: shipped + appended − removed.
+             * Mirrors the composer's effective range so the displayed count
+             * matches what the user sees in the per-chain editor.
+             */
+            private static int effectiveSegmentCount(NameChain chain) {
+                int total = NamingConfig.effectiveSegmentCount(chain.id(), chain.segments().size());
+                int removed = 0;
+                for (int i = 0; i < total; i++) {
+                    if (NamingConfig.isSegmentRemoved(chain.id(), i)) removed++;
+                }
+                return total - removed;
+            }
+
+            /**
+             * Resolve a ref to its source pack id: pools and chains use
+             * their {@code packIdOf*} side tables; context refs return
+             * {@code null} (no pack — they're virtual).
+             */
+            private static String sourcePackOfRef(ResourceLocation refId) {
+                if (refId.getPath().startsWith("context/")) return null;
+                if (NameRegistry.chain(refId).isPresent()) return NameRegistry.packIdOfChain(refId);
+                if (NameRegistry.pool(refId).isPresent()) return NameRegistry.packIdOfPool(refId);
+                return null;
             }
         }
     }

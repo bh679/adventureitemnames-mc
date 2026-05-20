@@ -73,6 +73,14 @@ public final class NameRegistry {
      */
     private static final Map<ResourceLocation, String> POOL_PACKS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, String> CHAIN_PACKS = new LinkedHashMap<>();
+    /**
+     * Per-chain ordered list of every pack id that contributed a layer
+     * (low-priority first → high-priority last, matching the resource
+     * stack order). Used by the UI to tag a chain with every pack that
+     * shaped it, not just the winning source. Duplicate-adjacent ids
+     * are coalesced.
+     */
+    private static final Map<ResourceLocation, List<String>> CHAIN_PACK_LAYERS = new LinkedHashMap<>();
     private static final Map<ResourceLocation, String> SELECTOR_PACKS = new LinkedHashMap<>();
 
     /** Returned by the {@code packIdOf*} lookups when the resource manager couldn't pin a source. */
@@ -127,6 +135,22 @@ public final class NameRegistry {
 
     public static synchronized String packIdOfChain(ResourceLocation id) {
         return CHAIN_PACKS.getOrDefault(id, UNKNOWN_PACK);
+    }
+
+    /**
+     * Every pack id that contributed a layer to {@code id}'s merged
+     * chain, low-priority first. Includes every pack — both ones that
+     * shipped the base layer and ones that appended via {@code "replace": false}.
+     * Returns a single-element list with the winning pack when only one
+     * pack contributed, or an empty list when the chain isn't registered.
+     */
+    public static synchronized List<String> packsOfChain(ResourceLocation id) {
+        List<String> layers = CHAIN_PACK_LAYERS.get(id);
+        if (layers == null) {
+            String single = CHAIN_PACKS.get(id);
+            return single == null ? List.of() : List.of(single);
+        }
+        return List.copyOf(layers);
     }
 
     public static synchronized String packIdOfSelector(ResourceLocation id) {
@@ -200,11 +224,14 @@ public final class NameRegistry {
     }
 
     private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next,
-                                                   Map<ResourceLocation, String> packs) {
+                                                   Map<ResourceLocation, String> packs,
+                                                   Map<ResourceLocation, List<String>> packLayers) {
         CHAINS.clear();
         CHAINS.putAll(next);
         CHAIN_PACKS.clear();
         CHAIN_PACKS.putAll(packs);
+        CHAIN_PACK_LAYERS.clear();
+        if (packLayers != null) CHAIN_PACK_LAYERS.putAll(packLayers);
         LOGGER.info("[AdventureItemNames] chains reloaded — {}", CHAINS.size());
     }
 
@@ -310,14 +337,26 @@ public final class NameRegistry {
         protected void apply(ChainPrepResult prep, ResourceManager mgr, ProfilerFiller profiler) {
             Map<ResourceLocation, NameChain> out = new LinkedHashMap<>();
             Map<ResourceLocation, String> packs = new LinkedHashMap<>();
+            Map<ResourceLocation, List<String>> packLayers = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, List<ChainLayer>> e : prep.layersById().entrySet()) {
                 ResourceLocation chainId = e.getKey();
                 List<ChainLayer> layers = e.getValue();
                 NameChain merged = mergeLayers(layers);
                 out.put(chainId, merged);
                 packs.put(chainId, layers.get(layers.size() - 1).packId());
+                // Distinct, order-preserving pack ids — `"replace": true` resets
+                // the visible-contributors list so a hard override doesn't keep
+                // tagging the chain with packs whose data was discarded.
+                List<String> contributors = new ArrayList<>(layers.size());
+                for (ChainLayer layer : layers) {
+                    if (layer.chain().replace()) contributors.clear();
+                    if (contributors.isEmpty() || !contributors.get(contributors.size() - 1).equals(layer.packId())) {
+                        contributors.add(layer.packId());
+                    }
+                }
+                packLayers.put(chainId, contributors);
             }
-            replaceChains(out, packs);
+            replaceChains(out, packs, packLayers);
         }
     }
 

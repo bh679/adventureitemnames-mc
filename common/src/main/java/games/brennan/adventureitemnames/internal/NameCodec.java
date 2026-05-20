@@ -1,8 +1,10 @@
 package games.brennan.adventureitemnames.internal;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
@@ -117,6 +119,39 @@ public final class NameCodec {
             segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline));
         }
         return new NameChain(id, List.copyOf(segments), replace);
+    }
+
+    /**
+     * Serialize {@code chain} back to a {@link JsonObject} suitable for
+     * writing to a pack's {@code naming/chains/<path>.json} file.
+     * Inverse of {@link #parseChain(JsonElement, ResourceLocation)}.
+     * {@code replace} controls whether the resulting file overrides
+     * lower-priority layers ({@code true}) or appends to them
+     * ({@code false} — used for themed packs that contribute additional
+     * refs to a chain owned by another pack).
+     */
+    public static JsonObject writeChain(NameChain chain, boolean replace) {
+        JsonObject root = new JsonObject();
+        root.add("id", new JsonPrimitive(chain.id().toString()));
+        root.add("replace", new JsonPrimitive(replace));
+        JsonArray segs = new JsonArray();
+        for (NameSegment seg : chain.segments()) {
+            JsonObject sObj = new JsonObject();
+            sObj.add("chance", new JsonPrimitive(seg.chance()));
+            if (seg.connection() != null) sObj.add("connection", new JsonPrimitive(seg.connection()));
+            sObj.add("newline", new JsonPrimitive(seg.newline()));
+            JsonArray refsArr = new JsonArray();
+            for (NameSegment.WeightedRef r : seg.refs()) {
+                JsonObject rObj = new JsonObject();
+                rObj.add("ref", new JsonPrimitive(r.ref().toString()));
+                rObj.add("weight", new JsonPrimitive(r.weight()));
+                refsArr.add(rObj);
+            }
+            sObj.add("refs", refsArr);
+            segs.add(sObj);
+        }
+        root.add("segments", segs);
+        return root;
     }
 
     public static NameSelector parseSelector(InputStream in, ResourceLocation fallbackId) throws NameParseException {

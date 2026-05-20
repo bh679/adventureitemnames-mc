@@ -596,6 +596,105 @@ public final class NamingConfig {
     }
 
     /**
+     * User's preferred display label for a segment. Returns an empty
+     * string when no override is set; the UI falls back to a synthetic
+     * {@code "Seg N"} when this is empty.
+     */
+    public static String effectiveSegmentLabel(ResourceLocation chainId, int segmentIndex) {
+        if (chainId == null) return "";
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.label() != null) return api.label();
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.label() != null) return user.label();
+        }
+        return "";
+    }
+
+    /** Read-only snapshot of user-layer appended-segments map. */
+    public static Map<String, List<NameSegment>> snapshotUserAppendedSegments() {
+        synchronized (LOCK) { return USER_SEGMENTS.snapshotAppended(); }
+    }
+
+    /**
+     * Effective segment count for {@code chainId}: shipped count plus any
+     * segments appended via user-config or API overrides (segments
+     * marked {@code removed} are NOT subtracted — the composer still
+     * needs to visit those indices to apply field overrides; it just
+     * skips the body).
+     */
+    public static int effectiveSegmentCount(ResourceLocation chainId, int shippedCount) {
+        if (chainId == null) return shippedCount;
+        synchronized (LOCK) {
+            return shippedCount + API_SEGMENTS.appendedCount(chainId) + USER_SEGMENTS.appendedCount(chainId);
+        }
+    }
+
+    /**
+     * Resolve the {@link NameSegment} record at {@code segmentIndex} in
+     * the effective segment list. For {@code 0 <= idx < shipped.size()}
+     * the shipped record is returned. Indices past the shipped count are
+     * looked up in the appended lists — user-config first, then API
+     * (matching the additive-only nature of appended segments).
+     * Returns {@code null} for out-of-range indices.
+     */
+    public static NameSegment effectiveSegmentAt(ResourceLocation chainId, int segmentIndex,
+                                                  List<NameSegment> shipped) {
+        if (chainId == null || segmentIndex < 0) return null;
+        if (segmentIndex < shipped.size()) return shipped.get(segmentIndex);
+        int rel = segmentIndex - shipped.size();
+        synchronized (LOCK) {
+            int userCount = USER_SEGMENTS.appendedCount(chainId);
+            if (rel < userCount) return USER_SEGMENTS.appendedAt(chainId, rel);
+            return API_SEGMENTS.appendedAt(chainId, rel - userCount);
+        }
+    }
+
+    /**
+     * Effective display/composer order for {@code chainId}. Returns a list
+     * of "original" segment indices that the composer should visit in
+     * sequence — the identity range {@code [0, totalCount)} when no
+     * reorder override is set, otherwise a permutation of that range from
+     * the highest-priority layer that carries one (API → user).
+     *
+     * <p>Length-mismatch fallback: if the stored order doesn't match
+     * {@code totalCount} (e.g. user appended a segment after saving a
+     * reorder), the identity range is returned to keep the composer
+     * sane. The UI handles append-after-reorder by editing the order
+     * array itself.
+     */
+    public static List<Integer> effectiveSegmentOrder(ResourceLocation chainId, int totalCount) {
+        if (chainId == null || totalCount <= 0) return identityRange(totalCount);
+        synchronized (LOCK) {
+            List<Integer> api = API_SEGMENTS.orderOf(chainId);
+            if (api != null && api.size() == totalCount) return List.copyOf(api);
+            List<Integer> user = USER_SEGMENTS.orderOf(chainId);
+            if (user != null && user.size() == totalCount) return List.copyOf(user);
+        }
+        return identityRange(totalCount);
+    }
+
+    private static List<Integer> identityRange(int n) {
+        if (n <= 0) return List.of();
+        Integer[] arr = new Integer[n];
+        for (int i = 0; i < n; i++) arr[i] = i;
+        return List.of(arr);
+    }
+
+    /** True when any layer has marked this segment as removed (composer will skip its body). */
+    public static boolean isSegmentRemoved(ResourceLocation chainId, int segmentIndex) {
+        if (chainId == null) return false;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && Boolean.TRUE.equals(api.removed())) return true;
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            return user != null && Boolean.TRUE.equals(user.removed());
+        }
+    }
+
+    /**
      * True when any layer carries an explicit override (including
      * {@code (none)}) for this selector's tier. Used by the composer to
      * decide whether to honour a {@code (none)} suppression vs fall back

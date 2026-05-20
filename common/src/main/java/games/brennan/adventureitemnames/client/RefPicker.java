@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -9,15 +10,25 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Centered modal popup that picks one ref {@link ResourceLocation} from
- * the merged chain + pool registry. Mirrors {@link ChainPicker} +
- * {@link TagPicker} — the host screen forwards events while a search
- * EditBox at the top filters by id text. Each row's text is annotated
- * with {@code [chain]} or {@code [pool]} so the kind is unambiguous.
+ * the merged chain + pool registry. Each row renders the human-readable
+ * ref name plus its source pack as a dim chip, mirroring the inline-tag
+ * styling used on the Chains list and Ref editor screens.
+ *
+ * <p>Two filters narrow the visible list: a search box at the top
+ * (matches the ref's <em>name</em> only — namespaces and pack ids are
+ * never searched), and a row of clickable pack chips below it (any chip
+ * toggles whether refs sourced from that pack are visible; all packs are
+ * shown by default).
  *
  * <p>No {@code (none)} sentinel — a ref is mandatory.
  */
@@ -33,11 +44,14 @@ public final class RefPicker {
 
     public record Entry(ResourceLocation id, Kind kind) {}
 
-    private static final int PANEL_W   = 220;
-    private static final int ROW_H     = 14;
-    private static final int HEADER_H  = 36;
-    private static final int FOOTER_PAD = 6;
-    private static final int SIDE_PAD  = 6;
+    private static final int PANEL_W      = 300;
+    private static final int ROW_H        = 14;
+    private static final int FILTER_ROW_H = 14;
+    private static final int FOOTER_PAD   = 6;
+    private static final int SIDE_PAD     = 6;
+
+    /** Sentinel string used as the "no pack" key for context refs in the filter map. */
+    private static final String CONTEXT_KEY = "__context__";
 
     private final Listener listener;
     private final List<Entry> all;
@@ -48,9 +62,18 @@ public final class RefPicker {
     private final int panelX;
     private final int panelY;
     private final int panelH;
+    private final int headerH;
     private final int visibleRows;
     private int scrollOffset = 0;
     private final EditBox searchBox;
+    /** Pack id → friendly name, in stable display order. */
+    private final Map<String, String> packsInList = new LinkedHashMap<>();
+    /** Packs the user has toggled OFF (visible = not in this set). */
+    private final Set<String> hiddenPacks = new LinkedHashSet<>();
+    /** Per-pack chip bounds, recomputed on every render. Used for click hit-testing. */
+    private final List<ChipRect> chipRects = new ArrayList<>();
+
+    private record ChipRect(String packKey, int x1, int y1, int x2, int y2) {}
 
     public RefPicker(int screenW, int screenH, String title, List<Entry> entries, Listener listener) {
         this.screenW = screenW;
@@ -59,36 +82,106 @@ public final class RefPicker {
         this.all = List.copyOf(entries);
         this.filtered.addAll(this.all);
         this.listener = listener;
+        collectPacks();
 
-        int maxPanelH = Math.max(120, screenH - 40);
-        int wantedH = HEADER_H + Math.min(filtered.size(), 18) * ROW_H + FOOTER_PAD;
-        this.panelH = Math.min(maxPanelH, Math.max(160, wantedH));
-        this.visibleRows = Math.max(1, (panelH - HEADER_H - FOOTER_PAD) / ROW_H);
+        // Header: title + search + (1-or-2 wrapped rows of pack chips).
+        int chipLines = estimateChipLines(PANEL_W - SIDE_PAD * 2);
+        this.headerH = 18 + 14 + 4 + chipLines * FILTER_ROW_H + 4;
+
+        int maxPanelH = Math.max(140, screenH - 40);
+        int wantedH = headerH + Math.min(filtered.size(), 16) * ROW_H + FOOTER_PAD;
+        this.panelH = Math.min(maxPanelH, Math.max(180, wantedH));
+        this.visibleRows = Math.max(1, (panelH - headerH - FOOTER_PAD) / ROW_H);
         this.panelX = (screenW - PANEL_W) / 2;
         this.panelY = (screenH - panelH) / 2;
 
         this.searchBox = new EditBox(Minecraft.getInstance().font,
             panelX + SIDE_PAD, panelY + 18, PANEL_W - SIDE_PAD * 2, 14, Component.literal("search"));
-        this.searchBox.setHint(Component.literal("filter…"));
+        this.searchBox.setHint(Component.literal("filter by name…"));
         this.searchBox.setMaxLength(80);
         this.searchBox.setResponder(this::onSearchChanged);
         this.searchBox.setFocused(true);
     }
 
+    /**
+     * Build the ordered pack list seen across entries. Context refs
+     * collapse into one synthetic "Context" chip; named packs use the
+     * same friendly names as the rest of the GUI.
+     */
+    private void collectPacks() {
+        LinkedHashMap<String, String> distinct = new LinkedHashMap<>();
+        for (Entry e : all) {
+            String key = packKeyOf(e.id(), e.kind());
+            if (distinct.containsKey(key)) continue;
+            distinct.put(key, friendlyNameOf(key));
+        }
+        // Sort by friendly name for a stable, readable chip order.
+        distinct.entrySet().stream()
+            .sorted(Comparator.comparing(Map.Entry::getValue))
+            .forEach(en -> packsInList.put(en.getKey(), en.getValue()));
+    }
+
+    private static String packKeyOf(ResourceLocation id, Kind kind) {
+        if (id.getPath().startsWith("context/")) return CONTEXT_KEY;
+        return kind == Kind.CHAIN ? NameRegistry.packIdOfChain(id) : NameRegistry.packIdOfPool(id);
+    }
+
+    private static String friendlyNameOf(String packKey) {
+        if (CONTEXT_KEY.equals(packKey)) return "Context";
+        return PackGrouping.friendlyPackName(packKey);
+    }
+
+    /** Rough estimate of chip line count for header sizing. Recomputed precisely at render time. */
+    private int estimateChipLines(int availWidth) {
+        var font = Minecraft.getInstance().font;
+        int cursor = 0;
+        int lines = 1;
+        int spacing = 4;
+        for (String label : packsInList.values()) {
+            int w = font.width(label) + 8;
+            if (cursor + w > availWidth) { lines++; cursor = 0; }
+            cursor += w + spacing;
+        }
+        return Math.min(lines, 3);
+    }
+
+    /**
+     * Human-readable ref name — drops the namespace, replaces underscores
+     * with spaces, drops the {@code context/} prefix on virtual refs, and
+     * sentence-cases the leading word.
+     */
+    static String formatRefName(ResourceLocation id) {
+        String path = id.getPath();
+        if (path.startsWith("context/")) path = path.substring("context/".length());
+        String label = path.replace('_', ' ').replace("/", " / ");
+        if (label.isEmpty()) return id.toString();
+        return Character.toUpperCase(label.charAt(0)) + label.substring(1);
+    }
+
     private void onSearchChanged(String text) {
         scrollOffset = 0;
+        rebuildFiltered(text);
+    }
+
+    private void rebuildFiltered(String searchText) {
         filtered.clear();
-        if (text == null || text.isBlank()) {
-            filtered.addAll(all);
-            return;
-        }
-        String needle = text.toLowerCase(Locale.ROOT);
+        String needle = searchText == null ? "" : searchText.toLowerCase(Locale.ROOT).trim();
         for (Entry e : all) {
-            if (e.id().toString().toLowerCase(Locale.ROOT).contains(needle)) filtered.add(e);
+            String packKey = packKeyOf(e.id(), e.kind());
+            if (hiddenPacks.contains(packKey)) continue;
+            if (!needle.isEmpty()) {
+                String name = formatRefName(e.id()).toLowerCase(Locale.ROOT);
+                if (!name.contains(needle)) continue;
+            }
+            filtered.add(e);
+        }
+        if (scrollOffset > Math.max(0, filtered.size() - visibleRows)) {
+            scrollOffset = Math.max(0, filtered.size() - visibleRows);
         }
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+        var font = Minecraft.getInstance().font;
         gfx.fill(0, 0, screenW, screenH, 0xA0000000);
         gfx.fill(panelX, panelY, panelX + PANEL_W, panelY + panelH, 0xFF1A1A1A);
         gfx.fill(panelX - 1, panelY - 1, panelX + PANEL_W + 1, panelY,             0xFF707070);
@@ -96,28 +189,69 @@ public final class RefPicker {
         gfx.fill(panelX - 1, panelY, panelX, panelY + panelH,                       0xFF707070);
         gfx.fill(panelX + PANEL_W, panelY, panelX + PANEL_W + 1, panelY + panelH,   0xFF707070);
 
-        gfx.drawCenteredString(Minecraft.getInstance().font,
+        gfx.drawCenteredString(font,
             Component.literal(title), panelX + PANEL_W / 2, panelY + 5, 0xFFFFFFFF);
 
         searchBox.render(gfx, mouseX, mouseY, 0f);
 
-        int rowsStart = panelY + HEADER_H;
+        // Pack-filter chip row(s) below the search box.
+        chipRects.clear();
+        int chipsX = panelX + SIDE_PAD;
+        int chipsY = panelY + 18 + 14 + 4;
+        int chipsRightEdge = panelX + PANEL_W - SIDE_PAD;
+        int cursor = chipsX;
+        int line = 0;
+        int spacing = 4;
+        for (var entry : packsInList.entrySet()) {
+            String key = entry.getKey();
+            String label = entry.getValue();
+            int chipPad = 4;
+            int chipW = font.width(label) + chipPad * 2;
+            if (cursor + chipW > chipsRightEdge) {
+                line++;
+                cursor = chipsX;
+            }
+            int chipY = chipsY + line * FILTER_ROW_H;
+            int chipX2 = cursor + chipW;
+            int chipY2 = chipY + 12;
+            boolean active = !hiddenPacks.contains(key);
+            int bg = active ? 0xFF3A3A3A : 0xFF202020;
+            int fg = active ? 0xFFE8E8E8 : 0xFF606060;
+            boolean hover = mouseX >= cursor && mouseX < chipX2 && mouseY >= chipY && mouseY < chipY2;
+            if (hover) bg = active ? 0xFF505050 : 0xFF2A2A2A;
+            gfx.fill(cursor, chipY, chipX2, chipY2, bg);
+            gfx.drawString(font, Component.literal(label), cursor + chipPad, chipY + 2, fg, false);
+            chipRects.add(new ChipRect(key, cursor, chipY, chipX2, chipY2));
+            cursor = chipX2 + spacing;
+        }
+
+        // Refs list.
+        int rowsStart = panelY + headerH;
         for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= filtered.size()) break;
             int rowY = rowsStart + i * ROW_H;
             boolean hover = mouseX >= panelX + SIDE_PAD
-                && mouseX < panelX + PANEL_W - SIDE_PAD
+                && mouseX < panelX + PANEL_W - SIDE_PAD - 4
                 && mouseY >= rowY && mouseY < rowY + ROW_H;
             if (hover) {
                 gfx.fill(panelX + SIDE_PAD - 1, rowY, panelX + PANEL_W - SIDE_PAD + 1, rowY + ROW_H, 0x40FFFFFF);
             }
             Entry e = filtered.get(idx);
-            String label = (e.kind() == Kind.CHAIN ? "[chain] " : "[pool] ") + e.id();
-            int colour = e.kind() == Kind.CHAIN ? 0xFFCCD8FF : 0xFFD8FFCC;
-            gfx.drawString(Minecraft.getInstance().font,
-                Component.literal(label),
-                panelX + SIDE_PAD + 4, rowY + 3, hover ? 0xFFFFFFFF : colour, false);
+            String name = formatRefName(e.id());
+            int nameX = panelX + SIDE_PAD + 4;
+            int nameW = font.width(name);
+            int nameColour = hover ? 0xFFFFFFFF : (e.kind() == Kind.CHAIN ? 0xFFCCD8FF : 0xFFD8FFCC);
+            gfx.drawString(font, Component.literal(name), nameX, rowY + 3, nameColour, false);
+
+            String packKey = packKeyOf(e.id(), e.kind());
+            String packTag = "[" + packsInList.getOrDefault(packKey, friendlyNameOf(packKey)) + "]";
+            int tagX = nameX + nameW + 6;
+            int tagAvail = (panelX + PANEL_W - SIDE_PAD - 4) - tagX;
+            if (tagAvail > 0) {
+                String trimmed = font.plainSubstrByWidth(packTag, tagAvail);
+                gfx.drawString(font, Component.literal(trimmed), tagX, rowY + 3, 0xFF808080, false);
+            }
         }
 
         if (filtered.size() > visibleRows) {
@@ -142,7 +276,17 @@ public final class RefPicker {
             listener.onCancelled();
             return true;
         }
-        int rowsStart = panelY + HEADER_H;
+        // Pack chip click toggles hidden state.
+        for (ChipRect chip : chipRects) {
+            if (mouseX >= chip.x1() && mouseX < chip.x2()
+                && mouseY >= chip.y1() && mouseY < chip.y2()) {
+                if (!hiddenPacks.add(chip.packKey())) hiddenPacks.remove(chip.packKey());
+                rebuildFiltered(searchBox.getValue());
+                return true;
+            }
+        }
+        // Row click → pick.
+        int rowsStart = panelY + headerH;
         for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= filtered.size()) break;
