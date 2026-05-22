@@ -1,0 +1,34 @@
+{
+  "id": "adventureitemnames:the_something",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "the ",
+      "newline": false,
+      "label": "THE something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:title_prefix",
+          "weight": 99.0
+        },
+        {
+          "ref": "adventureitemnames:mob_titles",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:animals",
+          "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:math",
+          "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}

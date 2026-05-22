@@ -1,0 +1,18 @@
+{
+  "id": "adventureitemnames:the_something",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "the ",
+      "newline": false,
+      "label": "THE something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        }
+      ]
+    }
+  ]
+}

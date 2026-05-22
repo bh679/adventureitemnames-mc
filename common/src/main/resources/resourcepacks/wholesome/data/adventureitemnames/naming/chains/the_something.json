@@ -1,29 +1,24 @@
 {
-  "id": "adventureitemnames:title_combinations",
+  "id": "adventureitemnames:the_something",
   "replace": false,
   "segments": [
     {
       "chance": 1.0,
-      "connection": "",
+      "connection": "the ",
       "newline": false,
-      "refs": []
-    },
-    {
-      "chance": 1.0,
-      "connection": " of ",
-      "newline": false,
+      "label": "THE something",
       "refs": [
         {
           "ref": "adventureitemnames:feelings",
-          "weight": 0.03
+          "weight": 16.0
         },
         {
           "ref": "adventureitemnames:inclusion",
-          "weight": 0.03
+          "weight": 16.0
         },
         {
           "ref": "adventureitemnames:wholesome_things",
-          "weight": 0.03
+          "weight": 15.0
         }
       ]
     }
