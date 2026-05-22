@@ -2,14 +2,38 @@
   "id": "adventureitemnames:title_combinations",
   "replace": false,
   "segments": [
-    { "refs": [] },
     {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
       "refs": [
-        { "ref": "adventureitemnames:atla_characters", "weight": 0.030 },
-        { "ref": "adventureitemnames:atla_places",     "weight": 0.025 },
-        { "ref": "adventureitemnames:atla_animals",    "weight": 0.020 },
-        { "ref": "adventureitemnames:atla_elements",   "weight": 0.020 },
-        { "ref": "adventureitemnames:atla_titles",     "weight": 0.020 }
+        {
+          "ref": "adventureitemnames:atla_titles",
+          "weight": 22.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " of ",
+      "newline": false,
+      "refs": [
+        {
+          "ref": "adventureitemnames:atla_characters",
+          "weight": 0.03
+        },
+        {
+          "ref": "adventureitemnames:atla_places",
+          "weight": 0.025
+        },
+        {
+          "ref": "adventureitemnames:atla_animals",
+          "weight": 0.02
+        },
+        {
+          "ref": "adventureitemnames:atla_titles",
+          "weight": 0.02
+        }
       ]
     }
   ]

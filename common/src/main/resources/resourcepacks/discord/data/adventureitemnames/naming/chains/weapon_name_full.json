@@ -16,16 +16,8 @@
       "label": "Main",
       "refs": [
         {
-          "ref": "adventureitemnames:adventuretime_characters",
-          "weight": 38.0
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_animals",
-          "weight": 22.0
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_elements",
-          "weight": 22.0
+          "ref": "adventureitemnames:discord_people",
+          "weight": 58.0
         }
       ]
     },

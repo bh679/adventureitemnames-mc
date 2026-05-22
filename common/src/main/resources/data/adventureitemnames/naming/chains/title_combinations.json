@@ -1,31 +1,88 @@
 {
   "id": "adventureitemnames:title_combinations",
+  "replace": true,
   "segments": [
     {
-      "refs": [
-        { "ref": "adventureitemnames:title_prefix", "weight": 1.0 }
-      ],
       "chance": 1.0,
       "connection": "",
-      "newline": false
+      "newline": false,
+      "refs": [
+        {
+          "ref": "adventureitemnames:titles",
+          "weight": 53.0
+        },
+        {
+          "ref": "adventureitemnames:mob_titles",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:title_prefix",
+          "weight": 1.0
+        }
+      ]
     },
     {
-      "refs": [
-        { "ref": "adventureitemnames:title_post_prefix",   "weight": 0.12 },
-        { "ref": "adventureitemnames:food",                "weight": 0.10 },
-        { "ref": "adventureitemnames:titles",              "weight": 0.09 },
-        { "ref": "adventureitemnames:places",              "weight": 0.08 },
-        { "ref": "adventureitemnames:material_or_element", "weight": 0.10 },
-        { "ref": "adventureitemnames:animals",             "weight": 0.10 },
-        { "ref": "adventureitemnames:technology",          "weight": 0.10 },
-        { "ref": "adventureitemnames:names",               "weight": 0.10 },
-        { "ref": "adventureitemnames:math",                "weight": 0.07 },
-        { "ref": "adventureitemnames:music",               "weight": 0.07 },
-        { "ref": "adventureitemnames:colors",              "weight": 0.05 }
-      ],
       "chance": 1.0,
       "connection": " of ",
-      "newline": false
+      "newline": false,
+      "refs": [
+        {
+          "ref": "adventureitemnames:type_synonyms",
+          "weight": 84.0
+        },
+        {
+          "ref": "adventureitemnames:mob_titles",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:title_post_prefix",
+          "weight": 0.12
+        },
+        {
+          "ref": "adventureitemnames:names",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:animals",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:technology",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:food",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:titles",
+          "weight": 0.09
+        },
+        {
+          "ref": "adventureitemnames:places",
+          "weight": 0.08
+        },
+        {
+          "ref": "adventureitemnames:math",
+          "weight": 0.07
+        },
+        {
+          "ref": "adventureitemnames:music",
+          "weight": 0.07
+        },
+        {
+          "ref": "adventureitemnames:colors",
+          "weight": 0.05
+        },
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 0.1
+        }
+      ]
     }
   ]
 }

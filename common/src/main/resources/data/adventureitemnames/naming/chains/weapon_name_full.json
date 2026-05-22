@@ -3,7 +3,7 @@
   "replace": true,
   "segments": [
     {
-      "chance": 0.19817369,
+      "chance": 0.6005283,
       "connection": "",
       "newline": false,
       "label": "Pre Title",
@@ -11,41 +11,71 @@
         {
           "ref": "adventureitemnames:title_prefix",
           "weight": 99.0
+        },
+        {
+          "ref": "adventureitemnames:titles",
+          "weight": 53.0
+        },
+        {
+          "ref": "adventureitemnames:mob_titles",
+          "weight": 30.0
         }
       ]
     },
     {
-      "chance": 0.4,
+      "chance": 1.0,
       "connection": " ",
       "newline": false,
       "label": "Main",
       "refs": [
         {
+          "ref": "adventureitemnames:colors",
+          "weight": 27.0
+        },
+        {
           "ref": "adventureitemnames:animals",
           "weight": 23.0
         },
         {
-          "ref": "adventureitemnames:title_combinations",
-          "weight": 1.0
-        }
-      ]
-    },
-    {
-      "chance": 0.75,
-      "connection": ", ",
-      "newline": false,
-      "refs": [
+          "ref": "adventureitemnames:math",
+          "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:elements",
+          "weight": 14.0
+        },
+        {
+          "ref": "adventureitemnames:food",
+          "weight": 11.0
+        },
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 1.0
         }
       ]
     },
     {
-      "chance": 0.2,
-      "connection": ". ",
+      "chance": 0.79931927,
+      "connection": ", ",
       "newline": false,
+      "label": "Post Title",
       "refs": [
+        {
+          "ref": "adventureitemnames:titles",
+          "weight": 53.0
+        },
+        {
+          "ref": "adventureitemnames:math",
+          "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 1.0
+        },
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 1.0

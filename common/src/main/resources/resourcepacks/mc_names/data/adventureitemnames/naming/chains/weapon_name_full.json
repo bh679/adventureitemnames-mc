@@ -1,79 +1,88 @@
 {
-  "id": "adventureitemnames:title_combinations",
+  "id": "adventureitemnames:weapon_name_full",
   "replace": false,
   "segments": [
     {
-      "chance": 1.0,
+      "chance": 0.6005283,
       "connection": "",
       "newline": false,
+      "label": "Pre Title",
       "refs": []
     },
     {
       "chance": 1.0,
-      "connection": " of ",
+      "connection": " ",
       "newline": false,
+      "label": "Main",
       "refs": [
         {
           "ref": "adventureitemnames:mc_enchantments",
-          "weight": 0.003
+          "weight": 42.0
         },
         {
           "ref": "adventureitemnames:mc_potions_effects",
-          "weight": 0.004
+          "weight": 42.0
         },
         {
           "ref": "adventureitemnames:mc_animals",
-          "weight": 0.023
+          "weight": 36.0
         },
         {
           "ref": "adventureitemnames:mc_hostile_mobs",
-          "weight": 0.024
-        },
-        {
-          "ref": "adventureitemnames:mc_minigames",
-          "weight": 0.021
-        },
-        {
-          "ref": "adventureitemnames:mc_technoblade",
-          "weight": 0.038
-        },
-        {
-          "ref": "adventureitemnames:mc_structures",
-          "weight": 0.023
-        },
-        {
-          "ref": "adventureitemnames:mc_lore",
-          "weight": 0.023
-        },
-        {
-          "ref": "adventureitemnames:mc_streamers",
-          "weight": 0.002
-        },
-        {
-          "ref": "adventureitemnames:mc_music_discs",
-          "weight": 0.008
+          "weight": 35.0
         },
         {
           "ref": "adventureitemnames:mc_biomes",
-          "weight": 0.043
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:mc_minigames",
+          "weight": 25.0
+        },
+        {
+          "ref": "adventureitemnames:mc_structures",
+          "weight": 24.0
+        },
+        {
+          "ref": "adventureitemnames:mc_technoblade",
+          "weight": 21.0
+        },
+        {
+          "ref": "adventureitemnames:mc_lore",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_streamers",
+          "weight": 19.0
+        },
+        {
+          "ref": "adventureitemnames:mc_music_discs",
+          "weight": 18.0
         },
         {
           "ref": "adventureitemnames:mc_villager_professions",
-          "weight": 0.016
+          "weight": 14.0
         },
         {
           "ref": "adventureitemnames:mc_events",
-          "weight": 0.013
+          "weight": 12.0
         },
         {
           "ref": "adventureitemnames:mc_skins",
-          "weight": 0.009
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:mc_dimensions",
-          "weight": 0.025
+          "weight": 5.0
         }
       ]
+    },
+    {
+      "chance": 0.79931927,
+      "connection": ", ",
+      "newline": false,
+      "label": "Post Title",
+      "refs": []
     }
   ]
 }

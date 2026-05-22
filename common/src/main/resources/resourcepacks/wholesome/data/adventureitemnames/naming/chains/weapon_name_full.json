@@ -9,8 +9,8 @@
       "label": "Pre Title",
       "refs": [
         {
-          "ref": "adventureitemnames:atla_titles",
-          "weight": 22.0
+          "ref": "adventureitemnames:wholesome_things",
+          "weight": 15.0
         }
       ]
     },
@@ -21,16 +21,16 @@
       "label": "Main",
       "refs": [
         {
-          "ref": "adventureitemnames:atla_characters",
-          "weight": 34.0
+          "ref": "adventureitemnames:feelings",
+          "weight": 16.0
         },
         {
-          "ref": "adventureitemnames:atla_animals",
-          "weight": 24.0
+          "ref": "adventureitemnames:inclusion",
+          "weight": 16.0
         },
         {
-          "ref": "adventureitemnames:atla_elements",
-          "weight": 21.0
+          "ref": "adventureitemnames:wholesome_things",
+          "weight": 15.0
         }
       ]
     },
@@ -39,12 +39,7 @@
       "connection": ", ",
       "newline": false,
       "label": "Post Title",
-      "refs": [
-        {
-          "ref": "adventureitemnames:atla_titles",
-          "weight": 22.0
-        }
-      ]
+      "refs": []
     }
   ]
 }
