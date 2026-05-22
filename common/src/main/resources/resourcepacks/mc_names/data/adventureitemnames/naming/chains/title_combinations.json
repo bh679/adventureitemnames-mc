@@ -14,24 +14,28 @@
       "newline": false,
       "refs": [
         {
-          "ref": "adventureitemnames:mc_biomes",
-          "weight": 0.043
+          "ref": "adventureitemnames:mc_enchantments",
+          "weight": 0.003
         },
         {
-          "ref": "adventureitemnames:mc_technoblade",
-          "weight": 0.038
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 0.004
         },
         {
-          "ref": "adventureitemnames:mc_dimensions",
-          "weight": 0.025
+          "ref": "adventureitemnames:mc_animals",
+          "weight": 0.023
         },
         {
           "ref": "adventureitemnames:mc_hostile_mobs",
           "weight": 0.024
         },
         {
-          "ref": "adventureitemnames:mc_animals",
-          "weight": 0.023
+          "ref": "adventureitemnames:mc_minigames",
+          "weight": 0.021
+        },
+        {
+          "ref": "adventureitemnames:mc_technoblade",
+          "weight": 0.038
         },
         {
           "ref": "adventureitemnames:mc_structures",
@@ -42,8 +46,16 @@
           "weight": 0.023
         },
         {
-          "ref": "adventureitemnames:mc_minigames",
-          "weight": 0.021
+          "ref": "adventureitemnames:mc_streamers",
+          "weight": 0.002
+        },
+        {
+          "ref": "adventureitemnames:mc_music_discs",
+          "weight": 0.008
+        },
+        {
+          "ref": "adventureitemnames:mc_biomes",
+          "weight": 0.043
         },
         {
           "ref": "adventureitemnames:mc_villager_professions",
@@ -58,20 +70,8 @@
           "weight": 0.009
         },
         {
-          "ref": "adventureitemnames:mc_music_discs",
-          "weight": 0.008
-        },
-        {
-          "ref": "adventureitemnames:mc_potions_effects",
-          "weight": 0.004
-        },
-        {
-          "ref": "adventureitemnames:mc_enchantments",
-          "weight": 0.003
-        },
-        {
-          "ref": "adventureitemnames:mc_streamers",
-          "weight": 0.002
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 0.025
         }
       ]
     }

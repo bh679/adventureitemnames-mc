@@ -29,10 +29,6 @@
         {
           "ref": "adventureitemnames:adventuretime_animals",
           "weight": 0.02
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_elements",
-          "weight": 0.02
         }
       ]
     }

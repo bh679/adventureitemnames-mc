@@ -39,10 +39,6 @@
           "weight": 20.0
         },
         {
-          "ref": "adventureitemnames:elements",
-          "weight": 14.0
-        },
-        {
           "ref": "adventureitemnames:title_post_prefix",
           "weight": 0.12
         },
