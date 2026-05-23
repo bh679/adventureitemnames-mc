@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.forge.client;
 
 import games.brennan.adventureitemnames.client.ClientInit;
 import games.brennan.adventureitemnames.client.ConfigScreen;
+import games.brennan.adventureitemnames.internal.BundledPackLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.commands.Commands;
 import net.minecraftforge.client.ConfigScreenHandler;
@@ -29,6 +30,10 @@ public final class AdventureItemNamesForgeClient {
     private AdventureItemNamesForgeClient() {}
 
     public static void register(IEventBus modBus) {
+        // Preload shipped packs so the title-screen-launched config screen
+        // has Chains / Datapacks data even before any world is loaded.
+        BundledPackLoader.loadIntoRegistry();
+
         modBus.addListener(AdventureItemNamesForgeClient::onRegisterKeyMappings);
         MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForgeClient::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(AdventureItemNamesForgeClient::onRegisterClientCommands);

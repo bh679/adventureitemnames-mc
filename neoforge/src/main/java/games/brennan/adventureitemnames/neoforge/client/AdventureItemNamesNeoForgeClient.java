@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.neoforge.client;
 
 import games.brennan.adventureitemnames.client.ClientInit;
 import games.brennan.adventureitemnames.client.ConfigScreen;
+import games.brennan.adventureitemnames.internal.BundledPackLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.commands.Commands;
 import net.neoforged.bus.api.IEventBus;
@@ -32,6 +33,10 @@ public final class AdventureItemNamesNeoForgeClient {
 
     /** Wire up the game-event listeners that need a {@code Mod.Bus.GAME} subscription. */
     public static void register(IEventBus modBus) {
+        // Preload shipped packs so the title-screen-launched config screen
+        // has Chains / Datapacks data even before any world is loaded.
+        BundledPackLoader.loadIntoRegistry();
+
         modBus.addListener(AdventureItemNamesNeoForgeClient::onRegisterKeyMappings);
         NeoForge.EVENT_BUS.addListener(AdventureItemNamesNeoForgeClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(AdventureItemNamesNeoForgeClient::onRegisterClientCommands);
