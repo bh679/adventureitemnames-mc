@@ -14,7 +14,8 @@
   "environment": "*",
   "entrypoints": {
     "main": ["games.brennan.adventureitemnames.fabric.AdventureItemNamesFabric"],
-    "client": ["games.brennan.adventureitemnames.fabric.client.AdventureItemNamesFabricClient"]
+    "client": ["games.brennan.adventureitemnames.fabric.client.AdventureItemNamesFabricClient"],
+    "modmenu": ["games.brennan.adventureitemnames.fabric.client.AdventureItemNamesModMenu"]
   },
   "mixins": [
     "adventureitemnames.mixins.json"
