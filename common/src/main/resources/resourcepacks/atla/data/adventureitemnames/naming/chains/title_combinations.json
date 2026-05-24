@@ -20,19 +20,19 @@
       "refs": [
         {
           "ref": "adventureitemnames:atla_characters",
-          "weight": 0.03
+          "weight": 34.0
         },
         {
           "ref": "adventureitemnames:atla_places",
-          "weight": 0.025
+          "weight": 26.0
         },
         {
           "ref": "adventureitemnames:atla_animals",
-          "weight": 0.02
+          "weight": 24.0
         },
         {
           "ref": "adventureitemnames:atla_titles",
-          "weight": 0.02
+          "weight": 22.0
         }
       ]
     }

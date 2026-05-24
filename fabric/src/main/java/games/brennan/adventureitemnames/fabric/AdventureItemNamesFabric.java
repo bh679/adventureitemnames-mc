@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.internal.VanillaRegistryPoolSource;
 import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
@@ -68,6 +69,10 @@ public final class AdventureItemNamesFabric implements ModInitializer {
     public void onInitialize() {
         ConfigPaths.set(FabricLoader.getInstance().getConfigDir());
         UserConfigLoader.reload();
+
+        // Register before the first reload fires so the synthetic mc_blocks /
+        // mc_items pools appear in the title-screen preview and at world load.
+        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
 
         ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
         rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));

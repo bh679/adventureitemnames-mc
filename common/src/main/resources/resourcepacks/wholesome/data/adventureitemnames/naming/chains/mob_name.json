@@ -7,7 +7,12 @@
       "connection": " ",
       "newline": false,
       "label": "Title",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:feelings",
+          "weight": 20.0
+        }
+      ]
     },
     {
       "chance": 1.0,

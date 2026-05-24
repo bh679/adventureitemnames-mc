@@ -10,15 +10,15 @@
       "refs": [
         {
           "ref": "adventureitemnames:feelings",
-          "weight": 16.0
+          "weight": 50.0
         },
         {
           "ref": "adventureitemnames:inclusion",
-          "weight": 16.0
+          "weight": 30.0
         },
         {
           "ref": "adventureitemnames:wholesome_things",
-          "weight": 15.0
+          "weight": 30.0
         }
       ]
     }

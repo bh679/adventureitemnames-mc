@@ -7,7 +7,24 @@
       "connection": " ",
       "newline": false,
       "label": "Title",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:mc_enchantments",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:mc_biomes",
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:mc_structures",
+          "weight": 24.0
+        }
+      ]
     },
     {
       "chance": 1.0,
@@ -16,28 +33,12 @@
       "label": "First Name",
       "refs": [
         {
-          "ref": "adventureitemnames:mc_potions_effects",
-          "weight": 42.0
-        },
-        {
           "ref": "adventureitemnames:mc_animals",
           "weight": 36.0
         },
         {
           "ref": "adventureitemnames:mc_hostile_mobs",
           "weight": 35.0
-        },
-        {
-          "ref": "adventureitemnames:mc_biomes",
-          "weight": 26.0
-        },
-        {
-          "ref": "adventureitemnames:mc_minigames",
-          "weight": 25.0
-        },
-        {
-          "ref": "adventureitemnames:mc_structures",
-          "weight": 24.0
         },
         {
           "ref": "adventureitemnames:mc_technoblade",
@@ -64,12 +65,24 @@
           "weight": 10.0
         },
         {
-          "ref": "adventureitemnames:mc_dimensions",
+          "ref": "adventureitemnames:mc_biomes",
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:mc_minigames",
           "weight": 5.0
         },
         {
           "ref": "adventureitemnames:mc_enchantments",
-          "weight": 42.0
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
         }
       ]
     },
@@ -84,6 +97,10 @@
           "weight": 42.0
         },
         {
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 42.0
+        },
+        {
           "ref": "adventureitemnames:mc_animals",
           "weight": 36.0
         },
@@ -94,10 +111,6 @@
         {
           "ref": "adventureitemnames:mc_biomes",
           "weight": 26.0
-        },
-        {
-          "ref": "adventureitemnames:mc_minigames",
-          "weight": 25.0
         },
         {
           "ref": "adventureitemnames:mc_structures",
@@ -128,8 +141,8 @@
           "weight": 12.0
         },
         {
-          "ref": "adventureitemnames:mc_potions_effects",
-          "weight": 42.0
+          "ref": "adventureitemnames:mc_minigames",
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:mc_skins",
