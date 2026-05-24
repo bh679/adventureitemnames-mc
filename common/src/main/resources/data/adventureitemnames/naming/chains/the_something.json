@@ -9,12 +9,24 @@
       "label": "THE something",
       "refs": [
         {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 1.0
+        },
+        {
           "ref": "adventureitemnames:title_prefix",
           "weight": 99.0
         },
         {
+          "ref": "adventureitemnames:type_synonyms",
+          "weight": 84.0
+        },
+        {
           "ref": "adventureitemnames:mob_titles",
           "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:colors",
+          "weight": 27.0
         },
         {
           "ref": "adventureitemnames:animals",
@@ -23,10 +35,6 @@
         {
           "ref": "adventureitemnames:math",
           "weight": 23.0
-        },
-        {
-          "ref": "adventureitemnames:material_or_element",
-          "weight": 1.0
         }
       ]
     }

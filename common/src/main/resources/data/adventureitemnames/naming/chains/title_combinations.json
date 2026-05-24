@@ -27,59 +27,63 @@
       "newline": false,
       "refs": [
         {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 1.0
+        },
+        {
           "ref": "adventureitemnames:type_synonyms",
           "weight": 84.0
-        },
-        {
-          "ref": "adventureitemnames:mob_titles",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:people",
-          "weight": 20.0
         },
         {
           "ref": "adventureitemnames:title_post_prefix",
           "weight": 0.12
         },
         {
-          "ref": "adventureitemnames:names",
-          "weight": 0.1
-        },
-        {
-          "ref": "adventureitemnames:animals",
-          "weight": 0.1
-        },
-        {
-          "ref": "adventureitemnames:technology",
-          "weight": 0.1
-        },
-        {
-          "ref": "adventureitemnames:food",
-          "weight": 0.1
-        },
-        {
           "ref": "adventureitemnames:titles",
           "weight": 0.09
+        },
+        {
+          "ref": "adventureitemnames:mob_titles",
+          "weight": 30.0
         },
         {
           "ref": "adventureitemnames:places",
           "weight": 0.08
         },
         {
+          "ref": "adventureitemnames:colors",
+          "weight": 0.05
+        },
+        {
+          "ref": "adventureitemnames:animals",
+          "weight": 0.1
+        },
+        {
           "ref": "adventureitemnames:math",
           "weight": 0.07
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
         },
         {
           "ref": "adventureitemnames:music",
           "weight": 0.07
         },
         {
-          "ref": "adventureitemnames:colors",
-          "weight": 0.05
+          "ref": "adventureitemnames:food",
+          "weight": 0.1
         },
         {
-          "ref": "adventureitemnames:material_or_element",
+          "ref": "adventureitemnames:names",
+          "weight": 0.1
+        },
+        {
+          "ref": "adventureitemnames:technology",
           "weight": 0.1
         }
       ]
