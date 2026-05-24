@@ -17,6 +17,10 @@
           "weight": 42.0
         },
         {
+          "ref": "adventureitemnames:mc_biomes",
+          "weight": 26.0
+        },
+        {
           "ref": "adventureitemnames:mc_structures",
           "weight": 24.0
         }
@@ -109,10 +113,6 @@
           "weight": 26.0
         },
         {
-          "ref": "adventureitemnames:mc_minigames",
-          "weight": 25.0
-        },
-        {
           "ref": "adventureitemnames:mc_structures",
           "weight": 24.0
         },
@@ -139,6 +139,10 @@
         {
           "ref": "adventureitemnames:mc_events",
           "weight": 12.0
+        },
+        {
+          "ref": "adventureitemnames:mc_minigames",
+          "weight": 25.0
         },
         {
           "ref": "adventureitemnames:mc_skins",

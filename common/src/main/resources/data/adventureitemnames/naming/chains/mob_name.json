@@ -19,6 +19,10 @@
         {
           "ref": "adventureitemnames:titles",
           "weight": 53.0
+        },
+        {
+          "ref": "adventureitemnames:colors",
+          "weight": 27.0
         }
       ]
     },
