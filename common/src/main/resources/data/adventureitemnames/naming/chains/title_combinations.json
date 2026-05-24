@@ -9,7 +9,7 @@
       "refs": [
         {
           "ref": "adventureitemnames:titles",
-          "weight": 53.0
+          "weight": 2.0
         },
         {
           "ref": "adventureitemnames:mob_titles",
@@ -17,7 +17,7 @@
         },
         {
           "ref": "adventureitemnames:title_prefix",
-          "weight": 1.0
+          "weight": 250.0
         }
       ]
     },
@@ -28,11 +28,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:material_or_element",
-          "weight": 0.1
+          "weight": 30.0
         },
         {
           "ref": "adventureitemnames:the_something",
-          "weight": 1.0
+          "weight": 250.0
         },
         {
           "ref": "adventureitemnames:type_synonyms",
@@ -40,11 +40,11 @@
         },
         {
           "ref": "adventureitemnames:title_post_prefix",
-          "weight": 0.12
+          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:titles",
-          "weight": 0.09
+          "weight": 53.0
         },
         {
           "ref": "adventureitemnames:mob_titles",
@@ -52,19 +52,19 @@
         },
         {
           "ref": "adventureitemnames:places",
-          "weight": 0.08
+          "weight": 30.0
         },
         {
           "ref": "adventureitemnames:colors",
-          "weight": 0.05
+          "weight": 27.0
         },
         {
           "ref": "adventureitemnames:animals",
-          "weight": 0.1
+          "weight": 23.0
         },
         {
           "ref": "adventureitemnames:math",
-          "weight": 0.07
+          "weight": 23.0
         },
         {
           "ref": "adventureitemnames:people",
@@ -72,19 +72,19 @@
         },
         {
           "ref": "adventureitemnames:music",
-          "weight": 0.07
+          "weight": 15.0
         },
         {
           "ref": "adventureitemnames:food",
-          "weight": 0.1
+          "weight": 11.0
         },
         {
           "ref": "adventureitemnames:names",
-          "weight": 0.1
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:technology",
-          "weight": 0.1
+          "weight": 2.0
         }
       ]
     }

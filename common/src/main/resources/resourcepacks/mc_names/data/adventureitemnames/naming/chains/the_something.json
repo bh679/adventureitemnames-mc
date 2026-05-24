@@ -42,7 +42,15 @@
         },
         {
           "ref": "adventureitemnames:mc_hostile_mobs",
-          "weight": 35.0
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 20.0
         }
       ]
     }

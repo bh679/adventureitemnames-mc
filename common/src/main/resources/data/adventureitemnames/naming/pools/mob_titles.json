@@ -1,35 +1,95 @@
 {
   "id": "adventureitemnames:mob_titles",
   "entries": [
-    { "text": "the Brave" },
-    { "text": "the Wise" },
-    { "text": "the Lazy" },
-    { "text": "the Old" },
-    { "text": "the Young" },
-    { "text": "the Wandering" },
-    { "text": "the Curious" },
-    { "text": "the Quick" },
-    { "text": "the Slow" },
-    { "text": "the Gentle" },
-    { "text": "the Mighty" },
-    { "text": "the Hungry" },
-    { "text": "the Patient" },
-    { "text": "the Restless" },
-    { "text": "the Cheerful" },
-    { "text": "the Grumpy" },
-    { "text": "the Strong" },
-    { "text": "the Beloved" },
-    { "text": "the Lost" },
-    { "text": "the Shy" },
-    { "text": "the Bold" },
-    { "text": "the Plump" },
-    { "text": "the Spirited" },
-    { "text": "the Steady" },
-    { "text": "the Lucky" },
-    { "text": "the Sleepy" },
-    { "text": "the Curious One" },
-    { "text": "the Stout" },
-    { "text": "the Nimble" },
-    { "text": "the Quiet" }
+    {
+      "text": "Brave"
+    },
+    {
+      "text": "Wise"
+    },
+    {
+      "text": "Lazy"
+    },
+    {
+      "text": "Old"
+    },
+    {
+      "text": "Young"
+    },
+    {
+      "text": "Wandering"
+    },
+    {
+      "text": "Curious"
+    },
+    {
+      "text": "Quick"
+    },
+    {
+      "text": "Slow"
+    },
+    {
+      "text": "Gentle"
+    },
+    {
+      "text": "Mighty"
+    },
+    {
+      "text": "Hungry"
+    },
+    {
+      "text": "Patient"
+    },
+    {
+      "text": "Restless"
+    },
+    {
+      "text": "Cheerful"
+    },
+    {
+      "text": "Grumpy"
+    },
+    {
+      "text": "Strong"
+    },
+    {
+      "text": "Beloved"
+    },
+    {
+      "text": "Lost"
+    },
+    {
+      "text": "Shy"
+    },
+    {
+      "text": "Bold"
+    },
+    {
+      "text": "Plump"
+    },
+    {
+      "text": "Spirited"
+    },
+    {
+      "text": "Steady"
+    },
+    {
+      "text": "Lucky"
+    },
+    {
+      "text": "Sleepy"
+    },
+    {
+      "text": "Curious One"
+    },
+    {
+      "text": "Stout"
+    },
+    {
+      "text": "Nimble"
+    },
+    {
+      "text": "Quiet"
+    }
   ]
 }

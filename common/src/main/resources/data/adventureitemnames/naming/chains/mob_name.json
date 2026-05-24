@@ -10,7 +10,7 @@
       "refs": [
         {
           "ref": "adventureitemnames:material_or_element",
-          "weight": 1.0
+          "weight": 40.0
         },
         {
           "ref": "adventureitemnames:title_prefix",
@@ -22,7 +22,7 @@
         },
         {
           "ref": "adventureitemnames:colors",
-          "weight": 27.0
+          "weight": 8.0
         }
       ]
     },
@@ -34,11 +34,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:names",
-          "weight": 1.0
+          "weight": 180.0
         },
         {
           "ref": "adventureitemnames:people",
-          "weight": 20.0
+          "weight": 1.0
         }
       ]
     },
@@ -82,7 +82,7 @@
         },
         {
           "ref": "adventureitemnames:people",
-          "weight": 20.0
+          "weight": 5.0
         },
         {
           "ref": "adventureitemnames:music",
@@ -110,11 +110,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:the_something",
-          "weight": 1.0
+          "weight": 50.0
         },
         {
           "ref": "adventureitemnames:title_combinations",
-          "weight": 1.0
+          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:title_prefix",

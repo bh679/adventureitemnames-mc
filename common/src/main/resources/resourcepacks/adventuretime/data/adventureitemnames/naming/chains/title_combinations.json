@@ -9,7 +9,7 @@
       "refs": [
         {
           "ref": "adventureitemnames:adventuretime_titles",
-          "weight": 0.1
+          "weight": 22.0
         }
       ]
     },
@@ -20,15 +20,15 @@
       "refs": [
         {
           "ref": "adventureitemnames:adventuretime_characters",
-          "weight": 0.03
+          "weight": 38.0
         },
         {
           "ref": "adventureitemnames:adventuretime_places",
-          "weight": 0.025
+          "weight": 26.0
         },
         {
           "ref": "adventureitemnames:adventuretime_animals",
-          "weight": 0.02
+          "weight": 22.0
         }
       ]
     }
