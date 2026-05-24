@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
+import games.brennan.adventureitemnames.internal.VanillaRegistryPoolSource;
 import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -75,6 +76,10 @@ public final class AdventureItemNamesForge {
     public AdventureItemNamesForge(IEventBus modBus) {
         ConfigPaths.set(FMLPaths.CONFIGDIR.get());
         UserConfigLoader.reload();
+
+        // Register before the first reload fires so the synthetic mc_blocks /
+        // mc_items pools appear in the title-screen preview and at world load.
+        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
 
         ITEMS.register(modBus);
         modBus.addListener(AdventureItemNamesForge::onBuildCreativeTab);

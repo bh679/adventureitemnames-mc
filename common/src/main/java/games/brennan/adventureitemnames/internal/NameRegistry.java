@@ -101,12 +101,47 @@ public final class NameRegistry {
      */
     private static final Map<ResourceLocation, NameSelector> USER_SELECTOR_BACKING = new LinkedHashMap<>();
 
+    /**
+     * Registered synthetic pool sources. The {@link PoolListener} drains
+     * every source after loading JSON pools, then overlays the resulting
+     * pools onto the reload output — but JSON wins on id collision so a
+     * user can override a synthetic pool with their own datapack.
+     *
+     * <p>Insertion-ordered so the {@code packId} side table sees a
+     * deterministic resolution when two sources happen to contribute the
+     * same id (earliest registration wins).</p>
+     */
+    private static final List<SyntheticPoolSource.Registration> SYNTHETIC_SOURCES = new ArrayList<>();
+
     private NameRegistry() {}
 
     public static SimpleJsonResourceReloadListener poolListener()     { return new PoolListener(); }
     public static SimplePreparableReloadListener<ChainPrepResult> chainListener() { return new ChainListener(); }
     public static SimpleJsonResourceReloadListener selectorListener() { return new SelectorListener(); }
     public static SimpleJsonResourceReloadListener configListener()   { return new ConfigListener(); }
+
+    /**
+     * Register a synthetic pool source whose pools are overlaid on top of
+     * the JSON-loaded pools at the end of every {@link PoolListener#apply}.
+     * JSON pools win on id collision; synthetic pools fill ids the JSON
+     * didn't claim.
+     *
+     * <p>Call once per loader during mod-init, before the first reload
+     * fires. Idempotent only at registration site — re-calling with the
+     * same source adds it twice (cheap, but the source's {@code produce()}
+     * runs twice each reload).</p>
+     *
+     * @param packId pack id to tag the contributed pools with for UI
+     *               grouping (e.g. {@code "mc_names"}). Does not need to
+     *               correspond to a real loaded pack — synthetic pools
+     *               are always available regardless of pack toggling.
+     * @param source pool source to invoke each reload
+     */
+    public static synchronized void registerSyntheticPoolSource(String packId, SyntheticPoolSource source) {
+        if (packId == null || source == null) return;
+        SYNTHETIC_SOURCES.add(new SyntheticPoolSource.Registration(packId, source));
+        LOGGER.info("[AdventureItemNames] synthetic pool source registered for pack '{}'", packId);
+    }
 
     public static synchronized Optional<NamePool> pool(ResourceLocation id) {
         return Optional.ofNullable(POOLS.get(id));
@@ -317,6 +352,34 @@ public final class NameRegistry {
                 } catch (NameCodec.NameParseException ex) {
                     LOGGER.error("[AdventureItemNames] pool {} failed to parse — {}", fileId, ex.getMessage());
                 }
+            }
+            // Overlay synthetic pool sources — JSON wins on id collision so a
+            // user can override a synthetic pool by shipping a JSON file with
+            // the same id. Snapshot the registration list under the registry
+            // lock so concurrent registrations during reload don't ConcurrentModification us.
+            List<SyntheticPoolSource.Registration> snapshot;
+            synchronized (NameRegistry.class) {
+                snapshot = new ArrayList<>(SYNTHETIC_SOURCES);
+            }
+            int synthAdded = 0;
+            for (SyntheticPoolSource.Registration reg : snapshot) {
+                try {
+                    Map<ResourceLocation, NamePool> produced = reg.source().produce();
+                    if (produced == null) continue;
+                    for (Map.Entry<ResourceLocation, NamePool> e : produced.entrySet()) {
+                        if (out.containsKey(e.getKey())) continue; // JSON wins
+                        out.put(e.getKey(), e.getValue());
+                        packs.put(e.getKey(), reg.packId());
+                        synthAdded++;
+                    }
+                } catch (Exception ex) {
+                    LOGGER.error("[AdventureItemNames] synthetic pool source for pack '{}' threw — {}",
+                        reg.packId(), ex.toString());
+                }
+            }
+            if (synthAdded > 0) {
+                LOGGER.info("[AdventureItemNames] overlaid {} synthetic pool(s) across {} source(s)",
+                    synthAdded, snapshot.size());
             }
             replacePools(out, packs);
         }
