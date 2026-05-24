@@ -11,18 +11,6 @@
         {
           "ref": "adventureitemnames:material_or_element",
           "weight": 40.0
-        },
-        {
-          "ref": "adventureitemnames:title_prefix",
-          "weight": 99.0
-        },
-        {
-          "ref": "adventureitemnames:titles",
-          "weight": 53.0
-        },
-        {
-          "ref": "adventureitemnames:colors",
-          "weight": 8.0
         }
       ]
     },
@@ -31,76 +19,14 @@
       "connection": " ",
       "newline": false,
       "label": "First Name",
-      "refs": [
-        {
-          "ref": "adventureitemnames:names",
-          "weight": 180.0
-        },
-        {
-          "ref": "adventureitemnames:people",
-          "weight": 1.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 0.14849176,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
-      "refs": [
-        {
-          "ref": "adventureitemnames:names",
-          "weight": 258.0
-        },
-        {
-          "ref": "adventureitemnames:type_synonyms",
-          "weight": 84.0
-        },
-        {
-          "ref": "adventureitemnames:titles",
-          "weight": 53.0
-        },
-        {
-          "ref": "adventureitemnames:mob_titles",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:places",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:colors",
-          "weight": 27.0
-        },
-        {
-          "ref": "adventureitemnames:animals",
-          "weight": 23.0
-        },
-        {
-          "ref": "adventureitemnames:math",
-          "weight": 23.0
-        },
-        {
-          "ref": "adventureitemnames:people",
-          "weight": 5.0
-        },
-        {
-          "ref": "adventureitemnames:music",
-          "weight": 15.0
-        },
-        {
-          "ref": "adventureitemnames:technology",
-          "weight": 15.0
-        },
-        {
-          "ref": "adventureitemnames:elements",
-          "weight": 14.0
-        },
-        {
-          "ref": "adventureitemnames:food",
-          "weight": 11.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 0.05292426,
@@ -115,14 +41,6 @@
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 100.0
-        },
-        {
-          "ref": "adventureitemnames:title_prefix",
-          "weight": 99.0
-        },
-        {
-          "ref": "adventureitemnames:mob_titles",
-          "weight": 30.0
         }
       ]
     }
