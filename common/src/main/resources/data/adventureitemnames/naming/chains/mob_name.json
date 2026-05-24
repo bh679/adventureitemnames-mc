@@ -9,6 +9,10 @@
       "label": "Title",
       "refs": [
         {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 1.0
+        },
+        {
           "ref": "adventureitemnames:title_prefix",
           "weight": 99.0
         },
@@ -27,6 +31,10 @@
         {
           "ref": "adventureitemnames:names",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
         }
       ]
     },

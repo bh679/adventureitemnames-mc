@@ -25,16 +25,8 @@
           "weight": 34.0
         },
         {
-          "ref": "adventureitemnames:atla_places",
-          "weight": 26.0
-        },
-        {
           "ref": "adventureitemnames:atla_titles",
           "weight": 22.0
-        },
-        {
-          "ref": "adventureitemnames:atla_elements",
-          "weight": 21.0
         }
       ]
     },
@@ -47,10 +39,6 @@
         {
           "ref": "adventureitemnames:atla_characters",
           "weight": 34.0
-        },
-        {
-          "ref": "adventureitemnames:atla_places",
-          "weight": 26.0
         },
         {
           "ref": "adventureitemnames:atla_animals",
