@@ -105,16 +105,20 @@
       "label": "Title",
       "refs": [
         {
+          "ref": "adventureitemnames:the_something",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:title_combinations",
+          "weight": 1.0
+        },
+        {
           "ref": "adventureitemnames:title_prefix",
           "weight": 99.0
         },
         {
           "ref": "adventureitemnames:mob_titles",
           "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:title_combinations",
-          "weight": 1.0
         }
       ]
     }
