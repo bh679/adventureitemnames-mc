@@ -19,7 +19,20 @@
       "connection": " ",
       "newline": false,
       "label": "First Name",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:names",
+          "weight": 250.0
+        },
+        {
+          "ref": "adventureitemnames:type_synonyms",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:colors",
+          "weight": 15.0
+        }
+      ]
     },
     {
       "chance": 0.14849176,
