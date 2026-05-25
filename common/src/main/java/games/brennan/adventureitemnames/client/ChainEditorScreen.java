@@ -169,7 +169,14 @@ public final class ChainEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        if (!buffer.isDirty()) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 
     NameChain chain() { return chain; }

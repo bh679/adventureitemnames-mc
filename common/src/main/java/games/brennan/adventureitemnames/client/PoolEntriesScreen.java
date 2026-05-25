@@ -62,6 +62,7 @@ public final class PoolEntriesScreen extends Screen {
     private Button addButton;
     private PreviewPanel preview;
     private Button saveButton;
+    private ConfirmDialog activeConfirm;
 
     public PoolEntriesScreen(Screen parent, EditBuffer buffer, NamePool pool) {
         super(Component.translatable("screen.adventureitemnames.entries.title", pool.id().toString()));
@@ -110,6 +111,11 @@ public final class PoolEntriesScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
@@ -151,19 +157,28 @@ public final class PoolEntriesScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        if (!buffer.isDirty()) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 
     EditBuffer buffer() { return buffer; }

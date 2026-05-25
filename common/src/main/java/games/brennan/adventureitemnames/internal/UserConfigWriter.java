@@ -224,6 +224,190 @@ public final class UserConfigWriter {
         }
     }
 
+    /**
+     * Strip {@code pools[]} + {@code selectors[]} entries for every id in
+     * the wipe sets from the on-disk user-config file. Called after a
+     * successful dev-mode {@link PackDisableWriter#writeDisables} so the
+     * user-config layer stops double-applying on top of the freshly
+     * baked-in {@code disabled/defaults.json}. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeDisableData(Set<ResourceLocation> disabledPools,
+                                                       Set<ResourceLocation> enabledPools,
+                                                       Set<ResourceLocation> disabledSelectors,
+                                                       Set<ResourceLocation> enabledSelectors) {
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        boolean changed = false;
+        changed |= wipeIdArrayEntries(root, "pools",     disabledPools,     enabledPools);
+        changed |= wipeIdArrayEntries(root, "selectors", disabledSelectors, enabledSelectors);
+        if (!changed) return true;
+        return atomicWrite(configDir, file, root, "wiped user-config disables");
+    }
+
+    /**
+     * Strip {@code weight_overrides[<chain>#<seg>#<ref>]} entries whose
+     * chain id is in {@code chains} from the on-disk user-config file.
+     * Called after a successful dev-mode chain write so user-config weight
+     * overlays stop double-applying on top of the freshly baked-in chain
+     * JSON. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeWeightData(Set<ResourceLocation> chains) {
+        if (chains == null || chains.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        JsonElement el = root.get("weight_overrides");
+        if (el == null || !el.isJsonObject()) return true;
+        JsonObject obj = el.getAsJsonObject();
+        java.util.List<String> toRemove = new java.util.ArrayList<>();
+        for (var entry : obj.entrySet()) {
+            String key = entry.getKey();
+            int firstHash = key.indexOf('#');
+            if (firstHash <= 0) continue;
+            ResourceLocation chainId = ResourceLocation.tryParse(key.substring(0, firstHash));
+            if (chainId != null && chains.contains(chainId)) toRemove.add(key);
+        }
+        if (toRemove.isEmpty()) return true;
+        for (String k : toRemove) obj.remove(k);
+        if (obj.size() == 0) root.remove("weight_overrides");
+        return atomicWrite(configDir, file, root, "wiped user-config weight overrides");
+    }
+
+    /**
+     * Strip {@code chances[<kind>]} entries for every {@code kind} in
+     * {@code kinds} from the on-disk user-config file. Called after a
+     * successful dev-mode {@link PackChanceWriter#writeChances} so the
+     * user-config chance overlay stops double-applying on top of the
+     * freshly baked-in chance file. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeChanceData(Set<ChanceKind> kinds) {
+        if (kinds == null || kinds.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        JsonElement el = root.get("chances");
+        if (el == null || !el.isJsonObject()) return true;
+        JsonObject obj = el.getAsJsonObject();
+        boolean changed = false;
+        for (ChanceKind k : kinds) {
+            if (obj.has(k.key())) {
+                obj.remove(k.key());
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        if (obj.size() == 0) root.remove("chances");
+        return atomicWrite(configDir, file, root, "wiped user-config chance overrides");
+    }
+
+    /**
+     * Strip {@code selector_overrides[<selectorId>]} entries for every id
+     * in {@code selectors} from the on-disk user-config file. Called after
+     * a successful dev-mode {@link PackSelectorWriter#writeSelectorTiers}
+     * so the user-config selector tier overlay stops double-applying.
+     */
+    public static synchronized boolean wipeSelectorTierData(Set<ResourceLocation> selectors) {
+        if (selectors == null || selectors.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        JsonElement el = root.get("selector_overrides");
+        if (el == null || !el.isJsonObject()) return true;
+        JsonObject obj = el.getAsJsonObject();
+        boolean changed = false;
+        for (ResourceLocation sel : selectors) {
+            if (obj.has(sel.toString())) {
+                obj.remove(sel.toString());
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        if (obj.size() == 0) root.remove("selector_overrides");
+        return atomicWrite(configDir, file, root, "wiped user-config selector tier overrides");
+    }
+
+    /**
+     * Strip {@code custom_selectors[<id>]} entries for every id in
+     * {@code ids} from the on-disk user-config file. Called after a
+     * successful dev-mode {@link PackSelectorWriter#writeSelector} (for
+     * added custom selectors) or {@link PackSelectorWriter#deleteSelector}
+     * (for removed ones) so the user-config custom-selector overlay
+     * doesn't keep re-installing them.
+     */
+    public static synchronized boolean wipeCustomSelectorData(Set<ResourceLocation> ids) {
+        if (ids == null || ids.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        JsonElement el = root.get("custom_selectors");
+        if (el == null || !el.isJsonObject()) return true;
+        JsonObject obj = el.getAsJsonObject();
+        boolean changed = false;
+        for (ResourceLocation id : ids) {
+            if (obj.has(id.toString())) {
+                obj.remove(id.toString());
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        if (obj.size() == 0) root.remove("custom_selectors");
+        return atomicWrite(configDir, file, root, "wiped user-config custom selectors");
+    }
+
+    /**
+     * Helper used by the wipe-data methods. Mutates {@code root[key]} to
+     * remove any ids in {@code removed} or {@code added}. Returns true
+     * when the array's contents changed.
+     */
+    private static boolean wipeIdArrayEntries(JsonObject root, String key,
+                                              Set<ResourceLocation> a, Set<ResourceLocation> b) {
+        JsonElement el = root.get(key);
+        if (el == null || !el.isJsonArray()) return false;
+        JsonArray existing = el.getAsJsonArray();
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonElement item : existing) {
+            if (item.isJsonPrimitive()) ids.add(item.getAsString());
+        }
+        boolean changed = false;
+        if (a != null) for (ResourceLocation rl : a) if (ids.remove(rl.toString())) changed = true;
+        if (b != null) for (ResourceLocation rl : b) if (ids.remove(rl.toString())) changed = true;
+        if (!changed) return false;
+        if (ids.isEmpty()) {
+            root.remove(key);
+        } else {
+            JsonArray rebuilt = new JsonArray();
+            for (String s : ids) rebuilt.add(s);
+            root.add(key, rebuilt);
+        }
+        return true;
+    }
+
+    /** Shared atomic tmp-file write + rename, used by every wipe-data method. */
+    private static boolean atomicWrite(Path dir, Path file, JsonObject root, String logMsg) {
+        try {
+            Path tmp = dir.resolve(FILE_NAME + ".tmp");
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            Files.writeString(tmp, body, StandardCharsets.UTF_8);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            LOGGER.info("[AdventureItemNames] {} ({})", logMsg, file);
+            return true;
+        } catch (IOException ex) {
+            LOGGER.warn("[AdventureItemNames] failed to write {} during wipe: {}", file, ex.getMessage());
+            return false;
+        }
+    }
+
     private static JsonObject readRootOrEmpty(Path file) {
         if (!Files.exists(file)) return new JsonObject();
         try (InputStream in = Files.newInputStream(file)) {
