@@ -1,6 +1,7 @@
 package games.brennan.adventureitemnames.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import games.brennan.adventureitemnames.internal.PackDeleter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
@@ -8,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
@@ -36,6 +38,8 @@ public final class DatapacksListScreen extends Screen {
     private final EditBuffer buffer;
     private DatapackList list;
     private PreviewPanel preview;
+    private ConfirmDialog activeConfirm;
+    private boolean deleteMode;
 
     public DatapacksListScreen(Screen parent, EditBuffer buffer) {
         super(Component.translatable("screen.adventureitemnames.datapacks.title"));
@@ -45,9 +49,10 @@ public final class DatapacksListScreen extends Screen {
 
     /** Column X anchors are right-edge offsets from the screen width. Shared by header + row. */
     static final int COL_W_OPEN     = 72;
-    static final int COL_W_SUM      = 124;
-    static final int COL_W_ENTRIES  = 176;
-    static final int COL_W_POOLS    = 232;
+    static final int COL_W_DELETE   = 98;
+    static final int COL_W_SUM      = 144;
+    static final int COL_W_ENTRIES  = 196;
+    static final int COL_W_POOLS    = 252;
     private static final int HEADER_Y = 44;
     private static final int LIST_TOP = 58;
 
@@ -71,10 +76,18 @@ public final class DatapacksListScreen extends Screen {
         ).bounds(width / 2 + 4, footerY, 96, 20).build();
         newPackButton.active = Minecraft.getInstance().getSingleplayerServer() != null;
         if (!newPackButton.active) {
-            newPackButton.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+            newPackButton.setTooltip(Tooltip.create(
                 Component.translatable("screen.adventureitemnames.datapacks.new_pack.no_world")));
         }
         addRenderableWidget(newPackButton);
+
+        Button deleteToggle = Button.builder(
+            Component.literal("🗑").withStyle(deleteMode ? ChatFormatting.RED : ChatFormatting.GRAY),
+            b -> toggleDeleteMode()
+        ).bounds(width - 32, footerY, 24, 20).build();
+        deleteToggle.setTooltip(Tooltip.create(
+            Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
+        addRenderableWidget(deleteToggle);
 
         if (preview == null) preview = new PreviewPanel(buffer, null, this::rebuildWidgets);
         preview.rebuild(width, height);
@@ -82,8 +95,22 @@ public final class DatapacksListScreen extends Screen {
         addRenderableWidget(preview.toggleButton());
     }
 
+    private void toggleDeleteMode() {
+        deleteMode = !deleteMode;
+        rebuildWidgets();
+    }
+
+    boolean deleteMode() { return deleteMode; }
+
+    EditBuffer buffer() { return buffer; }
+
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
 
@@ -99,14 +126,36 @@ public final class DatapacksListScreen extends Screen {
         Minecraft.getInstance().setScreen(new PoolListScreen(this, buffer, pack));
     }
 
+    void confirmDeletePack(PackGrouping.PackView pack) {
+        String friendly = PackGrouping.friendlyPackName(pack.packId());
+        activeConfirm = new ConfirmDialog(width, height,
+            Component.translatable("screen.adventureitemnames.delete.title", friendly).getString(),
+            Component.translatable("screen.adventureitemnames.delete.pack.body").getString(),
+            Component.translatable("screen.adventureitemnames.delete.confirm").getString(),
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() {
+                    activeConfirm = null;
+                    PackDeleter.DeleteResult result = PackDeleter.delete(pack.packId());
+                    if (!result.ok()) {
+                        return;
+                    }
+                    PackReload.disableAndReload(pack.packId(),
+                        () -> Minecraft.getInstance().setScreen(new DatapacksListScreen(parent, buffer)));
+                }
+                @Override public void onCancel() { activeConfirm = null; }
+            });
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -137,23 +186,39 @@ public final class DatapacksListScreen extends Screen {
         static final class Entry extends ContainerObjectSelectionList.Entry<Entry> {
 
             private final PackGrouping.PackView pack;
+            private final DatapacksListScreen host;
             private final Button openButton;
+            private final Button deleteButton;
             private final int screenWidth;
 
             Entry(PackGrouping.PackView pack, DatapacksListScreen host) {
                 this.pack = pack;
+                this.host = host;
                 this.screenWidth = host.width;
                 this.openButton = Button.builder(
                     Component.translatable("screen.adventureitemnames.action.open"),
                     b -> host.openPack(pack)
                 ).bounds(0, 0, 60, 18).build();
+                this.deleteButton = Button.builder(
+                    Component.translatable("screen.adventureitemnames.action.delete"),
+                    b -> host.confirmDeletePack(pack)
+                ).bounds(0, 0, 22, 18).build();
+                if (!PackDeleter.canDelete(pack.packId())) {
+                    deleteButton.active = false;
+                    deleteButton.setTooltip(Tooltip.create(
+                        Component.translatable("screen.adventureitemnames.delete.read_only")));
+                }
             }
 
             @Override
-            public List<? extends NarratableEntry> narratables() { return List.of(openButton); }
+            public List<? extends NarratableEntry> narratables() {
+                return host.deleteMode() ? List.of(deleteButton, openButton) : List.of(openButton);
+            }
 
             @Override
-            public List<? extends GuiEventListener> children() { return List.of(openButton); }
+            public List<? extends GuiEventListener> children() {
+                return host.deleteMode() ? List.of(deleteButton, openButton) : List.of(openButton);
+            }
 
             @Override
             public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
@@ -183,6 +248,11 @@ public final class DatapacksListScreen extends Screen {
                     screenWidth - COL_W_SUM, textY, 0xFFE0E0E0, false);
 
                 openButton.render(gfx, mouseX, mouseY, partial);
+                if (host.deleteMode()) {
+                    deleteButton.setX(screenWidth - COL_W_DELETE);
+                    deleteButton.setY(rowTop + 3);
+                    deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
                 RenderSystem.disableBlend();
             }
         }
