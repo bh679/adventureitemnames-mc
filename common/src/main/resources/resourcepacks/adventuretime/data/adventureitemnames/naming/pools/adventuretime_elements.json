@@ -1,27 +1,71 @@
 {
   "id": "adventureitemnames:adventuretime_elements",
   "entries": [
-    { "text": "Mathematical!" },
-    { "text": "Algebraic!" },
-    { "text": "Glob" },
-    { "text": "Grod" },
-    { "text": "Gob" },
-    { "text": "the Mushroom War" },
-    { "text": "Time Travel" },
-    { "text": "Wizardry" },
-    { "text": "Vampirism" },
-    { "text": "the Lich's Curse" },
-    { "text": "Crown Magic" },
-    { "text": "the Catalyst Comet" },
-    { "text": "Wishing" },
-    { "text": "the Cosmic Order" },
-    { "text": "Dream Magic" },
-    { "text": "the Goo Realm" },
-    { "text": "the Ice Crown" },
-    { "text": "the Vault" },
-    { "text": "Wild Magic" },
-    { "text": "the Doomsday Bomb" },
-    { "text": "the Enchiridion" },
-    { "text": "the Demon Sword" }
+    {
+      "text": "Mathematical!"
+    },
+    {
+      "text": "Algebraic!"
+    },
+    {
+      "text": "Glob"
+    },
+    {
+      "text": "Grod"
+    },
+    {
+      "text": "Gob"
+    },
+    {
+      "text": "Time Travel"
+    },
+    {
+      "text": "Wizardry"
+    },
+    {
+      "text": "Vampirism"
+    },
+    {
+      "text": "Crown Magic"
+    },
+    {
+      "text": "Wishing"
+    },
+    {
+      "text": "Dream Magic"
+    },
+    {
+      "text": "Wild Magic"
+    },
+    {
+      "text": "Lich\u0027s Curse"
+    },
+    {
+      "text": "Catalyst Comet"
+    },
+    {
+      "text": "Cosmic Order"
+    },
+    {
+      "text": "Goo Realm"
+    },
+    {
+      "text": "Ice Crown"
+    },
+    {
+      "text": "Vault"
+    },
+    {
+      "text": "Doomsday Bomb"
+    },
+    {
+      "text": "Enchiridion"
+    },
+    {
+      "text": "Demon Sword"
+    },
+    {
+      "text": "Mushroom War"
+    }
   ]
 }
