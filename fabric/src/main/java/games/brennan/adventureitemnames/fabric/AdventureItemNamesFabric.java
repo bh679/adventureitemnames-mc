@@ -79,6 +79,7 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         rh.registerReloadListener(wrap(NameRegistry.chainListener(),    "chains"));
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
         rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
+        rh.registerReloadListener(wrap(NameRegistry.chanceListener(),   "chances"));
 
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
             .register(entries -> {

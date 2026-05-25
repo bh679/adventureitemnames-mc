@@ -65,6 +65,7 @@ public final class NamingConfig {
     private static final EntryOverrides USER_ENTRIES = new EntryOverrides();
     private static final EntryOverrides API_ENTRIES = new EntryOverrides();
 
+    private static final ChanceOverrides DATAPACK_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
 
@@ -117,6 +118,19 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_CHANCES.clear();
             if (newOverrides != null) USER_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /**
+     * Replace the datapack-layer chance overrides. Internal — called by
+     * the {@link games.brennan.adventureitemnames.internal.ChanceLoader}
+     * reload listener with the union of every datapack's
+     * {@code data/<ns>/chances/*.json} file.
+     */
+    public static void setDatapackChances(ChanceOverrides newOverrides) {
+        synchronized (LOCK) {
+            DATAPACK_CHANCES.clear();
+            if (newOverrides != null) DATAPACK_CHANCES.mergeFrom(newOverrides);
         }
     }
 
@@ -466,8 +480,8 @@ public final class NamingConfig {
 
     /**
      * Effective probability for one {@link ChanceKind} gate. Precedence
-     * API → user → {@link ChanceKind#defaultValue()}. Returned value is
-     * already clamped to {@code [0, 1]}.
+     * API → user → datapack → {@link ChanceKind#defaultValue()}. Returned
+     * value is already clamped to {@code [0, 1]}.
      */
     public static float chanceFor(ChanceKind kind) {
         if (kind == null) return 0f;
@@ -476,6 +490,8 @@ public final class NamingConfig {
             if (api != null) return clamp01(api);
             Float user = USER_CHANCES.values.get(kind);
             if (user != null) return clamp01(user);
+            Float datapack = DATAPACK_CHANCES.values.get(kind);
+            if (datapack != null) return clamp01(datapack);
         }
         return kind.defaultValue();
     }

@@ -16,14 +16,22 @@ import net.minecraft.network.chat.Component;
  * preserves pending edits.
  *
  * <p>{@code Save to pack} lives on the sub-screens, not here — the hub
- * has no rows to edit. Pending edits across sub-screens stay in the
- * buffer until the user saves or discards on close.
+ * has no rows to edit. Each screen (including this one) compares a
+ * {@link BufferFingerprint} captured at open against the current buffer
+ * state at {@code onClose} and shows an {@link UnsavedChangesPrompt} only
+ * when something changed during this screen's lifetime. That means
+ * navigating between screens never re-prompts about edits already
+ * resolved by a child's prompt — and the hub still catches anything that
+ * slipped through (e.g. an edit on a sub-screen the user cancelled out
+ * of without resolving the prompt).
  */
 @Environment(EnvType.CLIENT)
 public final class ConfigScreen extends Screen {
 
     private final Screen parent;
     private final EditBuffer buffer;
+    private ConfirmDialog activeConfirm;
+    private String openFingerprint;
 
     public ConfigScreen(Screen parent) {
         super(Component.translatable("screen.adventureitemnames.config.title"));
@@ -56,16 +64,42 @@ public final class ConfigScreen extends Screen {
             Component.translatable("gui.done"),
             b -> onClose()
         ).bounds(cx - btnW / 2, height - 28, btnW, btnH).build());
+
+        if (openFingerprint == null) openFingerprint = BufferFingerprint.of(buffer);
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        if (BufferFingerprint.of(buffer).equals(openFingerprint)) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 }

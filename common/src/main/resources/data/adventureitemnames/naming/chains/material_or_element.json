@@ -9,11 +9,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:context/item_material",
-          "weight": 0.5
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:elements",
-          "weight": 0.5
+          "weight": 14.0
         }
       ]
     }

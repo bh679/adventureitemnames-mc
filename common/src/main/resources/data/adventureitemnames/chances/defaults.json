@@ -1,0 +1,3 @@
+{
+  "_comment": "UI-managed chance overrides — edits in the in-game config UI (Spawn Chances screen) are written here. Each key sets the probability that a given trigger event fires a naming roll. Defaults: plain=0.30, enchanted=0.50, mob_passive=0.05, mob_villager=1.00. Missing keys fall through to the hardcoded defaults in ChanceKind."
+}

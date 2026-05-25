@@ -51,9 +51,18 @@ public final class ChainAssembler {
             String connection = NamingConfig.effectiveSegmentConnection(chainId, origIdx, base.connection());
             boolean newline = NamingConfig.effectiveSegmentNewline(chainId, origIdx, base.newline());
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, origIdx, base.refs());
+            // Bake weight overrides into the materialised ref list so the
+            // saved chain JSON reflects the user's weight edits. Without
+            // this, `effectiveWeight` overrides only apply at composer
+            // time and would be lost on the next /reload after a save.
+            List<NameSegment.WeightedRef> weighted = new ArrayList<>(refs.size());
+            for (NameSegment.WeightedRef r : refs) {
+                float w = NamingConfig.effectiveWeight(chainId, origIdx, r.ref(), r.weight());
+                weighted.add(new NameSegment.WeightedRef(r.ref(), w));
+            }
             String label = NamingConfig.effectiveSegmentLabel(chainId, origIdx, base.label());
 
-            out.add(new NameSegment(List.copyOf(refs), chance, connection, newline, label));
+            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label));
         }
         return new NameChain(shipped.id(), List.copyOf(out), true);
     }

@@ -1,14 +1,19 @@
 package games.brennan.adventureitemnames.client;
 
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.ChainAssembler;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.PackChainWriter;
+import games.brennan.adventureitemnames.internal.PackChanceWriter;
+import games.brennan.adventureitemnames.internal.PackDisableWriter;
 import games.brennan.adventureitemnames.internal.PackPaths;
 import games.brennan.adventureitemnames.internal.PackPoolWriter;
+import games.brennan.adventureitemnames.internal.PackSelectorWriter;
 import games.brennan.adventureitemnames.internal.PerPackSplitter;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
 import games.brennan.adventureitemnames.internal.UserConfigWriter;
@@ -21,13 +26,21 @@ import org.slf4j.Logger;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * Shared {@code Save to pack} flush logic for every config screen that
  * mutates the buffer. Each save unpacks the {@link EditBuffer} into the
- * full v1+v2 {@link UserConfigWriter#save} signature, then re-loads the
- * user layer so runtime queries reflect the new state without a {@code /reload}.
+ * full {@link UserConfigWriter#save} signature, then re-loads the user
+ * layer so runtime queries reflect the new state without a {@code /reload}.
+ *
+ * <p>In a Loom dev environment ({@link PackPaths#projectRootAvailable()}
+ * returns true) every edit category is <em>also</em> baked into the
+ * matching pack-side JSON under {@code common/src/main/resources/...} so
+ * the edit becomes a committable change to the repo. The corresponding
+ * user-config keys are wiped after the bake-in to stop the overlay from
+ * double-applying on top of the new shipped data.
  *
  * <p>On success the buffer is cleared and {@code onSuccess} runs (typically
  * a callback that re-disables the Save button and rerolls the preview).
@@ -37,65 +50,105 @@ import java.util.Set;
 public final class ConfigSave {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final String BASE_PACK_ID = "mod/adventureitemnames";
 
     private ConfigSave() {}
 
     /** Flush every pending edit in {@code buffer} to disk. */
     public static boolean commit(EditBuffer buffer, Runnable onSuccess) {
+        Set<ResourceLocation> disabledPools     = buffer.snapshotDisabledPools();
+        Set<ResourceLocation> enabledPools      = buffer.snapshotEnabledPools();
+        Set<ResourceLocation> disabledSelectors = buffer.snapshotDisabledSelectors();
+        Set<ResourceLocation> enabledSelectors  = buffer.snapshotEnabledSelectors();
+        Map<String, Float> weights              = buffer.snapshotWeights();
+        Map<ChanceKind, Float> chances          = buffer.snapshotChances();
+        Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTiers = buffer.snapshotSelectorTiers();
+        Map<ResourceLocation, NameSelector> customSelectors = buffer.snapshotCustomSelectors();
+        Set<ResourceLocation> removedCustomSelectorIds      = buffer.snapshotRemovedCustomSelectorIds();
+
         boolean ok = UserConfigWriter.save(
-            buffer.snapshotDisabledPools(),
-            buffer.snapshotEnabledPools(),
-            buffer.snapshotDisabledSelectors(),
-            buffer.snapshotEnabledSelectors(),
-            buffer.snapshotWeights(),
+            disabledPools,
+            enabledPools,
+            disabledSelectors,
+            enabledSelectors,
+            weights,
             buffer.snapshotEntryOverrides(),
-            buffer.snapshotChances(),
-            buffer.snapshotSelectorTiers(),
+            chances,
+            selectorTiers,
             buffer.snapshotSegmentEdits(),
             buffer.snapshotSegmentResets(),
             buffer.snapshotAppendedSegments(),
             buffer.snapshotSegmentOrder(),
-            buffer.snapshotCustomSelectors(),
-            buffer.snapshotRemovedCustomSelectorIds());
-        if (ok) {
-            UserConfigLoader.reload();
-            // Dev-mode datapack-editor write: for every chain touched this
-            // session, materialise the post-edit chain (with the just-reloaded
-            // user-config overrides applied on top of shipped) and split it
-            // per source pack, writing each pack's layer file.
-            Set<ResourceLocation> dirtyChains = collectDirtyChains(buffer);
+            customSelectors,
+            removedCustomSelectorIds);
+        if (!ok) {
+            LOGGER.warn("[AdventureItemNames] save failed — pending edits retained");
+            return false;
+        }
+        UserConfigLoader.reload();
+
+        boolean packWritten = false;
+        if (PackPaths.projectRootAvailable()) {
+            Set<ResourceLocation> dirtyChains = collectDirtyChains(buffer, weights);
             Set<ResourceLocation> dirtyPools = collectDirtyPools(buffer);
             Map<ResourceLocation, String> newChainPacks = buffer.snapshotPendingNewChains();
-            boolean packWritten = false;
-            if (PackPaths.projectRootAvailable() && !dirtyChains.isEmpty()) {
+
+            if (!dirtyChains.isEmpty()) {
                 writePackFilesForDirtyChains(dirtyChains, newChainPacks);
-                // The user-config segment overlays are now baked into the
-                // pack files. Strip them from user-config so they stop
-                // double-applying on top of the new shipped data — and
-                // trigger a resource reload so the in-game state picks up
-                // the new pack files immediately.
                 UserConfigWriter.wipeChainSegmentData(dirtyChains);
-                UserConfigLoader.reload();
+                UserConfigWriter.wipeWeightData(dirtyChains);
                 packWritten = true;
             }
-            if (PackPaths.projectRootAvailable() && !dirtyPools.isEmpty()) {
+            if (!dirtyPools.isEmpty()) {
                 writePackFilesForDirtyPools(dirtyPools);
-                // Same baked-in / overlay-strip dance as chains: the
-                // user-config pool_entry_overrides are now redundant.
                 UserConfigWriter.wipePoolEntryData(dirtyPools);
-                UserConfigLoader.reload();
                 packWritten = true;
             }
-            buffer.clear();
-            if (onSuccess != null) onSuccess.run();
-            LOGGER.info("[AdventureItemNames] user config saved");
-            if (packWritten) {
-                triggerDataReload();
+            if (!disabledPools.isEmpty() || !enabledPools.isEmpty()
+                || !disabledSelectors.isEmpty() || !enabledSelectors.isEmpty()) {
+                if (PackDisableWriter.writeDisables(BASE_PACK_ID,
+                    disabledPools, enabledPools,
+                    Set.of(), Set.of(),
+                    disabledSelectors, enabledSelectors)) {
+                    UserConfigWriter.wipeDisableData(disabledPools, enabledPools,
+                        disabledSelectors, enabledSelectors);
+                    packWritten = true;
+                }
             }
-        } else {
-            LOGGER.warn("[AdventureItemNames] save failed — pending edits retained");
+            if (!chances.isEmpty()) {
+                if (PackChanceWriter.writeChances(BASE_PACK_ID, chances)) {
+                    UserConfigWriter.wipeChanceData(chances.keySet());
+                    packWritten = true;
+                }
+            }
+            if (!selectorTiers.isEmpty()) {
+                Set<ResourceLocation> selectorsWritten = writePackFilesForSelectorTiers(selectorTiers);
+                if (!selectorsWritten.isEmpty()) {
+                    UserConfigWriter.wipeSelectorTierData(selectorsWritten);
+                    packWritten = true;
+                }
+            }
+            if (!customSelectors.isEmpty() || !removedCustomSelectorIds.isEmpty()) {
+                Set<ResourceLocation> wiped = writePackFilesForCustomSelectors(customSelectors, removedCustomSelectorIds);
+                if (!wiped.isEmpty()) {
+                    UserConfigWriter.wipeCustomSelectorData(wiped);
+                    packWritten = true;
+                }
+            }
+
+            // One reload of user-config at the end so the wiped sections
+            // stop double-applying. The async server data reload below
+            // picks up the new pack-side JSON.
+            if (packWritten) UserConfigLoader.reload();
         }
-        return ok;
+
+        buffer.clear();
+        if (onSuccess != null) onSuccess.run();
+        LOGGER.info("[AdventureItemNames] user config saved");
+        if (packWritten) {
+            triggerDataReload();
+        }
+        return true;
     }
 
     /**
@@ -121,12 +174,6 @@ public final class ConfigSave {
             }
             String basePackOverride = newChainPacks.get(chainId);
             Map<String, PerPackSplitter.PackLayer> split = PerPackSplitter.split(effective, basePackOverride);
-            // Previously-contributing packs whose contribution is now empty
-            // should have their file deleted so the runtime doesn't keep
-            // loading a stale layer. Canonicalize the previous-pack ids so
-            // Loom's synthetic "generated_<hash>" alias collapses to the
-            // same key the splitter emits — otherwise the diff below would
-            // call deleteChain on a path the writer just populated.
             Set<String> previousPacks = new LinkedHashSet<>();
             for (String p : NameRegistry.packsOfChain(chainId)) {
                 previousPacks.add(PackPaths.canonicalize(p));
@@ -139,14 +186,9 @@ public final class ConfigSave {
                 }
                 previousPacks.remove(layer.packId());
             }
-            // Packs that contributed previously but aren't in the new split
-            // at all also get their file deleted.
             for (String stalePack : previousPacks) {
                 PackChainWriter.deleteChain(stalePack, chainId.getPath());
             }
-            // Patch the in-memory chain immediately so the UI reflects the
-            // new state on the next render. The async server data reload
-            // below will eventually re-derive the same chain from disk.
             NameRegistry.putChainInMemory(effective);
         }
     }
@@ -157,13 +199,6 @@ public final class ConfigSave {
      * (which now reflects the just-reloaded user-config layer), resolve
      * the winning source pack via {@link NameRegistry#packIdOfPool},
      * canonicalise the pack id, and call {@link PackPoolWriter#writePool}.
-     *
-     * <p>The freshly written pool is also pushed into
-     * {@link NameRegistry#putPoolInMemory} so the UI reflects the saved
-     * state on the next render — the async server resource reload below
-     * will eventually re-derive the same pool from disk, but in dev mode
-     * the dev jar still holds the pre-edit data, so without the overlay
-     * the next reload would visibly revert the change.
      */
     private static void writePackFilesForDirtyPools(Set<ResourceLocation> dirty) {
         for (ResourceLocation poolId : dirty) {
@@ -182,6 +217,49 @@ public final class ConfigSave {
     }
 
     /**
+     * For each selector id with pending tier overrides, resolve its
+     * owning pack, write the merged tier overrides into the existing
+     * selector file (or create a new file if the selector is user-side),
+     * and return the set of selectors that wrote successfully so the
+     * caller can wipe their user-config overlays.
+     */
+    private static Set<ResourceLocation> writePackFilesForSelectorTiers(
+            Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> edits) {
+        Set<ResourceLocation> ok = new LinkedHashSet<>();
+        for (var entry : edits.entrySet()) {
+            ResourceLocation selectorId = entry.getKey();
+            String packId = PackPaths.canonicalize(NameRegistry.packIdOfSelector(selectorId));
+            if (PackSelectorWriter.writeSelectorTiers(packId, selectorId, entry.getValue())) {
+                ok.add(selectorId);
+            }
+        }
+        return ok;
+    }
+
+    /**
+     * Write a new selector file for every added custom selector and
+     * delete the file for every removed one. Both groups land in the
+     * base mod's pack tree (matching the {@code + New chain} popup
+     * default). Returns the union of selector ids the writer touched so
+     * the caller can wipe their user-config overlays.
+     */
+    private static Set<ResourceLocation> writePackFilesForCustomSelectors(
+            Map<ResourceLocation, NameSelector> added, Set<ResourceLocation> removed) {
+        Set<ResourceLocation> touched = new LinkedHashSet<>();
+        for (var entry : added.entrySet()) {
+            if (PackSelectorWriter.writeSelector(BASE_PACK_ID, entry.getValue())) {
+                touched.add(entry.getKey());
+            }
+        }
+        for (ResourceLocation id : removed) {
+            if (PackSelectorWriter.deleteSelector(BASE_PACK_ID, id)) {
+                touched.add(id);
+            }
+        }
+        return touched;
+    }
+
+    /**
      * Pool ids touched by this session's entry edits — union of the
      * {@code added} and {@code removed} keysets on the buffer's
      * {@link games.brennan.adventureitemnames.internal.EntryOverrides}
@@ -195,19 +273,31 @@ public final class ConfigSave {
         return out;
     }
 
-    /** Union of chain ids referenced by every segment-shape buffer slot. */
-    private static Set<ResourceLocation> collectDirtyChains(EditBuffer buffer) {
+    /**
+     * Union of chain ids referenced by every segment-shape buffer slot
+     * plus chain ids extracted from weight-override keys (weights are
+     * baked into chain JSON via {@link ChainAssembler}).
+     */
+    private static Set<ResourceLocation> collectDirtyChains(EditBuffer buffer, Map<String, Float> weights) {
         Set<ResourceLocation> out = new LinkedHashSet<>();
         for (String key : buffer.snapshotSegmentEdits().keySet()) addChainFromSegmentKey(out, key);
         for (String key : buffer.snapshotSegmentResets()) addChainFromSegmentKey(out, key);
         for (String chainStr : buffer.snapshotAppendedSegments().keySet()) addChainFromString(out, chainStr);
         for (String chainStr : buffer.snapshotSegmentOrder().keySet()) addChainFromString(out, chainStr);
         out.addAll(buffer.snapshotPendingNewChains().keySet());
+        // Weight-override keys are "<chain>#<seg>#<ref>" — pull the chain.
+        for (String key : weights.keySet()) addChainFromWeightKey(out, key);
         return out;
     }
 
     private static void addChainFromSegmentKey(Set<ResourceLocation> out, String key) {
-        // Segment-override keys are "<chain_id>#<segment_index>" — strip the suffix.
+        int hash = key.indexOf('#');
+        if (hash <= 0) return;
+        ResourceLocation rl = ResourceLocation.tryParse(key.substring(0, hash));
+        if (rl != null) out.add(rl);
+    }
+
+    private static void addChainFromWeightKey(Set<ResourceLocation> out, String key) {
         int hash = key.indexOf('#');
         if (hash <= 0) return;
         ResourceLocation rl = ResourceLocation.tryParse(key.substring(0, hash));
