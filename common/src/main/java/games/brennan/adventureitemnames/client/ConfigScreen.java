@@ -16,14 +16,14 @@ import net.minecraft.network.chat.Component;
  * preserves pending edits.
  *
  * <p>{@code Save to pack} lives on the sub-screens, not here — the hub
- * has no rows to edit. Pending edits across sub-screens stay in the
- * buffer until the user saves on a sub-screen, or until this hub's
- * {@code onClose} runs — at which point an
- * {@link UnsavedChangesPrompt} catches a dirty buffer and offers
- * Save / Discard / Cancel before the user actually exits the config UI.
- * Sub-screens deliberately do NOT trigger the prompt on their own
- * {@code onClose} so navigating between config screens never asks "do
- * you want to save" about edits made on a different screen.
+ * has no rows to edit. Each screen (including this one) compares a
+ * {@link BufferFingerprint} captured at open against the current buffer
+ * state at {@code onClose} and shows an {@link UnsavedChangesPrompt} only
+ * when something changed during this screen's lifetime. That means
+ * navigating between screens never re-prompts about edits already
+ * resolved by a child's prompt — and the hub still catches anything that
+ * slipped through (e.g. an edit on a sub-screen the user cancelled out
+ * of without resolving the prompt).
  */
 @Environment(EnvType.CLIENT)
 public final class ConfigScreen extends Screen {
@@ -31,6 +31,7 @@ public final class ConfigScreen extends Screen {
     private final Screen parent;
     private final EditBuffer buffer;
     private ConfirmDialog activeConfirm;
+    private String openFingerprint;
 
     public ConfigScreen(Screen parent) {
         super(Component.translatable("screen.adventureitemnames.config.title"));
@@ -63,6 +64,8 @@ public final class ConfigScreen extends Screen {
             Component.translatable("gui.done"),
             b -> onClose()
         ).bounds(cx - btnW / 2, height - 28, btnW, btnH).build());
+
+        if (openFingerprint == null) openFingerprint = BufferFingerprint.of(buffer);
     }
 
     @Override
@@ -90,7 +93,7 @@ public final class ConfigScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (!buffer.isDirty()) {
+        if (BufferFingerprint.of(buffer).equals(openFingerprint)) {
             Minecraft.getInstance().setScreen(parent);
             return;
         }

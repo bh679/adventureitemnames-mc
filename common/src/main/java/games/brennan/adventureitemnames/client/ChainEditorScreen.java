@@ -46,8 +46,9 @@ public final class ChainEditorScreen extends Screen {
     private SegmentList list;
     private PreviewPanel preview;
     private Button saveButton;
-    /** Active confirmation popup (e.g. before reset). {@code null} when no popup is open. */
+    /** Active confirmation popup (e.g. before reset, or unsaved-changes prompt). {@code null} when no popup is open. */
     private ConfirmDialog activeConfirm;
+    private String openFingerprint;
 
     public ChainEditorScreen(Screen parent, EditBuffer buffer, NameChain chain) {
         super(Component.literal(ChainsListScreen.formatChainName(chain.id())));
@@ -90,6 +91,8 @@ public final class ChainEditorScreen extends Screen {
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
         addRenderableWidget(preview.toggleButton());
+
+        if (openFingerprint == null) openFingerprint = BufferFingerprint.of(buffer);
     }
 
     private void appendNewSegment() {
@@ -169,9 +172,14 @@ public final class ChainEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        // Sub-screen navigation never prompts; ConfigScreen.onClose owns
-        // the unsaved-changes check at the actual exit boundary.
-        Minecraft.getInstance().setScreen(parent);
+        if (BufferFingerprint.of(buffer).equals(openFingerprint)) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 
     NameChain chain() { return chain; }
