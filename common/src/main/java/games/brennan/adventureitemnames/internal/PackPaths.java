@@ -104,6 +104,40 @@ public final class PackPaths {
     }
 
     /**
+     * {@code data/adventureitemnames/naming/selectors/<selectorPath>.json}
+     * resolved under the given pack. Used by {@link PackSelectorWriter}
+     * for both custom-selector creation and tier-override writes on
+     * shipped selectors.
+     */
+    public static Path selectorFile(String packId, String selectorPath) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("naming").resolve("selectors").resolve(selectorPath + ".json");
+    }
+
+    /**
+     * {@code data/adventureitemnames/disabled/<name>.json} resolved under
+     * the given pack. Used by {@link PackDisableWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path disableFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("disabled").resolve(name + ".json");
+    }
+
+    /**
+     * {@code data/adventureitemnames/chances/<name>.json} resolved under
+     * the given pack. Used by {@link PackChanceWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path chanceFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("chances").resolve(name + ".json");
+    }
+
+    /**
      * Walk up from the current working directory looking for a {@code gradle.properties}
      * file with {@code mod_id=adventureitemnames}. Caches the result so subsequent
      * lookups are cheap.

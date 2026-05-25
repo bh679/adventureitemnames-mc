@@ -105,6 +105,7 @@ public final class AdventureItemNamesForge {
         event.addListener(NameRegistry.chainListener());
         event.addListener(NameRegistry.selectorListener());
         event.addListener(NameRegistry.configListener());
+        event.addListener(NameRegistry.chanceListener());
     }
 
     private static void onAddPackFinders(AddPackFindersEvent event) {

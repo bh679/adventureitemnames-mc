@@ -114,6 +114,7 @@ public final class BundledPackLoader {
             driveListener(NameRegistry.chainListener(), mgr);
             driveListener(NameRegistry.selectorListener(), mgr);
             driveListener(NameRegistry.configListener(), mgr);
+            driveListener(NameRegistry.chanceListener(), mgr);
             LOGGER.info("[AdventureItemNames] client-init preload complete — {} bundled pack(s)", packs.size());
         }
     }

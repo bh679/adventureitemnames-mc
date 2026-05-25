@@ -22,11 +22,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:feelings",
-          "weight": 16.0
+          "weight": 20.0
         },
         {
           "ref": "adventureitemnames:wholesome_things",
-          "weight": 15.0
+          "weight": 20.0
         }
       ]
     },

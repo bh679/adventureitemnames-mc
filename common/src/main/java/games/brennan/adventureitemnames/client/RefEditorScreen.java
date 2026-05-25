@@ -52,6 +52,8 @@ public final class RefEditorScreen extends Screen {
     private PreviewPanel preview;
     private Button saveButton;
     private RefPicker activeRefPicker;
+    private ConfirmDialog activeConfirm;
+    private String openFingerprint;
 
     public RefEditorScreen(Screen parent, EditBuffer buffer, NameChain chain, int segIdx, NameSegment shipped) {
         super(Component.literal(ChainsListScreen.formatChainName(chain.id()) + " · Seg " + segIdx + " refs"));
@@ -110,10 +112,17 @@ public final class RefEditorScreen extends Screen {
         preview.rebuild(width, height);
         addRenderableWidget(preview.button());
         addRenderableWidget(preview.toggleButton());
+
+        if (openFingerprint == null) openFingerprint = BufferFingerprint.of(buffer);
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         if (activeRefPicker != null) {
             super.renderBackground(gfx, mouseX, mouseY, partial);
             activeRefPicker.render(gfx, mouseX, mouseY);
@@ -263,6 +272,7 @@ public final class RefEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (activeRefPicker != null) { activeRefPicker.mouseClicked(mouseX, mouseY, button); return true; }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
@@ -276,6 +286,7 @@ public final class RefEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (activeRefPicker != null && activeRefPicker.keyPressed(keyCode, scanCode, modifiers)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -289,7 +300,14 @@ public final class RefEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        if (BufferFingerprint.of(buffer).equals(openFingerprint)) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 
     EditBuffer buffer() { return buffer; }
