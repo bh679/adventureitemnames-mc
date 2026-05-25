@@ -69,15 +69,27 @@ public final class PoolListScreen extends Screen {
         list = new PoolList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
+        int footerY = height - PreviewPanel.currentHeight() - 26;
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
+        ).bounds(8, footerY, 80, 20).build());
+
+        Button newPoolButton = Button.builder(
+            Component.translatable("screen.adventureitemnames.pools.new_pool"),
+            b -> Minecraft.getInstance().setScreen(new CreatePoolPopup(this, buffer, pack))
+        ).bounds(width / 2 - 60, footerY, 120, 20).build();
+        newPoolButton.active = games.brennan.adventureitemnames.internal.PoolCreator.canWriteTo(pack.packId());
+        if (!newPoolButton.active) {
+            newPoolButton.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable("screen.adventureitemnames.pools.new_pool.read_only")));
+        }
+        addRenderableWidget(newPoolButton);
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
+        ).bounds(width - 88, footerY, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
@@ -148,6 +160,11 @@ public final class PoolListScreen extends Screen {
     }
 
     EditBuffer buffer() { return buffer; }
+
+    /** Datapacks list this screen returns to on Back — used by {@link CreatePoolPopup} when rebuilding post-reload. */
+    Screen parentScreen() { return parent; }
+
+    PackGrouping.PackView pack() { return pack; }
 
     void openEntryEditor(net.minecraft.resources.ResourceLocation poolId) {
         NamePool live = NameRegistry.pool(poolId).orElse(null);

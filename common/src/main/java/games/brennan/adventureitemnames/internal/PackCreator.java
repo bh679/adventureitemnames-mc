@@ -133,7 +133,8 @@ public final class PackCreator {
         return root;
     }
 
-    private static void atomicWriteJson(Path file, JsonObject body) throws IOException {
+    /** Shared atomic-write helper. Package-private so siblings like {@link PoolCreator} can reuse it. */
+    static void atomicWriteJson(Path file, JsonObject body) throws IOException {
         String json = new GsonBuilder().setPrettyPrinting().create().toJson(body);
         Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
         Files.writeString(tmp, json, StandardCharsets.UTF_8);
