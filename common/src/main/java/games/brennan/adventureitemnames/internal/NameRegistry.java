@@ -162,6 +162,15 @@ public final class NameRegistry {
     private static final Map<ResourceLocation, NameChain> CHAIN_OVERLAY = new LinkedHashMap<>();
 
     /**
+     * Dev-mode pool overlay — same reasoning as {@link #CHAIN_OVERLAY}.
+     * Required because Loom's runtime resource manager loads pools from
+     * the pre-edit dev jar; without re-applying the session overlay after
+     * each {@link #replacePools}, a saved pool edit would visibly revert
+     * the next time the user reopens the screen.
+     */
+    private static final Map<ResourceLocation, NamePool> POOL_OVERLAY = new LinkedHashMap<>();
+
+    /**
      * Synchronously overwrite one chain in the in-memory registry and pin
      * it as a session overlay so subsequent {@code /reload}-style refreshes
      * don't revert it. Used by the dev-mode datapack editor so a saved
@@ -176,6 +185,24 @@ public final class NameRegistry {
     /** Drop a chain from the dev overlay (its next reload-derived form will stick). */
     public static synchronized void clearChainOverlay(ResourceLocation id) {
         CHAIN_OVERLAY.remove(id);
+    }
+
+    /**
+     * Synchronously overwrite one pool in the in-memory registry and pin
+     * it as a session overlay. Mirror of {@link #putChainInMemory} for
+     * pools — the dev-mode pool editor calls this after a successful
+     * {@link PackPoolWriter#writePool} so the saved pool survives the
+     * subsequent server resource reload.
+     */
+    public static synchronized void putPoolInMemory(NamePool pool) {
+        if (pool == null) return;
+        POOLS.put(pool.id(), pool);
+        POOL_OVERLAY.put(pool.id(), pool);
+    }
+
+    /** Drop a pool from the dev overlay (its next reload-derived form will stick). */
+    public static synchronized void clearPoolOverlay(ResourceLocation id) {
+        POOL_OVERLAY.remove(id);
     }
 
     /** Immutable view of every registered pool — keyed by id, insertion-order preserved. */
@@ -280,9 +307,16 @@ public final class NameRegistry {
                                                   Map<ResourceLocation, String> packs) {
         POOLS.clear();
         POOLS.putAll(next);
+        // Re-apply session overlay so saved in-game edits survive the reload.
+        // Loom's dev jar holds the pre-edit base mod data, so a vanilla
+        // reload would otherwise revert pools the user just saved.
+        for (Map.Entry<ResourceLocation, NamePool> e : POOL_OVERLAY.entrySet()) {
+            POOLS.put(e.getKey(), e.getValue());
+        }
         POOL_PACKS.clear();
         POOL_PACKS.putAll(packs);
-        LOGGER.info("[AdventureItemNames] pools reloaded — {}", POOLS.size());
+        LOGGER.info("[AdventureItemNames] pools reloaded — {} ({} overlay)",
+            POOLS.size(), POOL_OVERLAY.size());
     }
 
     private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next,
