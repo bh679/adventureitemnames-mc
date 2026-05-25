@@ -292,7 +292,7 @@ public final class PoolListScreen extends Screen {
                                int rowWidth, int rowHeight, int mouseX, int mouseY,
                                boolean hovered, float partial) {
                 int textY = rowTop + 8;
-                String poolName = pv.poolId().getPath();
+                String poolName = PackGrouping.friendlyPoolName(pv.packId(), pv.poolId().getPath());
                 gfx.drawString(Minecraft.getInstance().font,
                     Component.literal(poolName).withStyle(ChatFormatting.WHITE),
                     16, textY, 0xFFFFFFFF, false);
