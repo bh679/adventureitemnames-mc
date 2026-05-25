@@ -26,9 +26,9 @@ import java.util.Set;
  *
  * <p>Two filters narrow the visible list: a search box at the top
  * (matches the ref's <em>name</em> only — namespaces and pack ids are
- * never searched), and a row of clickable pack chips below it (any chip
- * toggles whether refs sourced from that pack are visible; all packs are
- * shown by default).
+ * never searched), and a row of clickable pack chips below it (click a
+ * chip to narrow the list to that pack — when no chip is active, all
+ * packs are shown).
  *
  * <p>Row click toggles selection; a footer {@code Add N} button commits
  * every selected ref in one call. {@code Enter} also commits, {@code Esc}
@@ -71,8 +71,8 @@ public final class RefPicker {
     private final EditBox searchBox;
     /** Pack id → friendly name, in stable display order. */
     private final Map<String, String> packsInList = new LinkedHashMap<>();
-    /** Packs the user has toggled OFF (visible = not in this set). */
-    private final Set<String> hiddenPacks = new LinkedHashSet<>();
+    /** Packs the user has toggled on. Empty = no filter (show all). */
+    private final Set<String> selectedPacks = new LinkedHashSet<>();
     /** Per-pack chip bounds, recomputed on every render. Used for click hit-testing. */
     private final List<ChipRect> chipRects = new ArrayList<>();
     /** Currently-selected refs. Persists across search / pack-filter changes. */
@@ -173,7 +173,7 @@ public final class RefPicker {
         String needle = searchText == null ? "" : searchText.toLowerCase(Locale.ROOT).trim();
         for (Entry e : all) {
             String packKey = packKeyOf(e.id(), e.kind());
-            if (hiddenPacks.contains(packKey)) continue;
+            if (!selectedPacks.isEmpty() && !selectedPacks.contains(packKey)) continue;
             if (!needle.isEmpty()) {
                 String name = formatRefName(e.id()).toLowerCase(Locale.ROOT);
                 if (!name.contains(needle)) continue;
@@ -219,7 +219,7 @@ public final class RefPicker {
             int chipY = chipsY + line * FILTER_ROW_H;
             int chipX2 = cursor + chipW;
             int chipY2 = chipY + 12;
-            boolean active = !hiddenPacks.contains(key);
+            boolean active = selectedPacks.contains(key);
             int bg = active ? 0xFF3A3A3A : 0xFF202020;
             int fg = active ? 0xFFE8E8E8 : 0xFF606060;
             boolean hover = mouseX >= cursor && mouseX < chipX2 && mouseY >= chipY && mouseY < chipY2;
@@ -338,7 +338,7 @@ public final class RefPicker {
         for (ChipRect chip : chipRects) {
             if (mouseX >= chip.x1() && mouseX < chip.x2()
                 && mouseY >= chip.y1() && mouseY < chip.y2()) {
-                if (!hiddenPacks.add(chip.packKey())) hiddenPacks.remove(chip.packKey());
+                if (!selectedPacks.add(chip.packKey())) selectedPacks.remove(chip.packKey());
                 rebuildFiltered(searchBox.getValue());
                 return true;
             }
