@@ -116,6 +116,7 @@ public final class AdventureItemNamesForge {
         registerBuiltinPack(event, "discord", "Adventure Item Names — Discord Supporters");
         registerBuiltinPack(event, "atla", "Adventure Item Names — ATLA Pack");
         registerBuiltinPack(event, "adventuretime", "Adventure Item Names — Adventure Time Pack");
+        registerBuiltinPack(event, "dungeontrain", "Adventure Item Names — Dungeon Train Pack");
     }
 
     /**
