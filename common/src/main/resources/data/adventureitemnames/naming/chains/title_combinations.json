@@ -27,6 +27,10 @@
       "newline": false,
       "refs": [
         {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 30.0
+        },
+        {
           "ref": "adventureitemnames:title_post_prefix",
           "weight": 100.0
         },
@@ -81,10 +85,6 @@
         {
           "ref": "adventureitemnames:the_something",
           "weight": 250.0
-        },
-        {
-          "ref": "adventureitemnames:material_or_element",
-          "weight": 30.0
         }
       ]
     }

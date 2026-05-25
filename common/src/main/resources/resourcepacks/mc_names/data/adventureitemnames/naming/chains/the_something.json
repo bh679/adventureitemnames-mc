@@ -9,6 +9,14 @@
       "label": "THE something",
       "refs": [
         {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 15.0
+        },
+        {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 42.0
         },
