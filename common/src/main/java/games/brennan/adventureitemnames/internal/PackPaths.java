@@ -93,6 +93,17 @@ public final class PackPaths {
     }
 
     /**
+     * {@code data/adventureitemnames/naming/pools/<poolPath>.json} resolved
+     * under the given pack. Mirrors {@link #chainFile} — pools live in a
+     * sibling subdirectory of the same pack data root.
+     */
+    public static Path poolFile(String packId, String poolPath) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("naming").resolve("pools").resolve(poolPath + ".json");
+    }
+
+    /**
      * Walk up from the current working directory looking for a {@code gradle.properties}
      * file with {@code mod_id=adventureitemnames}. Caches the result so subsequent
      * lookups are cheap.

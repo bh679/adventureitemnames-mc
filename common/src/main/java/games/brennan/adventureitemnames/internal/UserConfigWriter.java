@@ -182,6 +182,48 @@ public final class UserConfigWriter {
         }
     }
 
+    /**
+     * Strip {@code pool_entry_overrides[<poolId>]} for every id in
+     * {@code pools} from the on-disk user-config file. Called after a
+     * successful dev-mode {@link PackPoolWriter#writePool} so the
+     * user-config overlay stops double-applying on top of the freshly
+     * baked-in pool file. Sibling of {@link #wipeChainSegmentData}; same
+     * no-op-on-empty / atomic-write semantics.
+     */
+    public static synchronized boolean wipePoolEntryData(Set<ResourceLocation> pools) {
+        if (pools == null || pools.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+
+        JsonElement overridesEl = root.get("pool_entry_overrides");
+        if (overridesEl == null || !overridesEl.isJsonObject()) return true;
+        JsonObject overrides = overridesEl.getAsJsonObject();
+        boolean changed = false;
+        for (ResourceLocation pool : pools) {
+            if (overrides.has(pool.toString())) {
+                overrides.remove(pool.toString());
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        if (overrides.size() == 0) root.remove("pool_entry_overrides");
+
+        try {
+            Path tmp = configDir.resolve(FILE_NAME + ".tmp");
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            Files.writeString(tmp, body, StandardCharsets.UTF_8);
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            LOGGER.info("[AdventureItemNames] wiped user-config pool_entry_overrides for {} pool(s)", pools.size());
+            return true;
+        } catch (IOException ex) {
+            LOGGER.warn("[AdventureItemNames] failed to write {} during pool wipe: {}", file, ex.getMessage());
+            return false;
+        }
+    }
+
     private static JsonObject readRootOrEmpty(Path file) {
         if (!Files.exists(file)) return new JsonObject();
         try (InputStream in = Files.newInputStream(file)) {

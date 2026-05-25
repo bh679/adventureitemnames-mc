@@ -2,10 +2,13 @@ package games.brennan.adventureitemnames.client;
 
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NameChain;
+import games.brennan.adventureitemnames.api.NamePool;
+import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.ChainAssembler;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.PackChainWriter;
 import games.brennan.adventureitemnames.internal.PackPaths;
+import games.brennan.adventureitemnames.internal.PackPoolWriter;
 import games.brennan.adventureitemnames.internal.PerPackSplitter;
 import games.brennan.adventureitemnames.internal.UserConfigLoader;
 import games.brennan.adventureitemnames.internal.UserConfigWriter;
@@ -61,6 +64,7 @@ public final class ConfigSave {
             // user-config overrides applied on top of shipped) and split it
             // per source pack, writing each pack's layer file.
             Set<ResourceLocation> dirtyChains = collectDirtyChains(buffer);
+            Set<ResourceLocation> dirtyPools = collectDirtyPools(buffer);
             Map<ResourceLocation, String> newChainPacks = buffer.snapshotPendingNewChains();
             boolean packWritten = false;
             if (PackPaths.projectRootAvailable() && !dirtyChains.isEmpty()) {
@@ -71,6 +75,14 @@ public final class ConfigSave {
                 // trigger a resource reload so the in-game state picks up
                 // the new pack files immediately.
                 UserConfigWriter.wipeChainSegmentData(dirtyChains);
+                UserConfigLoader.reload();
+                packWritten = true;
+            }
+            if (PackPaths.projectRootAvailable() && !dirtyPools.isEmpty()) {
+                writePackFilesForDirtyPools(dirtyPools);
+                // Same baked-in / overlay-strip dance as chains: the
+                // user-config pool_entry_overrides are now redundant.
+                UserConfigWriter.wipePoolEntryData(dirtyPools);
                 UserConfigLoader.reload();
                 packWritten = true;
             }
@@ -137,6 +149,50 @@ public final class ConfigSave {
             // below will eventually re-derive the same chain from disk.
             NameRegistry.putChainInMemory(effective);
         }
+    }
+
+    /**
+     * For each pool in {@code dirty}, materialise the effective post-edit
+     * {@link NamePool} from {@link NamingConfig#effectivePoolEntries}
+     * (which now reflects the just-reloaded user-config layer), resolve
+     * the winning source pack via {@link NameRegistry#packIdOfPool},
+     * canonicalise the pack id, and call {@link PackPoolWriter#writePool}.
+     *
+     * <p>The freshly written pool is also pushed into
+     * {@link NameRegistry#putPoolInMemory} so the UI reflects the saved
+     * state on the next render — the async server resource reload below
+     * will eventually re-derive the same pool from disk, but in dev mode
+     * the dev jar still holds the pre-edit data, so without the overlay
+     * the next reload would visibly revert the change.
+     */
+    private static void writePackFilesForDirtyPools(Set<ResourceLocation> dirty) {
+        for (ResourceLocation poolId : dirty) {
+            NamePool shipped = NameRegistry.pool(poolId).orElse(null);
+            if (shipped == null) {
+                LOGGER.warn("[AdventureItemNames] pool {} not registered — skipping pack write", poolId);
+                continue;
+            }
+            java.util.List<NamePool.PoolEntry> effective = NamingConfig.effectivePoolEntries(shipped);
+            NamePool postEdit = new NamePool(poolId, java.util.List.copyOf(effective));
+            String packId = PackPaths.canonicalize(NameRegistry.packIdOfPool(poolId));
+            if (PackPoolWriter.writePool(packId, postEdit)) {
+                NameRegistry.putPoolInMemory(postEdit);
+            }
+        }
+    }
+
+    /**
+     * Pool ids touched by this session's entry edits — union of the
+     * {@code added} and {@code removed} keysets on the buffer's
+     * {@link games.brennan.adventureitemnames.internal.EntryOverrides}
+     * snapshot.
+     */
+    private static Set<ResourceLocation> collectDirtyPools(EditBuffer buffer) {
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        var snap = buffer.snapshotEntryOverrides();
+        out.addAll(snap.removed.keySet());
+        out.addAll(snap.added.keySet());
+        return out;
     }
 
     /** Union of chain ids referenced by every segment-shape buffer slot. */

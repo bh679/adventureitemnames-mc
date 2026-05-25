@@ -159,6 +159,34 @@ public final class NameCodec {
         return root;
     }
 
+    /**
+     * Serialize {@code pool} back to a {@link JsonObject} suitable for
+     * writing to a pack's {@code naming/pools/<path>.json} file. Inverse
+     * of {@link #parsePool(JsonElement, ResourceLocation)}.
+     *
+     * <p>Empty {@code item_types} lists are omitted from each entry so
+     * the output stays diff-clean against the existing hand-authored
+     * pool files (which use the shorthand {@code { "text": "..." }}
+     * form for universal entries).
+     */
+    public static JsonObject writePool(NamePool pool) {
+        JsonObject root = new JsonObject();
+        root.add("id", new JsonPrimitive(pool.id().toString()));
+        JsonArray entries = new JsonArray();
+        for (NamePool.PoolEntry entry : pool.entries()) {
+            JsonObject eObj = new JsonObject();
+            eObj.add("text", new JsonPrimitive(entry.text()));
+            if (entry.itemTypes() != null && !entry.itemTypes().isEmpty()) {
+                JsonArray types = new JsonArray();
+                for (ResourceLocation rl : entry.itemTypes()) types.add(new JsonPrimitive(rl.toString()));
+                eObj.add("item_types", types);
+            }
+            entries.add(eObj);
+        }
+        root.add("entries", entries);
+        return root;
+    }
+
     public static NameSelector parseSelector(InputStream in, ResourceLocation fallbackId) throws NameParseException {
         return parseSelectorObj(readRoot(in), fallbackId);
     }
