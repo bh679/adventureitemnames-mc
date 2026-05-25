@@ -72,7 +72,8 @@ public final class AdventureItemNamesFabric implements ModInitializer {
 
         // Register before the first reload fires so the synthetic mc_blocks /
         // mc_items pools appear in the title-screen preview and at world load.
-        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
+        NameRegistry.registerSyntheticPoolSource("mod/adventureitemnames/mc_names",
+            new VanillaRegistryPoolSource());
 
         ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
         rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));

@@ -9,6 +9,10 @@
       "label": "THE something",
       "refs": [
         {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 50.0
+        },
+        {
           "ref": "adventureitemnames:title_prefix",
           "weight": 153.0
         },
@@ -31,10 +35,6 @@
         {
           "ref": "adventureitemnames:math",
           "weight": 23.0
-        },
-        {
-          "ref": "adventureitemnames:material_or_element",
-          "weight": 50.0
         }
       ]
     }

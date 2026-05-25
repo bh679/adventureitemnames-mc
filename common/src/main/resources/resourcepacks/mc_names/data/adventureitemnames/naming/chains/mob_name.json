@@ -9,6 +9,14 @@
       "label": "Title",
       "refs": [
         {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 15.0
+        },
+        {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 30.0
         },
@@ -92,6 +100,14 @@
       "newline": false,
       "label": "Last Name",
       "refs": [
+        {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 15.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 10.0
+        },
         {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 42.0
