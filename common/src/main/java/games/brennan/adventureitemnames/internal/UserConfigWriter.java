@@ -103,7 +103,7 @@ public final class UserConfigWriter {
         try {
             Files.createDirectories(configDir);
             Path tmp = configDir.resolve(FILE_NAME + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return true;
@@ -171,7 +171,7 @@ public final class UserConfigWriter {
         if (!changed) return true;
         try {
             Path tmp = configDir.resolve(FILE_NAME + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wiped user-config segment data for {} chain(s)", chains.size());
@@ -213,7 +213,7 @@ public final class UserConfigWriter {
 
         try {
             Path tmp = configDir.resolve(FILE_NAME + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wiped user-config pool_entry_overrides for {} pool(s)", pools.size());
@@ -397,7 +397,7 @@ public final class UserConfigWriter {
     private static boolean atomicWrite(Path dir, Path file, JsonObject root, String logMsg) {
         try {
             Path tmp = dir.resolve(FILE_NAME + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] {} ({})", logMsg, file);

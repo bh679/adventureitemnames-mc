@@ -93,7 +93,7 @@ public final class PackChanceWriter {
         try {
             Files.createDirectories(file.getParent());
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wrote chance file for pack '{}' ({})", packId, file);

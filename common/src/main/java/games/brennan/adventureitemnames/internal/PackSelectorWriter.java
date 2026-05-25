@@ -73,7 +73,7 @@ public final class PackSelectorWriter {
         try {
             Files.createDirectories(file.getParent());
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wrote selector {} to pack '{}' ({})", selector.id(), packId, file);
@@ -117,7 +117,7 @@ public final class PackSelectorWriter {
         try {
             Files.createDirectories(file.getParent());
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wrote selector tiers for {} to pack '{}' ({})", selectorId, packId, file);

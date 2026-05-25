@@ -54,7 +54,7 @@ public final class PackChainWriter {
         try {
             Files.createDirectories(file.getParent());
             JsonObject root = NameCodec.writeChain(chain, replace);
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

@@ -78,7 +78,7 @@ public final class PackDisableWriter {
         try {
             Files.createDirectories(file.getParent());
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("[AdventureItemNames] wrote disable layer for pack '{}' ({})", packId, file);
