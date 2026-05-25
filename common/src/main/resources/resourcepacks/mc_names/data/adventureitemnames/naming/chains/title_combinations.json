@@ -23,6 +23,14 @@
           "weight": 30.0
         },
         {
+          "ref": "adventureitemnames:mc_enchantments",
+          "weight": 28.0
+        },
+        {
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 28.0
+        },
+        {
           "ref": "adventureitemnames:mc_biomes",
           "weight": 26.0
         },
@@ -35,12 +43,24 @@
           "weight": 21.0
         },
         {
+          "ref": "adventureitemnames:mc_music_discs",
+          "weight": 18.0
+        },
+        {
           "ref": "adventureitemnames:mc_structures",
           "weight": 15.0
         },
         {
           "ref": "adventureitemnames:mc_dimensions",
           "weight": 15.0
+        },
+        {
+          "ref": "adventureitemnames:mc_streamers",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:mc_skins",
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:mc_animals",
@@ -57,34 +77,6 @@
         {
           "ref": "adventureitemnames:mc_events",
           "weight": 1.0
-        },
-        {
-          "ref": "adventureitemnames:mc_skins",
-          "weight": 10.0
-        },
-        {
-          "ref": "adventureitemnames:mc_music_discs",
-          "weight": 18.0
-        },
-        {
-          "ref": "adventureitemnames:mc_potions_effects",
-          "weight": 28.0
-        },
-        {
-          "ref": "adventureitemnames:mc_enchantments",
-          "weight": 28.0
-        },
-        {
-          "ref": "adventureitemnames:mc_streamers",
-          "weight": 10.0
-        },
-        {
-          "ref": "adventureitemnames:mc_blocks",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:mc_items",
-          "weight": 30.0
         }
       ]
     }

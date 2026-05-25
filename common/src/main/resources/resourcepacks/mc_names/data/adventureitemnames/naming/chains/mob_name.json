@@ -57,10 +57,6 @@
           "weight": 18.0
         },
         {
-          "ref": "adventureitemnames:mc_events",
-          "weight": 5.0
-        },
-        {
           "ref": "adventureitemnames:mc_skins",
           "weight": 10.0
         },
@@ -73,16 +69,20 @@
           "weight": 5.0
         },
         {
+          "ref": "adventureitemnames:mc_events",
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
+        },
+        {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 1.0
         },
         {
           "ref": "adventureitemnames:mc_potions_effects",
           "weight": 1.0
-        },
-        {
-          "ref": "adventureitemnames:mc_dimensions",
-          "weight": 5.0
         }
       ]
     },
