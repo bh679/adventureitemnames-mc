@@ -54,6 +54,8 @@ public final class PackPaths {
         m.put("adventureitemnames:atla",               "common/src/main/resources/resourcepacks/atla/data/adventureitemnames");
         m.put("mod/adventureitemnames/adventuretime",  "common/src/main/resources/resourcepacks/adventuretime/data/adventureitemnames");
         m.put("adventureitemnames:adventuretime",      "common/src/main/resources/resourcepacks/adventuretime/data/adventureitemnames");
+        m.put("mod/adventureitemnames/dungeontrain",   "common/src/main/resources/resourcepacks/dungeontrain/data/adventureitemnames");
+        m.put("adventureitemnames:dungeontrain",       "common/src/main/resources/resourcepacks/dungeontrain/data/adventureitemnames");
         PACK_ID_TO_PATH = m;
     }
 
@@ -194,7 +196,8 @@ public final class PackPaths {
             "mod/adventureitemnames/wholesome",
             "mod/adventureitemnames/discord",
             "mod/adventureitemnames/atla",
-            "mod/adventureitemnames/adventuretime");
+            "mod/adventureitemnames/adventuretime",
+            "mod/adventureitemnames/dungeontrain");
         for (String id : canonical) {
             if (PACK_ID_TO_PATH.containsKey(id)) out.add(id);
         }

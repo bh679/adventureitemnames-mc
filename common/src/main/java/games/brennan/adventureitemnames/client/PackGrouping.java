@@ -70,6 +70,7 @@ public final class PackGrouping {
             case "mod/adventureitemnames/discord" -> "Discord Supporters Pack";
             case "mod/adventureitemnames/atla" -> "ATLA Pack";
             case "mod/adventureitemnames/adventuretime" -> "Adventure Time Pack";
+            case "mod/adventureitemnames/dungeontrain" -> "Dungeon Train Pack";
             // Fabric format — the pack id is the ResourceLocation toString() of
             // what was passed to registerBuiltinResourcePack (namespace:path).
             case "adventureitemnames:mc_names" -> "Minecraft Pack";
@@ -77,6 +78,7 @@ public final class PackGrouping {
             case "adventureitemnames:discord" -> "Discord Supporters Pack";
             case "adventureitemnames:atla" -> "ATLA Pack";
             case "adventureitemnames:adventuretime" -> "Adventure Time Pack";
+            case "adventureitemnames:dungeontrain" -> "Dungeon Train Pack";
             default -> {
                 String stripped = packId.startsWith("mod/") ? packId.substring(4)
                                 : packId.startsWith("file/") ? packId.substring(5)
@@ -85,6 +87,46 @@ public final class PackGrouping {
                 yield stripped;
             }
         };
+    }
+
+    /**
+     * Human-readable label for a pool, given the path part of its
+     * {@link ResourceLocation} and the pack it lives in. Strips the
+     * pack's short-name prefix (e.g. {@code dungeontrain_} from
+     * {@code dungeontrain_first_names}) when present, then title-cases
+     * the remaining snake_case so {@code first_names} becomes
+     * {@code "First Names"}. Pools that don't follow the prefix
+     * convention (base mod pools like {@code colors}) just get the
+     * snake_case → Title Case transform.
+     */
+    public static String friendlyPoolName(String packId, String poolPath) {
+        if (poolPath == null || poolPath.isEmpty()) return "(unknown)";
+        String prefix = packShortName(packId);
+        String stripped = (prefix != null && !prefix.isEmpty()
+                           && poolPath.startsWith(prefix + "_"))
+            ? poolPath.substring(prefix.length() + 1)
+            : poolPath;
+        return titleCaseFromSnake(stripped);
+    }
+
+    /** Pack-id tail after the last '/' or ':' separator. */
+    private static String packShortName(String packId) {
+        if (packId == null) return null;
+        int cut = Math.max(packId.lastIndexOf('/'), packId.lastIndexOf(':'));
+        return cut >= 0 ? packId.substring(cut + 1) : packId;
+    }
+
+    /** {@code first_names} → {@code "First Names"}. */
+    private static String titleCaseFromSnake(String snake) {
+        String[] parts = snake.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isEmpty()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(parts[i].charAt(0)));
+            if (parts[i].length() > 1) sb.append(parts[i].substring(1));
+        }
+        return sb.length() == 0 ? snake : sb.toString();
     }
 
     /** Group every currently-registered pool by its source pack id. */
