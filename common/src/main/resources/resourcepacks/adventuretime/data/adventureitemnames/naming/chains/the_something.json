@@ -11,6 +11,14 @@
         {
           "ref": "adventureitemnames:adventuretime_animals",
           "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_titles",
+          "weight": 22.0
         }
       ]
     }
