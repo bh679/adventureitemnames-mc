@@ -78,13 +78,33 @@ public final class PackGrouping {
             case "adventureitemnames:atla" -> "ATLA Pack";
             case "adventureitemnames:adventuretime" -> "Adventure Time Pack";
             default -> {
+                boolean wasFile = packId.startsWith("file/");
                 String stripped = packId.startsWith("mod/") ? packId.substring(4)
-                                : packId.startsWith("file/") ? packId.substring(5)
+                                : wasFile ? packId.substring(5)
                                 : packId;
                 if (stripped.startsWith("generated_")) yield "Adventure Item Names";
+                // User-dropped world datapacks come through as file/<slug> — prettify
+                // the slug back into title case so the list shows "My Cool Pack"
+                // rather than the raw "my_cool_pack" folder name.
+                if (wasFile) yield titleCaseSlug(stripped);
                 yield stripped;
             }
         };
+    }
+
+    /** Split a snake_case slug on underscores and title-case each token. Empty in → empty out. */
+    private static String titleCaseSlug(String slug) {
+        if (slug == null || slug.isEmpty()) return slug;
+        String[] parts = slug.split("_");
+        StringBuilder out = new StringBuilder(slug.length());
+        for (int i = 0; i < parts.length; i++) {
+            String p = parts[i];
+            if (p.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(Character.toUpperCase(p.charAt(0)));
+            if (p.length() > 1) out.append(p.substring(1));
+        }
+        return out.length() == 0 ? slug : out.toString();
     }
 
     /** Group every currently-registered pool by its source pack id. */

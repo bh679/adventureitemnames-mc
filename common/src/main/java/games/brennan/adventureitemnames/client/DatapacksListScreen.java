@@ -59,10 +59,22 @@ public final class DatapacksListScreen extends Screen {
             new ArrayList<>(packs.values()), this);
         addRenderableWidget(list);
 
+        int footerY = height - PreviewPanel.currentHeight() - 26;
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(width / 2 - 100, height - PreviewPanel.currentHeight() - 26, 200, 20).build());
+        ).bounds(width / 2 - 100, footerY, 96, 20).build());
+
+        Button newPackButton = Button.builder(
+            Component.translatable("screen.adventureitemnames.datapacks.new_pack"),
+            b -> Minecraft.getInstance().setScreen(new CreatePackPopup(this, buffer))
+        ).bounds(width / 2 + 4, footerY, 96, 20).build();
+        newPackButton.active = Minecraft.getInstance().getSingleplayerServer() != null;
+        if (!newPackButton.active) {
+            newPackButton.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable("screen.adventureitemnames.datapacks.new_pack.no_world")));
+        }
+        addRenderableWidget(newPackButton);
 
         if (preview == null) preview = new PreviewPanel(buffer, null, this::rebuildWidgets);
         preview.rebuild(width, height);
