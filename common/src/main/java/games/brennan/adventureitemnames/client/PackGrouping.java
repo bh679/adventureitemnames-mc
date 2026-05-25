@@ -80,10 +80,15 @@ public final class PackGrouping {
             case "adventureitemnames:adventuretime" -> "Adventure Time Pack";
             case "adventureitemnames:dungeontrain" -> "Dungeon Train Pack";
             default -> {
+                boolean wasFile = packId.startsWith("file/");
                 String stripped = packId.startsWith("mod/") ? packId.substring(4)
-                                : packId.startsWith("file/") ? packId.substring(5)
+                                : wasFile ? packId.substring(5)
                                 : packId;
                 if (stripped.startsWith("generated_")) yield "Adventure Item Names";
+                // User-dropped world datapacks come through as file/<slug> — prettify
+                // the slug back into title case so the list shows "My Cool Pack"
+                // rather than the raw "my_cool_pack" folder name.
+                if (wasFile) yield titleCaseFromSnake(stripped);
                 yield stripped;
             }
         };

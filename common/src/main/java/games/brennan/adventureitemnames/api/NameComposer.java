@@ -347,7 +347,16 @@ public final class NameComposer {
                 compatible.add(e);
             }
         }
-        if (compatible.isEmpty()) return "";
+        // Fallback: if every entry filtered out by item_types (e.g. type_synonyms
+        // picked for a villager — no item context — or a shield item with no
+        // shield entries in the pool), pick from the whole pool instead of
+        // returning empty. Keeps segments from going blank when a fully-typed
+        // pool is referenced in an incompatible context — without this, ~9%
+        // of villagers spawn nameless because First Name rolls type_synonyms.
+        if (compatible.isEmpty()) {
+            if (source.isEmpty()) return "";
+            return source.get(rng.nextInt(source.size())).text();
+        }
         return compatible.get(rng.nextInt(compatible.size())).text();
     }
 

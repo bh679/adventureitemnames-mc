@@ -181,6 +181,21 @@ public final class PackPaths {
     }
 
     /**
+     * Source-tree directory a brand-new user-created pack would live at —
+     * {@code <projectRoot>/common/src/main/resources/resourcepacks/<slug>/}.
+     * Returns {@code null} when the project root cannot be resolved
+     * (production users, or dev environments where the CWD walk failed).
+     * Caller uses this for the dev-mode mirror copy in {@code PackCreator};
+     * non-null does NOT imply the folder exists.
+     */
+    public static Path srcTreePackRoot(String slug) {
+        if (slug == null || slug.isEmpty()) return null;
+        Path root = resolveProjectRoot();
+        if (root == null) return null;
+        return root.resolve("common/src/main/resources/resourcepacks").resolve(slug);
+    }
+
+    /**
      * Canonical pack ids the {@code + New chain} popup offers as save
      * targets — the base mod plus each themed built-in pack, listed in
      * the order they should appear in the dropdown. Only includes the

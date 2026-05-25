@@ -27,20 +27,12 @@
       "newline": false,
       "refs": [
         {
-          "ref": "adventureitemnames:material_or_element",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:the_something",
-          "weight": 250.0
+          "ref": "adventureitemnames:title_post_prefix",
+          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:type_synonyms",
           "weight": 84.0
-        },
-        {
-          "ref": "adventureitemnames:title_post_prefix",
-          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:titles",
@@ -85,6 +77,14 @@
         {
           "ref": "adventureitemnames:technology",
           "weight": 2.0
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 250.0
+        },
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 30.0
         }
       ]
     }
