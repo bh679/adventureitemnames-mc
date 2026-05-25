@@ -79,7 +79,8 @@ public final class AdventureItemNamesForge {
 
         // Register before the first reload fires so the synthetic mc_blocks /
         // mc_items pools appear in the title-screen preview and at world load.
-        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
+        NameRegistry.registerSyntheticPoolSource("mod/adventureitemnames/mc_names",
+            new VanillaRegistryPoolSource());
 
         ITEMS.register(modBus);
         modBus.addListener(AdventureItemNamesForge::onBuildCreativeTab);

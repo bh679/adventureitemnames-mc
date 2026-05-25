@@ -227,11 +227,23 @@ public final class PackPaths {
      * {@code "fabric"} alias — both must collapse to {@code mod/adventureitemnames}
      * or the {@link PerPackSplitter} writes the base chain file twice
      * (with the second write clobbering the first via {@code replace: false}).
+     *
+     * <p>Themed packs have the same problem one level deeper — Fabric reports
+     * them as {@code adventureitemnames:<sub>} while Forge/NeoForge report
+     * them as {@code mod/adventureitemnames/<sub>}. Both point at the same
+     * on-disk directory, so we fold the Fabric form into the Forge canonical
+     * form. Without this, a chain referencing both a synthetic pool (tagged
+     * with the canonical form on every loader) and a JSON-loaded pool in the
+     * same pack (tagged with the loader-native form) would split into two
+     * pack layers and clobber each other's writes on Fabric.
      */
     public static String canonicalize(String packId) {
         if (packId == null) return null;
         if (packId.startsWith("generated_")) return "mod/adventureitemnames";
         if ("fabric".equals(packId)) return "mod/adventureitemnames";
+        if (packId.startsWith("adventureitemnames:")) {
+            return "mod/adventureitemnames/" + packId.substring("adventureitemnames:".length());
+        }
         return packId;
     }
 }
