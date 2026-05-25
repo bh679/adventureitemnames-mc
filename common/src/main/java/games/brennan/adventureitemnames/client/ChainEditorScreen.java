@@ -13,6 +13,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
@@ -49,6 +50,7 @@ public final class ChainEditorScreen extends Screen {
     /** Active confirmation popup (e.g. before reset, or unsaved-changes prompt). {@code null} when no popup is open. */
     private ConfirmDialog activeConfirm;
     private String openFingerprint;
+    private boolean deleteMode;
 
     public ChainEditorScreen(Screen parent, EditBuffer buffer, NameChain chain) {
         super(Component.literal(ChainsListScreen.formatChainName(chain.id())));
@@ -70,20 +72,31 @@ public final class ChainEditorScreen extends Screen {
         list = new SegmentList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, chain, this);
         addRenderableWidget(list);
 
+        int footerY = height - PreviewPanel.currentHeight() - 26;
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
+        ).bounds(8, footerY, 80, 20).build());
 
         addRenderableWidget(Button.builder(
             Component.literal("+ Add segment"),
             b -> appendNewSegment()
-        ).bounds(width / 2 - 60, height - PreviewPanel.currentHeight() - 26, 120, 20).build());
+        ).bounds(width / 2 - 60, footerY, 120, 20).build());
+
+        Button deleteToggle = Button.builder(
+            Component.translatable(deleteMode
+                ? "screen.adventureitemnames.action.delete_mode_on"
+                : "screen.adventureitemnames.action.delete_mode_off"),
+            b -> toggleDeleteMode()
+        ).bounds(width - 88 - 4 - 92, footerY, 92, 20).build();
+        deleteToggle.setTooltip(Tooltip.create(
+            Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
+        addRenderableWidget(deleteToggle);
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
+        ).bounds(width - 88, footerY, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
@@ -103,9 +116,27 @@ public final class ChainEditorScreen extends Screen {
     }
 
     void removeSegment(int effectiveIdx) {
-        buffer.setSegmentRemoved(chain.id(), effectiveIdx, true);
+        String segLabel = "Seg " + effectiveIdx;
+        activeConfirm = new ConfirmDialog(width, height,
+            Component.translatable("screen.adventureitemnames.delete.title", segLabel).getString(),
+            Component.translatable("screen.adventureitemnames.delete.segment.body").getString(),
+            Component.translatable("screen.adventureitemnames.delete.confirm").getString(),
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() {
+                    activeConfirm = null;
+                    buffer.setSegmentRemoved(chain.id(), effectiveIdx, true);
+                    rebuildWidgets();
+                    rerollPreview();
+                }
+                @Override public void onCancel() { activeConfirm = null; }
+            });
+    }
+
+    boolean deleteMode() { return deleteMode; }
+
+    private void toggleDeleteMode() {
+        deleteMode = !deleteMode;
         rebuildWidgets();
-        rerollPreview();
     }
 
     void moveSegment(int displayPos, int delta) {
@@ -350,7 +381,7 @@ public final class ChainEditorScreen extends Screen {
                 ).bounds(0, 0, 44, 18).build();
 
                 this.deleteButton = Button.builder(
-                    Component.literal("🗑"),
+                    Component.translatable("screen.adventureitemnames.action.delete"),
                     b -> host.removeSegment(segIdx)
                 ).bounds(0, 0, 22, 18).build();
 
@@ -397,12 +428,18 @@ public final class ChainEditorScreen extends Screen {
 
             @Override
             public List<? extends NarratableEntry> narratables() {
-                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                if (host.deleteMode()) {
+                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                }
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
-                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                if (host.deleteMode()) {
+                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                }
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
             }
 
             @Override
@@ -432,7 +469,8 @@ public final class ChainEditorScreen extends Screen {
                 setW(chanceBox, 40); chanceBox.setX(x); chanceBox.setY(y); chanceBox.render(gfx, mouseX, mouseY, partial); x += 44;
                 setW(resetButton, 18); resetButton.setX(x); resetButton.setY(y); resetButton.render(gfx, mouseX, mouseY, partial); x += 22;
 
-                int trailingWidgets = 18 + 4 + 44 + 4 + 22; // newlineBox + refsButton + deleteButton + spacing
+                int deleteWidgetW = host.deleteMode() ? (4 + 22) : 0;
+                int trailingWidgets = 18 + 4 + 44 + deleteWidgetW; // newlineBox + refsButton + (optional deleteButton) + spacing
                 int connAvail = Math.max(40, rowLeft + rowWidth - x - 4 - trailingWidgets);
                 setW(connectionBox, connAvail); connectionBox.setX(x); connectionBox.setY(y); connectionBox.render(gfx, mouseX, mouseY, partial); x += connAvail + 4;
 
@@ -440,7 +478,9 @@ public final class ChainEditorScreen extends Screen {
 
                 refsButton.setX(x); refsButton.setY(y); refsButton.render(gfx, mouseX, mouseY, partial); x += 44 + 4;
 
-                deleteButton.setX(x); deleteButton.setY(y); deleteButton.render(gfx, mouseX, mouseY, partial);
+                if (host.deleteMode()) {
+                    deleteButton.setX(x); deleteButton.setY(y); deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
             }
 
             private static void setW(AbstractWidget w, int newWidth) {

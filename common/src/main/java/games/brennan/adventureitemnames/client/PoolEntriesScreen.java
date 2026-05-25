@@ -64,6 +64,7 @@ public final class PoolEntriesScreen extends Screen {
     private Button saveButton;
     private ConfirmDialog activeConfirm;
     private String openFingerprint;
+    private boolean deleteMode;
 
     public PoolEntriesScreen(Screen parent, EditBuffer buffer, NamePool pool) {
         super(Component.translatable("screen.adventureitemnames.entries.title", pool.id().toString()));
@@ -92,15 +93,26 @@ public final class PoolEntriesScreen extends Screen {
         list = new EntriesList(minecraft, width, listBottom - LIST_TOP, LIST_TOP, this);
         addRenderableWidget(list);
 
+        int footerY = height - PreviewPanel.currentHeight() - 26;
         addRenderableWidget(Button.builder(
             Component.translatable("gui.back"),
             b -> onClose()
-        ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
+        ).bounds(8, footerY, 80, 20).build());
+
+        Button deleteToggle = Button.builder(
+            Component.translatable(deleteMode
+                ? "screen.adventureitemnames.action.delete_mode_on"
+                : "screen.adventureitemnames.action.delete_mode_off"),
+            b -> toggleDeleteMode()
+        ).bounds(width - 88 - 4 - 92, footerY, 92, 20).build();
+        deleteToggle.setTooltip(Tooltip.create(
+            Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
+        addRenderableWidget(deleteToggle);
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
+        ).bounds(width - 88, footerY, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
@@ -127,7 +139,9 @@ public final class PoolEntriesScreen extends Screen {
         gfx.drawString(font, "Text",       16,                          HEADER_Y, 0xFFA0A0A0, false);
         gfx.drawString(font, "Item types", width - COL_W_ITEMTYPES,     HEADER_Y, 0xFFA0A0A0, false);
         gfx.drawString(font, "Δ",          width - COL_W_DELTA,         HEADER_Y, 0xFFA0A0A0, false);
-        gfx.drawString(font, "Action",     width - COL_W_DELETE - 4,    HEADER_Y, 0xFFA0A0A0, false);
+        if (deleteMode) {
+            gfx.drawString(font, "Del",     width - COL_W_DELETE - 4,   HEADER_Y, 0xFFA0A0A0, false);
+        }
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
         preview.render(gfx, mouseX, mouseY, partial);
@@ -187,19 +201,36 @@ public final class PoolEntriesScreen extends Screen {
     EditBuffer buffer() { return buffer; }
     NamePool pool() { return pool; }
 
+    boolean deleteMode() { return deleteMode; }
+
+    private void toggleDeleteMode() {
+        deleteMode = !deleteMode;
+        rebuildWidgets();
+    }
+
     void onRowChanged() {
         if (saveButton != null) saveButton.active = buffer.isDirty();
         preview.rerollNow();
     }
 
-    void onDeleteRow(String text, boolean wasShipped) {
-        if (wasShipped) {
-            buffer.removeShippedEntry(pool.id(), text);
-        } else {
-            buffer.unstageAdd(pool.id(), text);
-        }
-        rebuildList();
-        onRowChanged();
+    void confirmDeleteRow(String text, boolean wasShipped) {
+        activeConfirm = new ConfirmDialog(width, height,
+            Component.translatable("screen.adventureitemnames.delete.title", text).getString(),
+            Component.translatable("screen.adventureitemnames.delete.entry.body").getString(),
+            Component.translatable("screen.adventureitemnames.delete.confirm").getString(),
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() {
+                    activeConfirm = null;
+                    if (wasShipped) {
+                        buffer.removeShippedEntry(pool.id(), text);
+                    } else {
+                        buffer.unstageAdd(pool.id(), text);
+                    }
+                    rebuildList();
+                    onRowChanged();
+                }
+                @Override public void onCancel() { activeConfirm = null; }
+            });
     }
 
     /** Vanilla {@code ContainerObjectSelectionList} with one entry per effective row. */
@@ -260,7 +291,7 @@ public final class PoolEntriesScreen extends Screen {
 
                 this.deleteButton = Button.builder(
                     Component.translatable("screen.adventureitemnames.action.delete"),
-                    b -> host.onDeleteRow(currentOriginal, wasShipped)
+                    b -> host.confirmDeleteRow(currentOriginal, wasShipped)
                 ).bounds(0, 0, 22, 18).build();
                 if (totalEffectiveCount <= 1) {
                     deleteButton.active = false;
@@ -285,12 +316,12 @@ public final class PoolEntriesScreen extends Screen {
 
             @Override
             public List<? extends NarratableEntry> narratables() {
-                return List.of(textBox, deleteButton);
+                return host.deleteMode() ? List.of(textBox, deleteButton) : List.of(textBox);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
-                return List.of(textBox, deleteButton);
+                return host.deleteMode() ? List.of(textBox, deleteButton) : List.of(textBox);
             }
 
             @Override
@@ -315,9 +346,11 @@ public final class PoolEntriesScreen extends Screen {
                 gfx.drawString(Minecraft.getInstance().font, delta,
                     screenWidth - COL_W_DELTA, rowTop + 8, deltaColor, false);
 
-                deleteButton.setX(screenWidth - COL_W_DELETE);
-                deleteButton.setY(rowTop + 3);
-                deleteButton.render(gfx, mouseX, mouseY, partial);
+                if (host.deleteMode()) {
+                    deleteButton.setX(screenWidth - COL_W_DELETE);
+                    deleteButton.setY(rowTop + 3);
+                    deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
             }
 
             private String deltaIndicator() {
