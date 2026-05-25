@@ -82,11 +82,9 @@ public final class DatapacksListScreen extends Screen {
         addRenderableWidget(newPackButton);
 
         Button deleteToggle = Button.builder(
-            Component.translatable(deleteMode
-                ? "screen.adventureitemnames.action.delete_mode_on"
-                : "screen.adventureitemnames.action.delete_mode_off"),
+            Component.literal("🗑").withStyle(deleteMode ? ChatFormatting.RED : ChatFormatting.GRAY),
             b -> toggleDeleteMode()
-        ).bounds(width - 100, footerY, 92, 20).build();
+        ).bounds(width - 32, footerY, 24, 20).build();
         deleteToggle.setTooltip(Tooltip.create(
             Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
         addRenderableWidget(deleteToggle);

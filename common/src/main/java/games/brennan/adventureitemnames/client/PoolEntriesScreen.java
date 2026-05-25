@@ -100,11 +100,9 @@ public final class PoolEntriesScreen extends Screen {
         ).bounds(8, footerY, 80, 20).build());
 
         Button deleteToggle = Button.builder(
-            Component.translatable(deleteMode
-                ? "screen.adventureitemnames.action.delete_mode_on"
-                : "screen.adventureitemnames.action.delete_mode_off"),
+            Component.literal("🗑").withStyle(deleteMode ? ChatFormatting.RED : ChatFormatting.GRAY),
             b -> toggleDeleteMode()
-        ).bounds(width - 88 - 4 - 92, footerY, 92, 20).build();
+        ).bounds(width - 88 - 4 - 24, footerY, 24, 20).build();
         deleteToggle.setTooltip(Tooltip.create(
             Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
         addRenderableWidget(deleteToggle);

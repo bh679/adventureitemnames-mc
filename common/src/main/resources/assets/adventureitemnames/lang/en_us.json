@@ -52,8 +52,6 @@
   "screen.adventureitemnames.action.add": "+ Add",
   "screen.adventureitemnames.action.delete": "✕",
   "screen.adventureitemnames.action.reset": "↺",
-  "screen.adventureitemnames.action.delete_mode_off": "Delete: Off",
-  "screen.adventureitemnames.action.delete_mode_on": "Delete: On",
   "screen.adventureitemnames.action.delete_mode_tooltip": "Toggle delete mode — when on, each row shows a ✕ button.",
 
   "screen.adventureitemnames.delete.title": "Delete %s?",
