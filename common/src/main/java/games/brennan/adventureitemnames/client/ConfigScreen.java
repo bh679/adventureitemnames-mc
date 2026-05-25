@@ -17,13 +17,20 @@ import net.minecraft.network.chat.Component;
  *
  * <p>{@code Save to pack} lives on the sub-screens, not here — the hub
  * has no rows to edit. Pending edits across sub-screens stay in the
- * buffer until the user saves or discards on close.
+ * buffer until the user saves on a sub-screen, or until this hub's
+ * {@code onClose} runs — at which point an
+ * {@link UnsavedChangesPrompt} catches a dirty buffer and offers
+ * Save / Discard / Cancel before the user actually exits the config UI.
+ * Sub-screens deliberately do NOT trigger the prompt on their own
+ * {@code onClose} so navigating between config screens never asks "do
+ * you want to save" about edits made on a different screen.
  */
 @Environment(EnvType.CLIENT)
 public final class ConfigScreen extends Screen {
 
     private final Screen parent;
     private final EditBuffer buffer;
+    private ConfirmDialog activeConfirm;
 
     public ConfigScreen(Screen parent) {
         super(Component.translatable("screen.adventureitemnames.config.title"));
@@ -60,12 +67,36 @@ public final class ConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        if (activeConfirm != null) {
+            super.renderBackground(gfx, mouseX, mouseY, partial);
+            activeConfirm.render(gfx, mouseX, mouseY);
+            return;
+        }
         super.render(gfx, mouseX, mouseY, partial);
         gfx.drawCenteredString(font, title, width / 2, 18, 0xFFFFFFFF);
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        if (!buffer.isDirty()) {
+            Minecraft.getInstance().setScreen(parent);
+            return;
+        }
+        UnsavedChangesPrompt.forClose(width, height, buffer,
+            () -> Minecraft.getInstance().setScreen(parent),
+            d -> activeConfirm = d,
+            () -> activeConfirm = null);
     }
 }

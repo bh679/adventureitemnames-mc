@@ -69,7 +69,6 @@ public final class SelectorsScreen extends Screen {
     /** Available chains for the picker: {@code Optional.empty()} = (none); else chain id. */
     private List<Optional<ResourceLocation>> chainCycle = List.of();
     private ChainPicker activePicker;
-    private ConfirmDialog activeConfirm;
     /** Item-tag ids known to the client at screen-open time. Used to render the ⚠ warning row. */
     private java.util.Set<ResourceLocation> loadedItemTagIds = java.util.Set.of();
 
@@ -110,11 +109,6 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
-        if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
-            activeConfirm.render(gfx, mouseX, mouseY);
-            return;
-        }
         if (activePicker != null) {
             // Modal picker is open — skip the underlying widget render so item
             // icons + button tooltips don't bleed through the popup. The picker
@@ -139,7 +133,6 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (activePicker != null) {
             activePicker.mouseClicked(mouseX, mouseY, button);
             return true;
@@ -158,7 +151,6 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (activePicker != null && activePicker.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -182,14 +174,9 @@ public final class SelectorsScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (!buffer.isDirty()) {
-            Minecraft.getInstance().setScreen(parent);
-            return;
-        }
-        UnsavedChangesPrompt.forClose(width, height, buffer,
-            () -> Minecraft.getInstance().setScreen(parent),
-            d -> activeConfirm = d,
-            () -> activeConfirm = null);
+        // Sub-screen navigation never prompts; ConfigScreen.onClose owns
+        // the unsaved-changes check at the actual exit boundary.
+        Minecraft.getInstance().setScreen(parent);
     }
 
     EditBuffer buffer() { return buffer; }

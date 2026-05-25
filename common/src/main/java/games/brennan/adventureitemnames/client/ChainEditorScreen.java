@@ -169,14 +169,9 @@ public final class ChainEditorScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (!buffer.isDirty()) {
-            Minecraft.getInstance().setScreen(parent);
-            return;
-        }
-        UnsavedChangesPrompt.forClose(width, height, buffer,
-            () -> Minecraft.getInstance().setScreen(parent),
-            d -> activeConfirm = d,
-            () -> activeConfirm = null);
+        // Sub-screen navigation never prompts; ConfigScreen.onClose owns
+        // the unsaved-changes check at the actual exit boundary.
+        Minecraft.getInstance().setScreen(parent);
     }
 
     NameChain chain() { return chain; }
