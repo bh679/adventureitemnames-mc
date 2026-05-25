@@ -4,9 +4,11 @@ import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import games.brennan.adventureitemnames.internal.PackChainWriter;
 import games.brennan.adventureitemnames.internal.PackPaths;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -46,6 +48,7 @@ public final class ChainsListScreen extends Screen {
     private static final int ROW_PAD = 4;
     private static final int CHECKBOX_SIZE = 18;
     private static final int OPEN_W = 50;
+    private static final int DELETE_W = 22;
 
     private final Screen parent;
     private final EditBuffer buffer;
@@ -54,6 +57,7 @@ public final class ChainsListScreen extends Screen {
     private Button saveButton;
     private ConfirmDialog activeConfirm;
     private String openFingerprint;
+    private boolean deleteMode;
 
     public ChainsListScreen(Screen parent, EditBuffer buffer) {
         super(Component.translatable("screen.adventureitemnames.chains.title"));
@@ -73,11 +77,13 @@ public final class ChainsListScreen extends Screen {
             b -> onClose()
         ).bounds(8, height - PreviewPanel.currentHeight() - 26, 80, 20).build());
 
+        int footerY = height - PreviewPanel.currentHeight() - 26;
+
         // + New chain — center button, dev-mode only.
         Button newChainButton = Button.builder(
             Component.translatable("screen.adventureitemnames.chains.new_chain"),
             b -> Minecraft.getInstance().setScreen(new AddChainPopup(this, buffer))
-        ).bounds(width / 2 - 60, height - PreviewPanel.currentHeight() - 26, 120, 20).build();
+        ).bounds(width / 2 - 60, footerY, 120, 20).build();
         if (!PackPaths.projectRootAvailable()) {
             newChainButton.active = false;
             newChainButton.setTooltip(Tooltip.create(
@@ -85,10 +91,18 @@ public final class ChainsListScreen extends Screen {
         }
         addRenderableWidget(newChainButton);
 
+        Button deleteToggle = Button.builder(
+            Component.literal("🗑").withStyle(deleteMode ? ChatFormatting.RED : ChatFormatting.GRAY),
+            b -> toggleDeleteMode()
+        ).bounds(width - 88 - 4 - 24, footerY, 24, 20).build();
+        deleteToggle.setTooltip(Tooltip.create(
+            Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
+        addRenderableWidget(deleteToggle);
+
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
             b -> save()
-        ).bounds(width - 88, height - PreviewPanel.currentHeight() - 26, 80, 20).build();
+        ).bounds(width - 88, footerY, 80, 20).build();
         saveButton.active = buffer.isDirty();
         addRenderableWidget(saveButton);
 
@@ -148,6 +162,38 @@ public final class ChainsListScreen extends Screen {
 
     EditBuffer buffer() { return buffer; }
 
+    boolean deleteMode() { return deleteMode; }
+
+    private void toggleDeleteMode() {
+        deleteMode = !deleteMode;
+        rebuildWidgets();
+    }
+
+    void confirmDeleteChain(NameChain chain) {
+        String friendly = formatChainName(chain.id());
+        activeConfirm = new ConfirmDialog(width, height,
+            Component.translatable("screen.adventureitemnames.delete.title", friendly).getString(),
+            Component.translatable("screen.adventureitemnames.delete.chain.body").getString(),
+            Component.translatable("screen.adventureitemnames.delete.confirm").getString(),
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() {
+                    activeConfirm = null;
+                    // Delete every contributing pack's layer so the chain disappears
+                    // entirely. Mirrors ConfigSave's per-pack iteration.
+                    boolean anyDeleted = false;
+                    for (String packId : NameRegistry.packsOfChain(chain.id())) {
+                        if (PackChainWriter.deleteChain(packId, chain.id().getPath())) {
+                            anyDeleted = true;
+                        }
+                    }
+                    if (!anyDeleted) return;
+                    PackReload.reloadInPlace(
+                        () -> Minecraft.getInstance().setScreen(new ChainsListScreen(parent, buffer)));
+                }
+                @Override public void onCancel() { activeConfirm = null; }
+            });
+    }
+
     void rerollPreview() { if (preview != null) preview.rerollNow(); }
 
     /** Every registered chain, sorted alphabetically by path then namespace. */
@@ -190,6 +236,7 @@ public final class ChainsListScreen extends Screen {
             private final ChainsListScreen host;
             private final Checkbox enabledBox;
             private final Button openButton;
+            private final Button deleteButton;
 
             RowEntry(NameChain chain, ChainsListScreen host) {
                 this.chain = chain;
@@ -210,10 +257,31 @@ public final class ChainsListScreen extends Screen {
                     Component.translatable("screen.adventureitemnames.action.open"),
                     b -> Minecraft.getInstance().setScreen(new ChainEditorScreen(host, host.buffer(), chain))
                 ).bounds(0, 0, OPEN_W, 18).build();
+
+                this.deleteButton = Button.builder(
+                    Component.translatable("screen.adventureitemnames.action.delete"),
+                    b -> host.confirmDeleteChain(chain)
+                ).bounds(0, 0, DELETE_W, 18).build();
+                boolean anyWritable = false;
+                for (String packId : NameRegistry.packsOfChain(chain.id())) {
+                    if (PackChainWriter.canDeleteChain(packId)) { anyWritable = true; break; }
+                }
+                if (!anyWritable) {
+                    deleteButton.active = false;
+                    deleteButton.setTooltip(Tooltip.create(
+                        Component.translatable("screen.adventureitemnames.delete.read_only")));
+                }
             }
 
-            @Override public List<? extends NarratableEntry> narratables() { return List.of(enabledBox, openButton); }
-            @Override public List<? extends GuiEventListener> children() { return List.of(enabledBox, openButton); }
+            @Override
+            public List<? extends NarratableEntry> narratables() {
+                return host.deleteMode() ? List.of(enabledBox, deleteButton, openButton) : List.of(enabledBox, openButton);
+            }
+
+            @Override
+            public List<? extends GuiEventListener> children() {
+                return host.deleteMode() ? List.of(enabledBox, deleteButton, openButton) : List.of(enabledBox, openButton);
+            }
 
             @Override
             public void render(GuiGraphics gfx, int idx, int rowTop, int rowLeft,
@@ -226,7 +294,13 @@ public final class ChainsListScreen extends Screen {
                 openButton.setX(rightX - OPEN_W);
                 openButton.setY(verticalCenter - 9);
 
-                enabledBox.setX(rightX - OPEN_W - 6 - CHECKBOX_SIZE);
+                int deleteAreaW = host.deleteMode() ? (DELETE_W + 6) : 0;
+                if (host.deleteMode()) {
+                    deleteButton.setX(openButton.getX() - 6 - DELETE_W);
+                    deleteButton.setY(verticalCenter - 9);
+                }
+
+                enabledBox.setX(rightX - OPEN_W - deleteAreaW - 6 - CHECKBOX_SIZE);
                 enabledBox.setY(verticalCenter - CHECKBOX_SIZE / 2);
 
                 String segCount = effectiveSegmentCount(chain) + " seg";
@@ -252,6 +326,9 @@ public final class ChainsListScreen extends Screen {
 
                 gfx.drawString(font, Component.literal(segCount), segCountX, segCountY, 0xFFA0A0A0, false);
                 enabledBox.render(gfx, mouseX, mouseY, partial);
+                if (host.deleteMode()) {
+                    deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
                 openButton.render(gfx, mouseX, mouseY, partial);
             }
 

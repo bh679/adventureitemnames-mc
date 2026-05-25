@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import games.brennan.adventureitemnames.internal.PoolDeleter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.ChatFormatting;
@@ -13,6 +14,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
@@ -39,11 +41,12 @@ public final class PoolListScreen extends Screen {
 
     /** Column right-edge offsets shared by header + row, so they always align. */
     static final int COL_W_PREVIEW = 28;
-    static final int COL_W_EDIT    = 84;
-    static final int COL_W_ENABLED = 120;
-    static final int COL_W_ENTRIES = 160;
-    static final int COL_W_PCT     = 216;
-    static final int COL_W_WEIGHT  = 284;
+    static final int COL_W_DELETE  = 70;
+    static final int COL_W_EDIT    = 112;
+    static final int COL_W_ENABLED = 148;
+    static final int COL_W_ENTRIES = 188;
+    static final int COL_W_PCT     = 244;
+    static final int COL_W_WEIGHT  = 312;
     private static final int HEADER_Y = 44;
     private static final int LIST_TOP = 58;
 
@@ -55,6 +58,7 @@ public final class PoolListScreen extends Screen {
     private Button saveButton;
     private ConfirmDialog activeConfirm;
     private String openFingerprint;
+    private boolean deleteMode;
 
     public PoolListScreen(Screen parent, EditBuffer buffer, PackGrouping.PackView pack) {
         super(Component.literal(pack.packId()));
@@ -81,10 +85,18 @@ public final class PoolListScreen extends Screen {
         ).bounds(width / 2 - 60, footerY, 120, 20).build();
         newPoolButton.active = games.brennan.adventureitemnames.internal.PoolCreator.canWriteTo(pack.packId());
         if (!newPoolButton.active) {
-            newPoolButton.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+            newPoolButton.setTooltip(Tooltip.create(
                 Component.translatable("screen.adventureitemnames.pools.new_pool.read_only")));
         }
         addRenderableWidget(newPoolButton);
+
+        Button deleteToggle = Button.builder(
+            Component.literal("🗑").withStyle(deleteMode ? ChatFormatting.RED : ChatFormatting.GRAY),
+            b -> toggleDeleteMode()
+        ).bounds(width - 88 - 4 - 24, footerY, 24, 20).build();
+        deleteToggle.setTooltip(Tooltip.create(
+            Component.translatable("screen.adventureitemnames.action.delete_mode_tooltip")));
+        addRenderableWidget(deleteToggle);
 
         saveButton = Button.builder(
             Component.translatable("screen.adventureitemnames.action.save"),
@@ -131,6 +143,38 @@ public final class PoolListScreen extends Screen {
             saveButton.active = false;
             preview.rerollNow();
         });
+    }
+
+    private void toggleDeleteMode() {
+        deleteMode = !deleteMode;
+        rebuildWidgets();
+    }
+
+    boolean deleteMode() { return deleteMode; }
+
+    void confirmDeletePool(PackGrouping.PoolView pv) {
+        String friendly = PackGrouping.friendlyPoolName(pv.packId(), pv.poolId().getPath());
+        activeConfirm = new ConfirmDialog(width, height,
+            Component.translatable("screen.adventureitemnames.delete.title", friendly).getString(),
+            Component.translatable("screen.adventureitemnames.delete.pool.body").getString(),
+            Component.translatable("screen.adventureitemnames.delete.confirm").getString(),
+            new ConfirmDialog.Listener() {
+                @Override public void onConfirm() {
+                    activeConfirm = null;
+                    boolean ok = PoolDeleter.deletePool(pv.packId(), pv.poolId().getPath());
+                    if (!ok) return;
+                    PackReload.reloadInPlace(
+                        () -> Minecraft.getInstance().setScreen(new PoolListScreen(parent, buffer, freshPackView())));
+                }
+                @Override public void onCancel() { activeConfirm = null; }
+            });
+    }
+
+    /** Re-snapshot the live pack so navigating back after a delete reflects the missing pool. */
+    private PackGrouping.PackView freshPackView() {
+        var snapshot = PackGrouping.snapshot();
+        PackGrouping.PackView refreshed = snapshot.get(pack.packId());
+        return refreshed != null ? refreshed : pack;
     }
 
     @Override
@@ -215,6 +259,7 @@ public final class PoolListScreen extends Screen {
             private final Checkbox enabledBox;
             private final Button preview;
             private final Button editButton;
+            private final Button deleteButton;
             private final int screenWidth;
 
             Entry(PackGrouping.PoolView pv, PoolListScreen host) {
@@ -256,6 +301,16 @@ public final class PoolListScreen extends Screen {
                     b -> host.openEntryEditor(pv.poolId()))
                     .bounds(0, 0, 36, 18)
                     .build();
+
+                this.deleteButton = Button.builder(
+                    Component.translatable("screen.adventureitemnames.action.delete"),
+                    b -> host.confirmDeletePool(pv)
+                ).bounds(0, 0, 22, 18).build();
+                if (!PoolDeleter.canDelete(pv.packId())) {
+                    deleteButton.active = false;
+                    deleteButton.setTooltip(Tooltip.create(
+                        Component.translatable("screen.adventureitemnames.delete.read_only")));
+                }
             }
 
             private void onWeightChanged(String text) {
@@ -279,12 +334,16 @@ public final class PoolListScreen extends Screen {
 
             @Override
             public List<? extends NarratableEntry> narratables() {
-                return List.of(weightBox, enabledBox, editButton, preview);
+                return host.deleteMode()
+                    ? List.of(weightBox, enabledBox, editButton, deleteButton, preview)
+                    : List.of(weightBox, enabledBox, editButton, preview);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
-                return List.of(weightBox, enabledBox, editButton, preview);
+                return host.deleteMode()
+                    ? List.of(weightBox, enabledBox, editButton, deleteButton, preview)
+                    : List.of(weightBox, enabledBox, editButton, preview);
             }
 
             @Override
@@ -315,6 +374,12 @@ public final class PoolListScreen extends Screen {
                 editButton.setX(screenWidth - COL_W_EDIT);
                 editButton.setY(rowTop + 3);
                 editButton.render(gfx, mouseX, mouseY, partial);
+
+                if (host.deleteMode()) {
+                    deleteButton.setX(screenWidth - COL_W_DELETE);
+                    deleteButton.setY(rowTop + 3);
+                    deleteButton.render(gfx, mouseX, mouseY, partial);
+                }
 
                 preview.setX(screenWidth - COL_W_PREVIEW - 16);
                 preview.setY(rowTop + 3);

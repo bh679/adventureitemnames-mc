@@ -52,6 +52,16 @@
   "screen.adventureitemnames.action.add": "+ Add",
   "screen.adventureitemnames.action.delete": "✕",
   "screen.adventureitemnames.action.reset": "↺",
+  "screen.adventureitemnames.action.delete_mode_tooltip": "Toggle delete mode — when on, each row shows a ✕ button.",
+
+  "screen.adventureitemnames.delete.title": "Delete %s?",
+  "screen.adventureitemnames.delete.confirm": "Delete",
+  "screen.adventureitemnames.delete.read_only": "This pack is read-only in this environment.",
+  "screen.adventureitemnames.delete.pack.body": "This will permanently delete the pack folder and all its files from disk. This cannot be undone.",
+  "screen.adventureitemnames.delete.pool.body": "This will permanently delete this pool's JSON file. This cannot be undone.",
+  "screen.adventureitemnames.delete.chain.body": "This will permanently delete this chain's JSON file. This cannot be undone.",
+  "screen.adventureitemnames.delete.entry.body": "Remove this entry from the pool? (Saved on next Save.)",
+  "screen.adventureitemnames.delete.segment.body": "Hide this segment from naming output? (Saved on next Save.)",
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
 

@@ -72,4 +72,63 @@ public final class PackReload {
                 });
         });
     }
+
+    /**
+     * Remove {@code packId} from the integrated server's selected pack set
+     * and trigger a data reload — counterpart to {@link #enableAndReload}
+     * used after a pack folder has been deleted from disk. No-ops with a
+     * log warning when no singleplayer server is running.
+     *
+     * @param packId      pack id to drop from the selected set
+     * @param onComplete  runs on the client thread once the reload finishes; may be {@code null}
+     */
+    public static void disableAndReload(String packId, Runnable onComplete) {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) {
+            LOGGER.warn("[AdventureItemNames] no integrated server — cannot disable pack '{}'", packId);
+            return;
+        }
+        server.execute(() -> {
+            PackRepository repo = server.getPackRepository();
+            repo.reload();
+
+            Set<String> selected = new LinkedHashSet<>(repo.getSelectedIds());
+            selected.remove(packId);
+            repo.setSelected(selected);
+
+            server.reloadResources(repo.getSelectedIds())
+                .thenAcceptAsync(v -> {
+                    LOGGER.info("[AdventureItemNames] disabled and reloaded after dropping pack '{}'", packId);
+                    if (onComplete != null) onComplete.run();
+                }, Minecraft.getInstance())
+                .exceptionally(ex -> {
+                    LOGGER.warn("[AdventureItemNames] pack reload failed after dropping '{}': {}", packId, ex.getMessage());
+                    return null;
+                });
+        });
+    }
+
+    /**
+     * Trigger an integrated-server data reload without changing the
+     * selected pack set — used after a single pool/chain file inside an
+     * already-loaded pack has been added or removed on disk. Mirrors
+     * {@code ConfigSave.triggerDataReload} so the in-game registries pick
+     * up the change without requiring {@code /reload}.
+     */
+    public static void reloadInPlace(Runnable onComplete) {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) {
+            LOGGER.warn("[AdventureItemNames] no integrated server — data won't reload until next /reload or world load");
+            return;
+        }
+        server.execute(() ->
+            server.reloadResources(server.getPackRepository().getSelectedIds())
+                .thenAcceptAsync(v -> {
+                    if (onComplete != null) onComplete.run();
+                }, Minecraft.getInstance())
+                .exceptionally(ex -> {
+                    LOGGER.warn("[AdventureItemNames] in-place data reload failed: {}", ex.getMessage());
+                    return null;
+                }));
+    }
 }
