@@ -1,0 +1,73 @@
+{
+  "id": "adventureitemnames:forged_by",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Forged by",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Person",
+      "refs": [
+        {
+          "ref": "adventureitemnames:mc_enchantments",
+          "weight": 42.0
+        },
+        {
+          "ref": "adventureitemnames:mc_potions_effects",
+          "weight": 42.0
+        },
+        {
+          "ref": "adventureitemnames:mc_technoblade",
+          "weight": 21.0
+        },
+        {
+          "ref": "adventureitemnames:mc_lore",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_streamers",
+          "weight": 19.0
+        },
+        {
+          "ref": "adventureitemnames:mc_music_discs",
+          "weight": 18.0
+        },
+        {
+          "ref": "adventureitemnames:mc_villager_professions",
+          "weight": 14.0
+        },
+        {
+          "ref": "adventureitemnames:mc_events",
+          "weight": 12.0
+        },
+        {
+          "ref": "adventureitemnames:mc_skins",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25393516,
+      "connection": " in ",
+      "newline": false,
+      "label": "Location",
+      "refs": [
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
+        }
+      ]
+    }
+  ]
+}

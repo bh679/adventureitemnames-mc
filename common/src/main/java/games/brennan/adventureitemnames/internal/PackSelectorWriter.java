@@ -60,15 +60,7 @@ public final class PackSelectorWriter {
                 packId, selector.id());
             return false;
         }
-        JsonObject root = new JsonObject();
-        root.add("id", new JsonPrimitive(selector.id().toString()));
-        root.add("applies_to", new JsonPrimitive(selector.appliesTo().toString()));
-        JsonObject tiers = new JsonObject();
-        for (Map.Entry<String, ResourceLocation> e : selector.tiers().entrySet()) {
-            if (e.getValue() == null) continue; // (none) sentinel → omit key
-            tiers.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
-        }
-        root.add("tiers", tiers);
+        JsonObject root = buildSelectorJson(selector);
 
         try {
             Files.createDirectories(file.getParent());
@@ -91,6 +83,15 @@ public final class PackSelectorWriter {
      * {@link Optional#empty()} values omit the tier from the rewritten
      * file (= suppression at runtime).
      */
+    /**
+     * Prefix that distinguishes a description-tier override from a
+     * name-tier override in {@link Map#keySet() tierEdits}. {@code
+     * description_plain} / {@code description_enchanted} are routed to
+     * the selector JSON's {@code description_tiers} block (with the
+     * prefix stripped); other keys go to the {@code tiers} block.
+     */
+    private static final String DESC_PREFIX = "description_";
+
     public static boolean writeSelectorTiers(String packId, ResourceLocation selectorId,
                                               Map<String, Optional<ResourceLocation>> tierEdits) {
         if (tierEdits == null || tierEdits.isEmpty()) return true;
@@ -102,17 +103,26 @@ public final class PackSelectorWriter {
         }
         JsonObject root = readRootOrEmpty(file);
         if (!root.has("id")) root.add("id", new JsonPrimitive(selectorId.toString()));
-        JsonElement tiersEl = root.get("tiers");
-        JsonObject tiers = (tiersEl != null && tiersEl.isJsonObject())
-            ? tiersEl.getAsJsonObject() : new JsonObject();
+        JsonObject tiers = readOrInitObject(root, "tiers");
+        JsonObject descTiers = readOrInitObject(root, "description_tiers");
         for (Map.Entry<String, Optional<ResourceLocation>> e : tierEdits.entrySet()) {
-            if (e.getValue() == null || e.getValue().isEmpty()) {
-                tiers.remove(e.getKey());
+            String key = e.getKey();
+            Optional<ResourceLocation> value = e.getValue();
+            boolean isDesc = key.startsWith(DESC_PREFIX);
+            JsonObject target = isDesc ? descTiers : tiers;
+            String jsonKey = isDesc ? key.substring(DESC_PREFIX.length()) : key;
+            if (value == null || value.isEmpty()) {
+                target.remove(jsonKey);
             } else {
-                tiers.add(e.getKey(), new JsonPrimitive(e.getValue().get().toString()));
+                target.add(jsonKey, new JsonPrimitive(value.get().toString()));
             }
         }
         root.add("tiers", tiers);
+        if (descTiers.size() > 0) {
+            root.add("description_tiers", descTiers);
+        } else {
+            root.remove("description_tiers");
+        }
 
         try {
             Files.createDirectories(file.getParent());
@@ -141,6 +151,44 @@ public final class PackSelectorWriter {
             LOGGER.warn("[AdventureItemNames] failed to delete selector file at '{}': {}", file, ex.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Build the JSON form of {@code selector} in the layout {@link NameCodec}
+     * parses. Package-private for unit-test round-trip coverage; production
+     * callers should go through {@link #writeSelector}.
+     */
+    static JsonObject buildSelectorJson(NameSelector selector) {
+        JsonObject root = new JsonObject();
+        root.add("id", new JsonPrimitive(selector.id().toString()));
+        root.add("applies_to", new JsonPrimitive(selector.appliesTo().toString()));
+        root.add("tiers", tierMapToJson(selector.tiers()));
+        if (!selector.descriptionTiers().isEmpty()) {
+            JsonObject descTiers = tierMapToJson(selector.descriptionTiers());
+            if (descTiers.size() > 0) root.add("description_tiers", descTiers);
+        }
+        return root;
+    }
+
+    private static JsonObject tierMapToJson(Map<String, ResourceLocation> tiers) {
+        JsonObject obj = new JsonObject();
+        for (Map.Entry<String, ResourceLocation> e : tiers.entrySet()) {
+            if (e.getValue() == null) continue; // (none) sentinel → omit key
+            obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+        }
+        return obj;
+    }
+
+    /**
+     * Get the JSON object stored under {@code key} in {@code root}, or
+     * an empty object if {@code root} doesn't carry that key. Used by
+     * {@link #writeSelectorTiers} to extend the {@code tiers} and
+     * {@code description_tiers} blocks in place without losing entries
+     * the caller didn't pass an edit for.
+     */
+    private static JsonObject readOrInitObject(JsonObject root, String key) {
+        JsonElement el = root.get(key);
+        return (el != null && el.isJsonObject()) ? el.getAsJsonObject() : new JsonObject();
     }
 
     private static JsonObject readRootOrEmpty(Path file) {

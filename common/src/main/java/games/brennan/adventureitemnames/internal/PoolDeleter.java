@@ -3,6 +3,7 @@ package games.brennan.adventureitemnames.internal;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 
@@ -53,6 +54,13 @@ public final class PoolDeleter {
                 LOGGER.info("[AdventureItemNames] deleted pool '{}' from pack '{}' ({})",
                     poolPath, packId, file);
             }
+            // Also evict from the in-memory registry with a tombstone, so the
+            // PoolListScreen reflects the deletion immediately and the dev
+            // resource manager's cached classpath view doesn't re-add the
+            // pool on the next reload (source-tree deletions aren't visible
+            // mid-session until the next launch).
+            ResourceLocation poolId = ResourceLocation.fromNamespaceAndPath(NAMESPACE, poolPath);
+            NameRegistry.removePoolFromMemory(poolId);
             return true;
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to delete pool file at '{}': {}",

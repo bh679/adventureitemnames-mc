@@ -3,14 +3,17 @@ package games.brennan.adventureitemnames.internal;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.api.NamePool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Scaffolds a brand-new pool inside an existing pack from the in-game UI.
@@ -74,6 +77,18 @@ public final class PoolCreator {
         try {
             Files.createDirectories(file.getParent());
             PackCreator.atomicWriteJson(file, buildPool(poolSlug, entryText));
+            // Register the pool in the in-memory registry under the source
+            // pack id the caller chose. The subsequent reload triggered by
+            // CreatePoolPopup can't see the file in Loom dev mode (classpath
+            // already cached at launch), so without this the pool would be
+            // missing from PackGrouping.snapshot() and the post-create
+            // PoolListScreen would render without it. Pass packId raw — the
+            // listener-side POOL_PACKS uses raw source pack ids (e.g.
+            // "fabric" on Fabric), and PoolListScreen.pack().packId() is the
+            // same raw id, so the grouping must match.
+            ResourceLocation poolId = ResourceLocation.fromNamespaceAndPath(NAMESPACE, poolSlug);
+            NamePool pool = new NamePool(poolId, List.of(NamePool.PoolEntry.universal(entryText)));
+            NameRegistry.putPoolInMemory(pool, packId);
             LOGGER.info("[AdventureItemNames] created pool '{}' in pack '{}' at {}", poolSlug, packId, file);
             return new CreateResult(true, NAMESPACE + ":" + poolSlug, file, null);
         } catch (IOException ex) {

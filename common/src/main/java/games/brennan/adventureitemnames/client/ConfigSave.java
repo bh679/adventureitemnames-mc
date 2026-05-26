@@ -62,6 +62,7 @@ public final class ConfigSave {
         Set<ResourceLocation> enabledSelectors  = buffer.snapshotEnabledSelectors();
         Map<String, Float> weights              = buffer.snapshotWeights();
         Map<ChanceKind, Float> chances          = buffer.snapshotChances();
+        Map<ChanceKind, net.minecraft.ChatFormatting> colors = buffer.snapshotColors();
         Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTiers = buffer.snapshotSelectorTiers();
         Map<ResourceLocation, NameSelector> customSelectors = buffer.snapshotCustomSelectors();
         Set<ResourceLocation> removedCustomSelectorIds      = buffer.snapshotRemovedCustomSelectorIds();
@@ -74,6 +75,7 @@ public final class ConfigSave {
             weights,
             buffer.snapshotEntryOverrides(),
             chances,
+            colors,
             selectorTiers,
             buffer.snapshotSegmentEdits(),
             buffer.snapshotSegmentResets(),

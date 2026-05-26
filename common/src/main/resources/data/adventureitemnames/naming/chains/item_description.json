@@ -1,0 +1,66 @@
+{
+  "id": "adventureitemnames:item_description",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Item Description",
+      "refs": [
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25296757,
+      "connection": "",
+      "newline": true,
+      "label": "Second",
+      "refs": [
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25448963,
+      "connection": "",
+      "newline": true,
+      "label": "Third",
+      "refs": [
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}

@@ -206,18 +206,25 @@ public final class NameCodec {
         if (appliesTo == null) {
             throw new NameParseException("selector 'applies_to' is not a valid tag id");
         }
-        Map<String, ResourceLocation> tiers = new LinkedHashMap<>();
         JsonElement tiersEl = root.get("tiers");
         if (tiersEl == null || !tiersEl.isJsonObject()) {
             throw new NameParseException("selector missing 'tiers' object");
         }
-        for (Map.Entry<String, JsonElement> e : tiersEl.getAsJsonObject().entrySet()) {
+        Map<String, ResourceLocation> tiers = readTierMap(tiersEl);
+        Map<String, ResourceLocation> descTiers = readTierMap(root.get("description_tiers"));
+        return new NameSelector(id, appliesTo, Map.copyOf(tiers), Map.copyOf(descTiers));
+    }
+
+    private static Map<String, ResourceLocation> readTierMap(JsonElement el) {
+        Map<String, ResourceLocation> out = new LinkedHashMap<>();
+        if (el == null || !el.isJsonObject()) return out;
+        for (Map.Entry<String, JsonElement> e : el.getAsJsonObject().entrySet()) {
             if (!e.getValue().isJsonPrimitive()) continue;
             ResourceLocation chainId = ResourceLocation.tryParse(e.getValue().getAsString());
             if (chainId == null) continue;
-            tiers.put(e.getKey(), chainId);
+            out.put(e.getKey(), chainId);
         }
-        return new NameSelector(id, appliesTo, Map.copyOf(tiers));
+        return out;
     }
 
     private static JsonObject readRoot(InputStream in) throws NameParseException {

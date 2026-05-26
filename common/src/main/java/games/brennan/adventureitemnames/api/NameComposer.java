@@ -2,9 +2,11 @@ package games.brennan.adventureitemnames.api;
 
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
@@ -16,10 +18,12 @@ import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +109,11 @@ public final class NameComposer {
 
     private static void composeAndApply(ItemStack stack, NameSelector sel, boolean enchanted, RandomSource rng) {
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
+        applyComposedName(stack, sel, tier, rng);
+        applyComposedDescription(stack, sel, tier, rng);
+    }
+
+    private static void applyComposedName(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
         ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return;
 
@@ -113,14 +122,75 @@ public final class NameComposer {
 
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+        ChanceKind colorKind = tier == NameTier.ENCHANTED ? ChanceKind.ENCHANTED : ChanceKind.PLAIN;
+        stack.set(DataComponents.CUSTOM_NAME, withColor(Component.literal(name), colorKind));
     }
 
     /**
-     * Walk overrides + shipped JSON to find the chain id for one tier on
-     * one selector. ENCHANTED falls back to PLAIN only when no explicit
-     * override is set — an explicit {@code (none)} override on ENCHANTED
-     * suppresses naming for enchanted items without spilling into PLAIN.
+     * Resolve and apply the per-tier description chain to the stack as
+     * appended {@code DataComponents.LORE} lines. Description tiers are
+     * optional — a selector with an empty description map produces no
+     * lore changes. PLAIN fallback for ENCHANTED mirrors name-tier
+     * resolution: explicit {@code (none)} on ENCHANTED suppresses, missing
+     * ENCHANTED key falls through to PLAIN.
+     *
+     * <p>Description-tier resolution intentionally bypasses the
+     * {@code NamingConfig} override layer used by name-tier resolution —
+     * config-side overrides for description tiers are an editor-UI
+     * feature deferred to a follow-up.
+     */
+    private static void applyComposedDescription(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
+        ResourceLocation descChainId = resolveDescriptionTierChain(sel, tier).orElse(null);
+        if (descChainId == null) return;
+
+        ChanceKind kind = tier == NameTier.ENCHANTED
+            ? ChanceKind.DESCRIPTION_ENCHANTED
+            : ChanceKind.DESCRIPTION_PLAIN;
+        float chance = NamingConfig.chanceFor(kind);
+        if (rng.nextFloat() >= chance) return;
+
+        String desc = compose(descChainId, stack, sel.appliesTo(), rng, 0);
+        if (desc == null || desc.isBlank()) return;
+
+        appendLore(stack, desc, kind);
+    }
+
+    /**
+     * Description-tier counterpart of {@link #resolveTierChain}. Looks up
+     * the {@code description_<tier>} key in the selector override layer
+     * (lets the UI re-point a description chain without editing the
+     * shipped JSON), falling back to the selector's shipped
+     * {@code description_tiers} map and then the PLAIN tier when ENCHANTED
+     * isn't explicitly bound.
+     */
+    private static Optional<ResourceLocation> resolveDescriptionTierChain(NameSelector sel, NameTier tier) {
+        String descKey = DESCRIPTION_TIER_PREFIX + tier.key();
+        Map<String, ResourceLocation> shippedDescTiers = sel.descriptionTiers();
+        ResourceLocation shipped = shippedDescTiers.get(tier.key());
+        Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(sel.id(), descKey, shipped);
+        if (chain.isPresent()) return chain;
+        if (NamingConfig.hasTierOverride(sel.id(), descKey)) return chain;
+        if (tier == NameTier.PLAIN) return chain;
+        String plainDescKey = DESCRIPTION_TIER_PREFIX + NameTier.PLAIN.key();
+        return NamingConfig.effectiveTierChain(sel.id(), plainDescKey,
+            shippedDescTiers.get(NameTier.PLAIN.key()));
+    }
+
+    /**
+     * Tier-key prefix for description-tier overrides stored in the same
+     * {@link games.brennan.adventureitemnames.internal.SelectorOverrides}
+     * map as name-tier overrides. Keeps the override layer single, while
+     * letting {@link games.brennan.adventureitemnames.internal.PackSelectorWriter}
+     * route these keys to the JSON's {@code description_tiers} block.
+     */
+    public static final String DESCRIPTION_TIER_PREFIX = "description_";
+
+    /**
+     * Walk overrides + shipped JSON to find the name chain id for one
+     * tier on one selector. ENCHANTED falls back to PLAIN only when no
+     * explicit override is set — an explicit {@code (none)} override on
+     * ENCHANTED suppresses naming for enchanted items without spilling
+     * into PLAIN.
      */
     private static Optional<ResourceLocation> resolveTierChain(NameSelector sel, NameTier tier) {
         Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(
@@ -130,6 +200,48 @@ public final class NameComposer {
         if (tier == NameTier.PLAIN) return chain;
         return NamingConfig.effectiveTierChain(
             sel.id(), NameTier.PLAIN.key(), sel.tiers().get(NameTier.PLAIN.key()));
+    }
+
+    /**
+     * Resolve a tier-chain id from a shipped tier map without consulting
+     * the {@code NamingConfig} override layer. ENCHANTED falls back to
+     * PLAIN when the ENCHANTED key is absent.
+     */
+    private static ResourceLocation resolveShippedTierChain(Map<String, ResourceLocation> tierMap, NameTier tier) {
+        ResourceLocation chainId = tierMap.get(tier.key());
+        if (chainId != null) return chainId;
+        if (tier == NameTier.PLAIN) return null;
+        return tierMap.get(NameTier.PLAIN.key());
+    }
+
+    /**
+     * Split {@code text} on {@code \n} and append the resulting lines to
+     * the stack's existing {@code DataComponents.LORE} component (or an
+     * empty lore if the stack has none). Each line takes its color from
+     * {@link NamingConfig#colorFor(ChanceKind) colorFor(colorKind)};
+     * vanilla's default lore styling (dark purple italic) applies on top
+     * when no color override is set. Clamped to {@link ItemLore#MAX_LINES}
+     * so a misconfigured chain can't blow the vanilla constructor's size
+     * check.
+     */
+    private static void appendLore(ItemStack stack, String text, ChanceKind colorKind) {
+        ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
+        List<Component> merged = new ArrayList<>(existing.lines());
+        for (String line : text.split("\n", -1)) {
+            if (merged.size() >= ItemLore.MAX_LINES) break;
+            merged.add(withColor(Component.literal(line), colorKind));
+        }
+        stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
+    }
+
+    /**
+     * Wrap {@code component} in the configured color for {@code colorKind}.
+     * Returns the original component unchanged when no color override is
+     * set so vanilla default styling stays untouched.
+     */
+    private static Component withColor(MutableComponent component, ChanceKind colorKind) {
+        Optional<ChatFormatting> color = NamingConfig.colorFor(colorKind);
+        return color.isPresent() ? component.withStyle(color.get()) : component;
     }
 
     /**
@@ -196,9 +308,10 @@ public final class NameComposer {
 
         float chance;
         boolean nameVisible;
+        ChanceKind colorKind;
         switch (cat) {
-            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; }
-            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true; }
+            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
+            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
             default -> { return; }
         }
 
@@ -207,7 +320,7 @@ public final class NameComposer {
         String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0);
         if (name == null || name.isBlank()) return;
 
-        mob.setCustomName(Component.literal(name));
+        mob.setCustomName(withColor(Component.literal(name), colorKind));
         mob.setCustomNameVisible(nameVisible);
     }
 
@@ -302,13 +415,26 @@ public final class NameComposer {
             String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
             if (fragment == null || fragment.isEmpty()) continue;
 
-            if (out.length() > 0) {
-                out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
-                if (NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) out.append('\n');
+            // Newline emits BEFORE the connection so the connection can read
+            // as a line-leading prefix (e.g. "Wielded by  " on a new line).
+            // Suppressed when this segment is the first to fire so the chain
+            // never starts with a stray newline.
+            if (out.length() > 0
+                && NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) {
+                out.append('\n');
             }
+            // Connection ALWAYS prepends — it's the segment's prefix, not a
+            // between-segment glue. When a chain's first-firing segment has a
+            // non-empty connection (e.g. "the " in {@code the_something},
+            // "Forged by  " in a description chain), the prefix emits. The
+            // {@code stripLeading} below covers the inverse case where a
+            // segment's connection was authored as a separator (" ") and the
+            // segment ends up firing first: any leading whitespace at the
+            // chain level is dropped so older chains read identically.
+            out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
             out.append(fragment);
         }
-        return out.toString();
+        return out.toString().stripLeading();
     }
 
     private static String resolveRef(ResourceLocation refId, ItemStack stack,

@@ -1,11 +1,13 @@
 package games.brennan.adventureitemnames.api;
 
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
+import games.brennan.adventureitemnames.internal.ColorOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -69,6 +71,9 @@ public final class NamingConfig {
     private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
 
+    private static final ColorOverrides USER_COLORS = new ColorOverrides();
+    private static final ColorOverrides API_COLORS = new ColorOverrides();
+
     private static final SelectorOverrides USER_SELECTORS = new SelectorOverrides();
     private static final SelectorOverrides API_SELECTORS = new SelectorOverrides();
 
@@ -118,6 +123,14 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_CHANCES.clear();
             if (newOverrides != null) USER_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer color overrides. Internal — called by the user-config loader. */
+    public static void setUserColors(ColorOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_COLORS.clear();
+            if (newOverrides != null) USER_COLORS.mergeFrom(newOverrides);
         }
     }
 
@@ -496,10 +509,12 @@ public final class NamingConfig {
         return kind.defaultValue();
     }
 
-    public static float chancePlain()       { return chanceFor(ChanceKind.PLAIN); }
-    public static float chanceEnchanted()   { return chanceFor(ChanceKind.ENCHANTED); }
-    public static float chanceMobPassive()  { return chanceFor(ChanceKind.MOB_PASSIVE); }
-    public static float chanceMobVillager() { return chanceFor(ChanceKind.MOB_VILLAGER); }
+    public static float chancePlain()                { return chanceFor(ChanceKind.PLAIN); }
+    public static float chanceEnchanted()            { return chanceFor(ChanceKind.ENCHANTED); }
+    public static float chanceDescriptionPlain()     { return chanceFor(ChanceKind.DESCRIPTION_PLAIN); }
+    public static float chanceDescriptionEnchanted() { return chanceFor(ChanceKind.DESCRIPTION_ENCHANTED); }
+    public static float chanceMobPassive()           { return chanceFor(ChanceKind.MOB_PASSIVE); }
+    public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
 
     private static float clamp01(float v) {
         if (v < 0f) return 0f;
@@ -510,6 +525,28 @@ public final class NamingConfig {
     /** Read-only snapshot of user-layer chance overrides. UI uses this to seed edit widgets. */
     public static Map<ChanceKind, Float> snapshotUserChances() {
         synchronized (LOCK) { return USER_CHANCES.snapshot(); }
+    }
+
+    /**
+     * Effective color override for one {@link ChanceKind} row, with
+     * precedence API → user. Returns {@link Optional#empty()} when no
+     * layer has set a color — caller should leave vanilla default styling
+     * in place.
+     */
+    public static Optional<ChatFormatting> colorFor(ChanceKind kind) {
+        if (kind == null) return Optional.empty();
+        synchronized (LOCK) {
+            ChatFormatting api = API_COLORS.values.get(kind);
+            if (api != null) return Optional.of(api);
+            ChatFormatting user = USER_COLORS.values.get(kind);
+            if (user != null) return Optional.of(user);
+        }
+        return Optional.empty();
+    }
+
+    /** Read-only snapshot of user-layer color overrides. UI uses this to seed edit widgets. */
+    public static Map<ChanceKind, ChatFormatting> snapshotUserColors() {
+        synchronized (LOCK) { return USER_COLORS.snapshot(); }
     }
 
     /**

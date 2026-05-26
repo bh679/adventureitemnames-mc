@@ -10,6 +10,7 @@ import games.brennan.adventureitemnames.api.MobCategory;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NameSelector;
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -96,6 +97,7 @@ public final class ConfigCodec {
         WeightOverrides weights = new WeightOverrides();
         EntryOverrides entries = new EntryOverrides();
         ChanceOverrides chances = new ChanceOverrides();
+        ColorOverrides colors = new ColorOverrides();
         SelectorOverrides selectorOverrides = new SelectorOverrides();
         SegmentOverrides segmentOverrides = new SegmentOverrides();
         CustomSelectors customSelectors = new CustomSelectors();
@@ -103,7 +105,7 @@ public final class ConfigCodec {
             if (root != null) {
                 LOGGER.warn("[AdventureItemNames] config '{}' root is not a JSON object — ignoring", sourceLabel);
             }
-            return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, segmentOverrides, customSelectors);
+            return new LoadedConfig(disables, weights, entries, chances, colors, selectorOverrides, segmentOverrides, customSelectors);
         }
         JsonObject obj = root.getAsJsonObject();
 
@@ -197,11 +199,12 @@ public final class ConfigCodec {
         }
 
         readChances(obj, chances, sourceLabel);
+        readColors(obj, colors, sourceLabel);
         readSelectorOverrides(obj, selectorOverrides, sourceLabel);
         readSegmentOverrides(obj, segmentOverrides, sourceLabel);
         readCustomSelectors(obj, customSelectors, sourceLabel);
 
-        return new LoadedConfig(disables, weights, entries, chances, selectorOverrides, segmentOverrides, customSelectors);
+        return new LoadedConfig(disables, weights, entries, chances, colors, selectorOverrides, segmentOverrides, customSelectors);
     }
 
     private static void readRemovedTexts(JsonObject body, ResourceLocation poolId,
@@ -287,6 +290,42 @@ public final class ConfigCodec {
             out.add(rl);
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * Parse the {@code colors} block. Each value is a {@link ChatFormatting}
+     * name (e.g. {@code "GOLD"}, {@code "aqua"} — case-insensitive); unknown
+     * keys, unknown color names, and non-color formats (bold, italic, reset)
+     * are logged and skipped.
+     */
+    private static void readColors(JsonObject root, ColorOverrides dest, String sourceLabel) {
+        JsonElement el = root.get("colors");
+        if (el == null) return;
+        if (!el.isJsonObject()) {
+            LOGGER.warn("[AdventureItemNames] config '{}' 'colors' is not an object — ignoring", sourceLabel);
+            return;
+        }
+        for (var entry : el.getAsJsonObject().entrySet()) {
+            ChanceKind kind = ChanceKind.fromKey(entry.getKey());
+            if (kind == null) {
+                LOGGER.warn("[AdventureItemNames] config '{}' unknown color key '{}'", sourceLabel, entry.getKey());
+                continue;
+            }
+            JsonElement vEl = entry.getValue();
+            if (vEl == null || !vEl.isJsonPrimitive() || !vEl.getAsJsonPrimitive().isString()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' colors['{}'] is not a string — ignoring",
+                    sourceLabel, entry.getKey());
+                continue;
+            }
+            String name = vEl.getAsString();
+            ChatFormatting color = ChatFormatting.getByName(name);
+            if (color == null || !color.isColor()) {
+                LOGGER.warn("[AdventureItemNames] config '{}' colors['{}'] '{}' is not a valid color — ignoring",
+                    sourceLabel, entry.getKey(), name);
+                continue;
+            }
+            dest.values.put(kind, color);
+        }
     }
 
     /**

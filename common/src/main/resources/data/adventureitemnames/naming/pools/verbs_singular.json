@@ -1,0 +1,125 @@
+{
+  "id": "adventureitemnames:verbs_singular",
+  "entries": [
+    {
+      "text": "look"
+    },
+    {
+      "text": "taste"
+    },
+    {
+      "text": "smell"
+    },
+    {
+      "text": "function"
+    },
+    {
+      "text": "whirl"
+    },
+    {
+      "text": "hum"
+    },
+    {
+      "text": "drip"
+    },
+    {
+      "text": "whisper"
+    },
+    {
+      "text": "ring"
+    },
+    {
+      "text": "howl"
+    },
+    {
+      "text": "roar"
+    },
+    {
+      "text": "cry"
+    },
+    {
+      "text": "scream"
+    },
+    {
+      "text": "wail"
+    },
+    {
+      "text": "whistle"
+    },
+    {
+      "text": "glow"
+    },
+    {
+      "text": "shine"
+    },
+    {
+      "text": "gleam"
+    },
+    {
+      "text": "glimmer"
+    },
+    {
+      "text": "sparkle"
+    },
+    {
+      "text": "burn"
+    },
+    {
+      "text": "flicker"
+    },
+    {
+      "text": "radiate"
+    },
+    {
+      "text": "blaze"
+    },
+    {
+      "text": "devour"
+    },
+    {
+      "text": "hunt"
+    },
+    {
+      "text": "act"
+    },
+    {
+      "text": "kill"
+    },
+    {
+      "text": "fight"
+    },
+    {
+      "text": "stand"
+    },
+    {
+      "text": "linger"
+    },
+    {
+      "text": "appearance"
+    },
+    {
+      "text": "way of working"
+    },
+    {
+      "text": "movement"
+    },
+    {
+      "text": "shape"
+    },
+    {
+      "text": "noise"
+    },
+    {
+      "text": "behavour"
+    },
+    {
+      "text": "feeling"
+    },
+    {
+      "text": "nature"
+    },
+    {
+      "text": "feature"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "adventureitemnames:has_a",
+  "entries": [
+    {
+      "text": "Has"
+    },
+    {
+      "text": "Holds"
+    },
+    {
+      "text": "Maintains"
+    },
+    {
+      "text": "Keeps"
+    }
+  ]
+}

@@ -38,6 +38,7 @@ public final class BufferFingerprint {
         sb.append("ds=").append(b.snapshotDisabledSelectors()).append('\n');
         sb.append("es=").append(b.snapshotEnabledSelectors()).append('\n');
         sb.append("c=").append(b.snapshotChances()).append('\n');
+        sb.append("co=").append(b.snapshotColors()).append('\n');
         sb.append("st=").append(b.snapshotSelectorTiers()).append('\n');
         sb.append("se=").append(b.snapshotSegmentEdits()).append('\n');
         sb.append("sr=").append(b.snapshotSegmentResets()).append('\n');
