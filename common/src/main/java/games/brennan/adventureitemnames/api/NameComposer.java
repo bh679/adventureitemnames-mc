@@ -140,9 +140,7 @@ public final class NameComposer {
      * feature deferred to a follow-up.
      */
     private static void applyComposedDescription(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
-        Map<String, ResourceLocation> descTiers = sel.descriptionTiers();
-        if (descTiers.isEmpty()) return;
-        ResourceLocation descChainId = resolveShippedTierChain(descTiers, tier);
+        ResourceLocation descChainId = resolveDescriptionTierChain(sel, tier).orElse(null);
         if (descChainId == null) return;
 
         ChanceKind kind = tier == NameTier.ENCHANTED
@@ -156,6 +154,36 @@ public final class NameComposer {
 
         appendLore(stack, desc, kind);
     }
+
+    /**
+     * Description-tier counterpart of {@link #resolveTierChain}. Looks up
+     * the {@code description_<tier>} key in the selector override layer
+     * (lets the UI re-point a description chain without editing the
+     * shipped JSON), falling back to the selector's shipped
+     * {@code description_tiers} map and then the PLAIN tier when ENCHANTED
+     * isn't explicitly bound.
+     */
+    private static Optional<ResourceLocation> resolveDescriptionTierChain(NameSelector sel, NameTier tier) {
+        String descKey = DESCRIPTION_TIER_PREFIX + tier.key();
+        Map<String, ResourceLocation> shippedDescTiers = sel.descriptionTiers();
+        ResourceLocation shipped = shippedDescTiers.get(tier.key());
+        Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(sel.id(), descKey, shipped);
+        if (chain.isPresent()) return chain;
+        if (NamingConfig.hasTierOverride(sel.id(), descKey)) return chain;
+        if (tier == NameTier.PLAIN) return chain;
+        String plainDescKey = DESCRIPTION_TIER_PREFIX + NameTier.PLAIN.key();
+        return NamingConfig.effectiveTierChain(sel.id(), plainDescKey,
+            shippedDescTiers.get(NameTier.PLAIN.key()));
+    }
+
+    /**
+     * Tier-key prefix for description-tier overrides stored in the same
+     * {@link games.brennan.adventureitemnames.internal.SelectorOverrides}
+     * map as name-tier overrides. Keeps the override layer single, while
+     * letting {@link games.brennan.adventureitemnames.internal.PackSelectorWriter}
+     * route these keys to the JSON's {@code description_tiers} block.
+     */
+    public static final String DESCRIPTION_TIER_PREFIX = "description_";
 
     /**
      * Walk overrides + shipped JSON to find the name chain id for one

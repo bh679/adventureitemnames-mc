@@ -388,6 +388,33 @@ public final class EditBuffer {
         return copy;
     }
 
+    /**
+     * Convenience for the Selectors screen: stage the same description
+     * chain on both the {@code description_plain} and
+     * {@code description_enchanted} tier keys for {@code selectorId}.
+     * Pass {@code null} to clear both keys (reverts to the selector's
+     * shipped {@code description_tiers}).
+     */
+    public void setSelectorDescriptionTier(ResourceLocation selectorId, Optional<ResourceLocation> chainId) {
+        if (selectorId == null) return;
+        setSelectorTier(selectorId, "description_plain", chainId);
+        setSelectorTier(selectorId, "description_enchanted", chainId);
+    }
+
+    /**
+     * Effective description tier chain for the UI: pending → user-layer →
+     * the selector's shipped {@code description_tiers.<tier>} map. Used
+     * by the Selectors screen to seed the description dropdown's label —
+     * looks at the PLAIN description tier since the convenience setter
+     * keeps both tiers in sync.
+     */
+    public Optional<ResourceLocation> effectiveDescriptionTierChain(NameSelector selector) {
+        if (selector == null) return Optional.empty();
+        String descKey = "description_plain";
+        ResourceLocation shipped = selector.descriptionTiers().get("plain");
+        return effectiveTierChain(selector.id(), descKey, shipped);
+    }
+
     // ────────────────────────────────────────────────────────────
     // Selector enable/disable (v2)
     // ────────────────────────────────────────────────────────────
