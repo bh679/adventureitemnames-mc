@@ -311,6 +311,35 @@ public final class UserConfigWriter {
     }
 
     /**
+     * Strip {@code colors[<kind>]} entries for every {@code kind} in
+     * {@code kinds} from the on-disk user-config file. Called after a
+     * successful dev-mode {@link PackColorWriter#writeColors} so the
+     * user-config color overlay stops double-applying on top of the
+     * freshly baked-in color file. No-op when nothing changes.
+     */
+    public static synchronized boolean wipeColorData(Set<ChanceKind> kinds) {
+        if (kinds == null || kinds.isEmpty()) return true;
+        Path configDir = ConfigPaths.get();
+        if (configDir == null) return true;
+        Path file = configDir.resolve(FILE_NAME);
+        if (!Files.exists(file)) return true;
+        JsonObject root = readRootOrEmpty(file);
+        JsonElement el = root.get("colors");
+        if (el == null || !el.isJsonObject()) return true;
+        JsonObject obj = el.getAsJsonObject();
+        boolean changed = false;
+        for (ChanceKind k : kinds) {
+            if (obj.has(k.key())) {
+                obj.remove(k.key());
+                changed = true;
+            }
+        }
+        if (!changed) return true;
+        if (obj.size() == 0) root.remove("colors");
+        return atomicWrite(configDir, file, root, "wiped user-config color overrides");
+    }
+
+    /**
      * Strip {@code selector_overrides[<selectorId>]} entries for every id
      * in {@code selectors} from the on-disk user-config file. Called after
      * a successful dev-mode {@link PackSelectorWriter#writeSelectorTiers}

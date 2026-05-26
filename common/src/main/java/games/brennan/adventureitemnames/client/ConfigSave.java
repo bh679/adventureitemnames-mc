@@ -10,6 +10,7 @@ import games.brennan.adventureitemnames.internal.ChainAssembler;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import games.brennan.adventureitemnames.internal.PackChainWriter;
 import games.brennan.adventureitemnames.internal.PackChanceWriter;
+import games.brennan.adventureitemnames.internal.PackColorWriter;
 import games.brennan.adventureitemnames.internal.PackDisableWriter;
 import games.brennan.adventureitemnames.internal.PackPaths;
 import games.brennan.adventureitemnames.internal.PackPoolWriter;
@@ -120,6 +121,12 @@ public final class ConfigSave {
             if (!chances.isEmpty()) {
                 if (PackChanceWriter.writeChances(BASE_PACK_ID, chances)) {
                     UserConfigWriter.wipeChanceData(chances.keySet());
+                    packWritten = true;
+                }
+            }
+            if (!colors.isEmpty()) {
+                if (PackColorWriter.writeColors(BASE_PACK_ID, colors)) {
+                    UserConfigWriter.wipeColorData(colors.keySet());
                     packWritten = true;
                 }
             }

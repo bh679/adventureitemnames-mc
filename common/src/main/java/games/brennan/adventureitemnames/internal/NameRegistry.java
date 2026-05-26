@@ -120,6 +120,7 @@ public final class NameRegistry {
     public static SimpleJsonResourceReloadListener selectorListener() { return new SelectorListener(); }
     public static SimpleJsonResourceReloadListener configListener()   { return new ConfigListener(); }
     public static SimpleJsonResourceReloadListener chanceListener()   { return new ChanceLoader(); }
+    public static SimpleJsonResourceReloadListener colorListener()    { return new ColorLoader(); }
 
     /**
      * Register a synthetic pool source whose pools are overlaid on top of

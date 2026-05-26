@@ -1,5 +1,5 @@
 {
-  "id": "adventureitemnames:looks_like_something",
+  "id": "adventureitemnames:similie_like_a",
   "replace": false,
   "segments": [
     {
@@ -11,13 +11,13 @@
     },
     {
       "chance": 1.0,
-      "connection": " like ",
+      "connection": " like a ",
       "newline": false,
-      "label": "LIKE Something",
+      "label": "Similie \"like a\"",
       "refs": [
         {
-          "ref": "adventureitemnames:discord_people",
-          "weight": 59.0
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
         }
       ]
     }
