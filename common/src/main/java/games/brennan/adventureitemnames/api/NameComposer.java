@@ -387,13 +387,26 @@ public final class NameComposer {
             String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
             if (fragment == null || fragment.isEmpty()) continue;
 
-            if (out.length() > 0) {
-                out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
-                if (NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) out.append('\n');
+            // Newline emits BEFORE the connection so the connection can read
+            // as a line-leading prefix (e.g. "Wielded by  " on a new line).
+            // Suppressed when this segment is the first to fire so the chain
+            // never starts with a stray newline.
+            if (out.length() > 0
+                && NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) {
+                out.append('\n');
             }
+            // Connection ALWAYS prepends — it's the segment's prefix, not a
+            // between-segment glue. When a chain's first-firing segment has a
+            // non-empty connection (e.g. "the " in {@code the_something},
+            // "Forged by  " in a description chain), the prefix emits. The
+            // {@code stripLeading} below covers the inverse case where a
+            // segment's connection was authored as a separator (" ") and the
+            // segment ends up firing first: any leading whitespace at the
+            // chain level is dropped so older chains read identically.
+            out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
             out.append(fragment);
         }
-        return out.toString();
+        return out.toString().stripLeading();
     }
 
     private static String resolveRef(ResourceLocation refId, ItemStack stack,

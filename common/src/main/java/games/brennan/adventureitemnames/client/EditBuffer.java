@@ -298,10 +298,13 @@ public final class EditBuffer {
             if (pending < 0f) return kind.defaultValue();
             return pending;
         }
-        Map<ChanceKind, Float> userSnap = NamingConfig.snapshotUserChances();
-        Float user = userSnap.get(kind);
-        if (user != null) return user;
-        return kind.defaultValue();
+        // Delegate to NamingConfig so the full layer stack (API → user →
+        // datapack → default) is consulted. The user-only snapshot used
+        // previously misses the datapack layer, which is critical in dev
+        // mode where {@code ConfigSave} bakes chance overrides into the
+        // datapack {@code chances/*.json} file and wipes the user-config
+        // entry — reopening this screen would otherwise show the default.
+        return NamingConfig.chanceFor(kind);
     }
 
     public Map<ChanceKind, Float> snapshotChances() {

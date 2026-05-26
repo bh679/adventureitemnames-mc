@@ -15,7 +15,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -181,12 +183,22 @@ public final class SpawnChancesScreen extends Screen {
     }
 
     private void save() {
+        // Capture the values the user just set BEFORE commit clears the buffer
+        // and the async datapack reload completes — otherwise the post-commit
+        // effectiveChance/effectiveColor query falls through to a stale
+        // datapack layer and the slider visibly snaps to the kind's default.
+        Map<ChanceKind, Float> targetChances = new EnumMap<>(ChanceKind.class);
+        Map<ChanceKind, ChatFormatting> targetColors = new EnumMap<>(ChanceKind.class);
+        for (Row row : rows) {
+            targetChances.put(row.kind, buffer.effectiveChance(row.kind));
+            targetColors.put(row.kind, buffer.effectiveColor(row.kind).orElse(null));
+        }
         ConfigSave.commit(buffer, () -> {
             for (Row row : rows) {
-                float v = buffer.effectiveChance(row.kind);
+                float v = targetChances.get(row.kind);
                 row.slider.setSliderValue(v);
                 row.setEditBoxValue(formatChance(v));
-                row.colorButton.setColor(buffer.effectiveColor(row.kind).orElse(null));
+                row.colorButton.setColor(targetColors.get(row.kind));
             }
             if (saveButton != null) saveButton.active = false;
             if (preview != null) preview.rerollNow();
