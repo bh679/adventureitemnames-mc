@@ -172,6 +172,17 @@ public final class NameRegistry {
     private static final Map<ResourceLocation, NamePool> POOL_OVERLAY = new LinkedHashMap<>();
 
     /**
+     * Pack-id side table for overlay pools created in-session (typically by
+     * {@link PoolCreator} for the {@code + New pool} UI). The reload listener
+     * doesn't see source-tree files that were created after the dev launcher
+     * cached the classpath, so {@link #POOL_PACKS} would lose the entry on
+     * every reload. Re-applying this map in {@link #replacePools} keeps the
+     * new pool grouped under the pack the user picked, so it stays visible
+     * in the {@code PoolListScreen} after the post-create reload.
+     */
+    private static final Map<ResourceLocation, String> POOL_OVERLAY_PACKS = new LinkedHashMap<>();
+
+    /**
      * Synchronously overwrite one chain in the in-memory registry and pin
      * it as a session overlay so subsequent {@code /reload}-style refreshes
      * don't revert it. Used by the dev-mode datapack editor so a saved
@@ -196,14 +207,32 @@ public final class NameRegistry {
      * subsequent server resource reload.
      */
     public static synchronized void putPoolInMemory(NamePool pool) {
+        putPoolInMemory(pool, null);
+    }
+
+    /**
+     * Overlay variant that also records {@code packId} so the pool stays
+     * grouped under the right pack in {@link #POOL_PACKS} after a reload
+     * that didn't pick up the just-written disk file. Used by
+     * {@link PoolCreator} when scaffolding a brand-new pool from the UI —
+     * the dev-mode resource manager can't see source-tree changes mid-run,
+     * so without this side-table the new pool would land under
+     * {@link #UNKNOWN_PACK} and disappear from the {@code PoolListScreen}.
+     */
+    public static synchronized void putPoolInMemory(NamePool pool, String packId) {
         if (pool == null) return;
         POOLS.put(pool.id(), pool);
         POOL_OVERLAY.put(pool.id(), pool);
+        if (packId != null) {
+            POOL_PACKS.put(pool.id(), packId);
+            POOL_OVERLAY_PACKS.put(pool.id(), packId);
+        }
     }
 
     /** Drop a pool from the dev overlay (its next reload-derived form will stick). */
     public static synchronized void clearPoolOverlay(ResourceLocation id) {
         POOL_OVERLAY.remove(id);
+        POOL_OVERLAY_PACKS.remove(id);
     }
 
     /** Immutable view of every registered pool — keyed by id, insertion-order preserved. */
@@ -316,6 +345,13 @@ public final class NameRegistry {
         }
         POOL_PACKS.clear();
         POOL_PACKS.putAll(packs);
+        // Fill in pack ids for overlay pools the listener didn't see (newly
+        // created files in the dev classpath aren't visible until the next
+        // launch). putIfAbsent keeps the listener-derived id authoritative
+        // for any pool that did make it onto disk in time.
+        for (Map.Entry<ResourceLocation, String> e : POOL_OVERLAY_PACKS.entrySet()) {
+            POOL_PACKS.putIfAbsent(e.getKey(), e.getValue());
+        }
         LOGGER.info("[AdventureItemNames] pools reloaded — {} ({} overlay)",
             POOLS.size(), POOL_OVERLAY.size());
     }
