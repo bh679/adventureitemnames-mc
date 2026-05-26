@@ -16,10 +16,12 @@ import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +107,11 @@ public final class NameComposer {
 
     private static void composeAndApply(ItemStack stack, NameSelector sel, boolean enchanted, RandomSource rng) {
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
+        applyComposedName(stack, sel, tier, rng);
+        applyComposedDescription(stack, sel, tier, rng);
+    }
+
+    private static void applyComposedName(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
         ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return;
 
@@ -117,10 +124,36 @@ public final class NameComposer {
     }
 
     /**
-     * Walk overrides + shipped JSON to find the chain id for one tier on
-     * one selector. ENCHANTED falls back to PLAIN only when no explicit
-     * override is set — an explicit {@code (none)} override on ENCHANTED
-     * suppresses naming for enchanted items without spilling into PLAIN.
+     * Resolve and apply the per-tier description chain to the stack as
+     * appended {@code DataComponents.LORE} lines. Description tiers are
+     * optional — a selector with an empty description map produces no
+     * lore changes. PLAIN fallback for ENCHANTED mirrors name-tier
+     * resolution: explicit {@code (none)} on ENCHANTED suppresses, missing
+     * ENCHANTED key falls through to PLAIN.
+     *
+     * <p>Description-tier resolution intentionally bypasses the
+     * {@code NamingConfig} override layer used by name-tier resolution —
+     * config-side overrides for description tiers are an editor-UI
+     * feature deferred to a follow-up.
+     */
+    private static void applyComposedDescription(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
+        Map<String, ResourceLocation> descTiers = sel.descriptionTiers();
+        if (descTiers.isEmpty()) return;
+        ResourceLocation descChainId = resolveShippedTierChain(descTiers, tier);
+        if (descChainId == null) return;
+
+        String desc = compose(descChainId, stack, sel.appliesTo(), rng, 0);
+        if (desc == null || desc.isBlank()) return;
+
+        appendLore(stack, desc);
+    }
+
+    /**
+     * Walk overrides + shipped JSON to find the name chain id for one
+     * tier on one selector. ENCHANTED falls back to PLAIN only when no
+     * explicit override is set — an explicit {@code (none)} override on
+     * ENCHANTED suppresses naming for enchanted items without spilling
+     * into PLAIN.
      */
     private static Optional<ResourceLocation> resolveTierChain(NameSelector sel, NameTier tier) {
         Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(
@@ -130,6 +163,35 @@ public final class NameComposer {
         if (tier == NameTier.PLAIN) return chain;
         return NamingConfig.effectiveTierChain(
             sel.id(), NameTier.PLAIN.key(), sel.tiers().get(NameTier.PLAIN.key()));
+    }
+
+    /**
+     * Resolve a tier-chain id from a shipped tier map without consulting
+     * the {@code NamingConfig} override layer. ENCHANTED falls back to
+     * PLAIN when the ENCHANTED key is absent.
+     */
+    private static ResourceLocation resolveShippedTierChain(Map<String, ResourceLocation> tierMap, NameTier tier) {
+        ResourceLocation chainId = tierMap.get(tier.key());
+        if (chainId != null) return chainId;
+        if (tier == NameTier.PLAIN) return null;
+        return tierMap.get(NameTier.PLAIN.key());
+    }
+
+    /**
+     * Split {@code text} on {@code \n} and append the resulting lines to
+     * the stack's existing {@code DataComponents.LORE} component (or an
+     * empty lore if the stack has none). Clamped to
+     * {@link ItemLore#MAX_LINES} so a misconfigured chain can't blow the
+     * vanilla constructor's size check.
+     */
+    private static void appendLore(ItemStack stack, String text) {
+        ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
+        List<Component> merged = new ArrayList<>(existing.lines());
+        for (String line : text.split("\n", -1)) {
+            if (merged.size() >= ItemLore.MAX_LINES) break;
+            merged.add(Component.literal(line));
+        }
+        stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
     }
 
     /**

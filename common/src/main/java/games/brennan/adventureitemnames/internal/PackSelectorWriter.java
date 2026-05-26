@@ -60,15 +60,7 @@ public final class PackSelectorWriter {
                 packId, selector.id());
             return false;
         }
-        JsonObject root = new JsonObject();
-        root.add("id", new JsonPrimitive(selector.id().toString()));
-        root.add("applies_to", new JsonPrimitive(selector.appliesTo().toString()));
-        JsonObject tiers = new JsonObject();
-        for (Map.Entry<String, ResourceLocation> e : selector.tiers().entrySet()) {
-            if (e.getValue() == null) continue; // (none) sentinel → omit key
-            tiers.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
-        }
-        root.add("tiers", tiers);
+        JsonObject root = buildSelectorJson(selector);
 
         try {
             Files.createDirectories(file.getParent());
@@ -141,6 +133,32 @@ public final class PackSelectorWriter {
             LOGGER.warn("[AdventureItemNames] failed to delete selector file at '{}': {}", file, ex.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Build the JSON form of {@code selector} in the layout {@link NameCodec}
+     * parses. Package-private for unit-test round-trip coverage; production
+     * callers should go through {@link #writeSelector}.
+     */
+    static JsonObject buildSelectorJson(NameSelector selector) {
+        JsonObject root = new JsonObject();
+        root.add("id", new JsonPrimitive(selector.id().toString()));
+        root.add("applies_to", new JsonPrimitive(selector.appliesTo().toString()));
+        root.add("tiers", tierMapToJson(selector.tiers()));
+        if (!selector.descriptionTiers().isEmpty()) {
+            JsonObject descTiers = tierMapToJson(selector.descriptionTiers());
+            if (descTiers.size() > 0) root.add("description_tiers", descTiers);
+        }
+        return root;
+    }
+
+    private static JsonObject tierMapToJson(Map<String, ResourceLocation> tiers) {
+        JsonObject obj = new JsonObject();
+        for (Map.Entry<String, ResourceLocation> e : tiers.entrySet()) {
+            if (e.getValue() == null) continue; // (none) sentinel → omit key
+            obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+        }
+        return obj;
     }
 
     private static JsonObject readRootOrEmpty(Path file) {
