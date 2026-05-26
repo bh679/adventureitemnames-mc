@@ -71,6 +71,7 @@ public final class NamingConfig {
     private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
 
+    private static final ColorOverrides DATAPACK_COLORS = new ColorOverrides();
     private static final ColorOverrides USER_COLORS = new ColorOverrides();
     private static final ColorOverrides API_COLORS = new ColorOverrides();
 
@@ -144,6 +145,19 @@ public final class NamingConfig {
         synchronized (LOCK) {
             DATAPACK_CHANCES.clear();
             if (newOverrides != null) DATAPACK_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /**
+     * Replace the datapack-layer color overrides. Internal — called by
+     * the {@link games.brennan.adventureitemnames.internal.ColorLoader}
+     * reload listener with the union of every datapack's
+     * {@code data/<ns>/colors/*.json} file.
+     */
+    public static void setDatapackColors(ColorOverrides newOverrides) {
+        synchronized (LOCK) {
+            DATAPACK_COLORS.clear();
+            if (newOverrides != null) DATAPACK_COLORS.mergeFrom(newOverrides);
         }
     }
 
@@ -529,9 +543,9 @@ public final class NamingConfig {
 
     /**
      * Effective color override for one {@link ChanceKind} row, with
-     * precedence API → user. Returns {@link Optional#empty()} when no
-     * layer has set a color — caller should leave vanilla default styling
-     * in place.
+     * precedence API → user → datapack. Returns {@link Optional#empty()}
+     * when no layer has set a color — caller should leave vanilla default
+     * styling in place.
      */
     public static Optional<ChatFormatting> colorFor(ChanceKind kind) {
         if (kind == null) return Optional.empty();
@@ -540,6 +554,8 @@ public final class NamingConfig {
             if (api != null) return Optional.of(api);
             ChatFormatting user = USER_COLORS.values.get(kind);
             if (user != null) return Optional.of(user);
+            ChatFormatting datapack = DATAPACK_COLORS.values.get(kind);
+            if (datapack != null) return Optional.of(datapack);
         }
         return Optional.empty();
     }

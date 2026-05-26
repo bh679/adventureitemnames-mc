@@ -99,6 +99,7 @@ public final class AdventureItemNamesNeoForge {
         event.addListener(NameRegistry.selectorListener());
         event.addListener(NameRegistry.configListener());
         event.addListener(NameRegistry.chanceListener());
+        event.addListener(NameRegistry.colorListener());
     }
 
     private static void onAddPackFinders(AddPackFindersEvent event) {

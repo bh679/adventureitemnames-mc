@@ -140,6 +140,17 @@ public final class PackPaths {
     }
 
     /**
+     * {@code data/adventureitemnames/colors/<name>.json} resolved under
+     * the given pack. Used by {@link PackColorWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path colorFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("colors").resolve(name + ".json");
+    }
+
+    /**
      * Walk up from the current working directory looking for a {@code gradle.properties}
      * file with {@code mod_id=adventureitemnames}. Caches the result so subsequent
      * lookups are cheap.
