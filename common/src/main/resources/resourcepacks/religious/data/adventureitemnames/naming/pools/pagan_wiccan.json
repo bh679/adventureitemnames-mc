@@ -1,0 +1,22 @@
+{
+  "id": "adventureitemnames:pagan_wiccan",
+  "entries": [
+    { "text": "Druid" },
+    { "text": "Witch" },
+    { "text": "Warlock" },
+    { "text": "Shaman" },
+    { "text": "High Priest" },
+    { "text": "High Priestess" },
+    { "text": "Oracle" },
+    { "text": "Seer" },
+    { "text": "Hierophant" },
+    { "text": "Cunning Man" },
+    { "text": "Cunning Woman" },
+    { "text": "Hedge Witch" },
+    { "text": "Coven Mother" },
+    { "text": "Green Man" },
+    { "text": "May Queen" },
+    { "text": "Wise Woman" },
+    { "text": "Crone" }
+  ]
+}
