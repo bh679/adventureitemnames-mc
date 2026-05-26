@@ -1,0 +1,22 @@
+{
+  "id": "adventureitemnames:buddhism",
+  "entries": [
+    { "text": "Monk" },
+    { "text": "Lama" },
+    { "text": "Rinpoche" },
+    { "text": "Bhikkhu" },
+    { "text": "Bhikkhuni" },
+    { "text": "Bodhisattva" },
+    { "text": "Roshi" },
+    { "text": "Sensei" },
+    { "text": "Ajahn" },
+    { "text": "Geshe" },
+    { "text": "Khenpo" },
+    { "text": "Arhat" },
+    { "text": "Sayadaw" },
+    { "text": "Tulku" },
+    { "text": "Dharma Master" },
+    { "text": "Zen Master" },
+    { "text": "Sangha Elder" }
+  ]
+}

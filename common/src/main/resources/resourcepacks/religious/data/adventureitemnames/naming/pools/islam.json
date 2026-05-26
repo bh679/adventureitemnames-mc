@@ -1,0 +1,21 @@
+{
+  "id": "adventureitemnames:islam",
+  "entries": [
+    { "text": "Imam" },
+    { "text": "Mullah" },
+    { "text": "Sheikh" },
+    { "text": "Ayatollah" },
+    { "text": "Caliph" },
+    { "text": "Mufti" },
+    { "text": "Qadi" },
+    { "text": "Hafiz" },
+    { "text": "Hajji" },
+    { "text": "Muezzin" },
+    { "text": "Dervish" },
+    { "text": "Sayyid" },
+    { "text": "Murid" },
+    { "text": "Ulema" },
+    { "text": "Sufi Master" },
+    { "text": "Wali" }
+  ]
+}

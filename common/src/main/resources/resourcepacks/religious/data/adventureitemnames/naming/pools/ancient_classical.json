@@ -1,0 +1,18 @@
+{
+  "id": "adventureitemnames:ancient_classical",
+  "entries": [
+    { "text": "Pharaoh" },
+    { "text": "Vestal Virgin" },
+    { "text": "Pythia" },
+    { "text": "Augur" },
+    { "text": "Pontifex" },
+    { "text": "Flamen" },
+    { "text": "Hierophant" },
+    { "text": "Magus" },
+    { "text": "Sibyl" },
+    { "text": "Mystagogue" },
+    { "text": "Lector Priest" },
+    { "text": "Mobed" },
+    { "text": "Hierodule" }
+  ]
+}
