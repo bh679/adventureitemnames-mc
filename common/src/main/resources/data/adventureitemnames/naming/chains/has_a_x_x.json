@@ -9,12 +9,20 @@
       "label": "Has",
       "refs": [
         {
-          "ref": "adventureitemnames:verbs",
-          "weight": 42.0
-        },
-        {
           "ref": "adventureitemnames:has_a",
           "weight": 50.0
+        }
+      ]
+    },
+    {
+      "chance": 0.3465835,
+      "connection": " ",
+      "newline": false,
+      "label": "traces of",
+      "refs": [
+        {
+          "ref": "adventureitemnames:traces_of",
+          "weight": 6.0
         }
       ]
     },
