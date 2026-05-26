@@ -6,7 +6,7 @@
     "enchanted": "adventureitemnames:weapon_name_full"
   },
   "description_tiers": {
-    "plain": "adventureitemnames:test_description",
-    "enchanted": "adventureitemnames:test_description"
+    "plain": "adventureitemnames:item_description",
+    "enchanted": "adventureitemnames:item_description"
   }
 }

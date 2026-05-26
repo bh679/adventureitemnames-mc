@@ -1,0 +1,41 @@
+{
+  "id": "adventureitemnames:looks_like_something",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " like ",
+      "newline": false,
+      "label": "Looks LIKE Something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_characters",
+          "weight": 38.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_places",
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_titles",
+          "weight": 22.0
+        }
+      ]
+    }
+  ]
+}

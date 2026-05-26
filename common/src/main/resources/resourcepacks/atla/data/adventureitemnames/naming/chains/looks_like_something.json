@@ -1,0 +1,41 @@
+{
+  "id": "adventureitemnames:looks_like_something",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " like ",
+      "newline": false,
+      "label": "Looks LIKE Something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:atla_characters",
+          "weight": 34.0
+        },
+        {
+          "ref": "adventureitemnames:atla_places",
+          "weight": 26.0
+        },
+        {
+          "ref": "adventureitemnames:atla_animals",
+          "weight": 24.0
+        },
+        {
+          "ref": "adventureitemnames:atla_titles",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:atla_elements",
+          "weight": 21.0
+        }
+      ]
+    }
+  ]
+}

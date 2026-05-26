@@ -1,0 +1,25 @@
+{
+  "id": "adventureitemnames:looks_like_something",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " like ",
+      "newline": false,
+      "label": "Looks LIKE Something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:discord_people",
+          "weight": 59.0
+        }
+      ]
+    }
+  ]
+}
