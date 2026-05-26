@@ -496,10 +496,12 @@ public final class NamingConfig {
         return kind.defaultValue();
     }
 
-    public static float chancePlain()       { return chanceFor(ChanceKind.PLAIN); }
-    public static float chanceEnchanted()   { return chanceFor(ChanceKind.ENCHANTED); }
-    public static float chanceMobPassive()  { return chanceFor(ChanceKind.MOB_PASSIVE); }
-    public static float chanceMobVillager() { return chanceFor(ChanceKind.MOB_VILLAGER); }
+    public static float chancePlain()                { return chanceFor(ChanceKind.PLAIN); }
+    public static float chanceEnchanted()            { return chanceFor(ChanceKind.ENCHANTED); }
+    public static float chanceDescriptionPlain()     { return chanceFor(ChanceKind.DESCRIPTION_PLAIN); }
+    public static float chanceDescriptionEnchanted() { return chanceFor(ChanceKind.DESCRIPTION_ENCHANTED); }
+    public static float chanceMobPassive()           { return chanceFor(ChanceKind.MOB_PASSIVE); }
+    public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
 
     private static float clamp01(float v) {
         if (v < 0f) return 0f;

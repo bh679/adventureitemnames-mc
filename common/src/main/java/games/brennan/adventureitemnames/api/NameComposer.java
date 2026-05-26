@@ -142,6 +142,11 @@ public final class NameComposer {
         ResourceLocation descChainId = resolveShippedTierChain(descTiers, tier);
         if (descChainId == null) return;
 
+        float chance = tier == NameTier.ENCHANTED
+            ? NamingConfig.chanceDescriptionEnchanted()
+            : NamingConfig.chanceDescriptionPlain();
+        if (rng.nextFloat() >= chance) return;
+
         String desc = compose(descChainId, stack, sel.appliesTo(), rng, 0);
         if (desc == null || desc.isBlank()) return;
 
