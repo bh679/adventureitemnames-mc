@@ -2,9 +2,11 @@ package games.brennan.adventureitemnames.api;
 
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
@@ -120,7 +122,8 @@ public final class NameComposer {
 
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+        ChanceKind colorKind = tier == NameTier.ENCHANTED ? ChanceKind.ENCHANTED : ChanceKind.PLAIN;
+        stack.set(DataComponents.CUSTOM_NAME, withColor(Component.literal(name), colorKind));
     }
 
     /**
@@ -142,15 +145,16 @@ public final class NameComposer {
         ResourceLocation descChainId = resolveShippedTierChain(descTiers, tier);
         if (descChainId == null) return;
 
-        float chance = tier == NameTier.ENCHANTED
-            ? NamingConfig.chanceDescriptionEnchanted()
-            : NamingConfig.chanceDescriptionPlain();
+        ChanceKind kind = tier == NameTier.ENCHANTED
+            ? ChanceKind.DESCRIPTION_ENCHANTED
+            : ChanceKind.DESCRIPTION_PLAIN;
+        float chance = NamingConfig.chanceFor(kind);
         if (rng.nextFloat() >= chance) return;
 
         String desc = compose(descChainId, stack, sel.appliesTo(), rng, 0);
         if (desc == null || desc.isBlank()) return;
 
-        appendLore(stack, desc);
+        appendLore(stack, desc, kind);
     }
 
     /**
@@ -185,18 +189,31 @@ public final class NameComposer {
     /**
      * Split {@code text} on {@code \n} and append the resulting lines to
      * the stack's existing {@code DataComponents.LORE} component (or an
-     * empty lore if the stack has none). Clamped to
-     * {@link ItemLore#MAX_LINES} so a misconfigured chain can't blow the
-     * vanilla constructor's size check.
+     * empty lore if the stack has none). Each line takes its color from
+     * {@link NamingConfig#colorFor(ChanceKind) colorFor(colorKind)};
+     * vanilla's default lore styling (dark purple italic) applies on top
+     * when no color override is set. Clamped to {@link ItemLore#MAX_LINES}
+     * so a misconfigured chain can't blow the vanilla constructor's size
+     * check.
      */
-    private static void appendLore(ItemStack stack, String text) {
+    private static void appendLore(ItemStack stack, String text, ChanceKind colorKind) {
         ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
         List<Component> merged = new ArrayList<>(existing.lines());
         for (String line : text.split("\n", -1)) {
             if (merged.size() >= ItemLore.MAX_LINES) break;
-            merged.add(Component.literal(line));
+            merged.add(withColor(Component.literal(line), colorKind));
         }
         stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
+    }
+
+    /**
+     * Wrap {@code component} in the configured color for {@code colorKind}.
+     * Returns the original component unchanged when no color override is
+     * set so vanilla default styling stays untouched.
+     */
+    private static Component withColor(MutableComponent component, ChanceKind colorKind) {
+        Optional<ChatFormatting> color = NamingConfig.colorFor(colorKind);
+        return color.isPresent() ? component.withStyle(color.get()) : component;
     }
 
     /**
@@ -263,9 +280,10 @@ public final class NameComposer {
 
         float chance;
         boolean nameVisible;
+        ChanceKind colorKind;
         switch (cat) {
-            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; }
-            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true; }
+            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
+            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
             default -> { return; }
         }
 
@@ -274,7 +292,7 @@ public final class NameComposer {
         String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0);
         if (name == null || name.isBlank()) return;
 
-        mob.setCustomName(Component.literal(name));
+        mob.setCustomName(withColor(Component.literal(name), colorKind));
         mob.setCustomNameVisible(nameVisible);
     }
 

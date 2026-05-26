@@ -10,6 +10,7 @@ import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -48,6 +49,12 @@ public final class EditBuffer {
     private final Map<ResourceLocation, Set<String>> pendingRemovedEntries = new LinkedHashMap<>();
 
     private final Map<ChanceKind, Float> pendingChances = new EnumMap<>(ChanceKind.class);
+    /**
+     * Pending color overrides. A key present with a {@code null} value signals
+     * "clear" (sentinel mirroring the negative-float sentinel used for chances);
+     * a non-null value is a staged override.
+     */
+    private final Map<ChanceKind, ChatFormatting> pendingColors = new EnumMap<>(ChanceKind.class);
     /** selectorId → tier → Optional<chainId> (empty = (none) suppression). */
     private final Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> pendingSelectorTiers = new HashMap<>();
     private final Map<ResourceLocation, Boolean> pendingSelectorEnabled = new HashMap<>();
@@ -299,6 +306,43 @@ public final class EditBuffer {
 
     public Map<ChanceKind, Float> snapshotChances() {
         return new EnumMap<>(pendingChances);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Colors (per ChanceKind row)
+    // ────────────────────────────────────────────────────────────
+
+    /** Stage a color override. Pass {@code null} to clear the color (revert to default styling). */
+    public void setColor(ChanceKind kind, ChatFormatting color) {
+        if (kind == null) return;
+        pendingColors.put(kind, color);
+    }
+
+    /** Reset a color to its default — also clears any saved user-layer override on commit. */
+    public void clearColor(ChanceKind kind) {
+        if (kind == null) return;
+        pendingColors.put(kind, null);
+    }
+
+    public boolean hasPendingColor(ChanceKind kind) {
+        return pendingColors.containsKey(kind);
+    }
+
+    /**
+     * Effective color for the UI: pending → user-layer → empty.
+     * Empty means no color override; the row's swatch should show "(default)".
+     */
+    public Optional<ChatFormatting> effectiveColor(ChanceKind kind) {
+        if (pendingColors.containsKey(kind)) {
+            ChatFormatting pending = pendingColors.get(kind);
+            return Optional.ofNullable(pending);
+        }
+        Map<ChanceKind, ChatFormatting> userSnap = NamingConfig.snapshotUserColors();
+        return Optional.ofNullable(userSnap.get(kind));
+    }
+
+    public Map<ChanceKind, ChatFormatting> snapshotColors() {
+        return new EnumMap<>(pendingColors);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -637,6 +681,7 @@ public final class EditBuffer {
             || !pendingAddedEntries.isEmpty()
             || !pendingRemovedEntries.isEmpty()
             || !pendingChances.isEmpty()
+            || !pendingColors.isEmpty()
             || !pendingSelectorTiers.isEmpty()
             || !pendingSelectorEnabled.isEmpty()
             || !pendingSegmentEdits.isEmpty()
@@ -654,6 +699,7 @@ public final class EditBuffer {
         pendingAddedEntries.clear();
         pendingRemovedEntries.clear();
         pendingChances.clear();
+        pendingColors.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
         pendingSegmentEdits.clear();

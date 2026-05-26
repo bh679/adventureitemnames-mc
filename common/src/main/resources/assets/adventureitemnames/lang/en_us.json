@@ -30,6 +30,10 @@
   "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
   "screen.adventureitemnames.spawn_chances.configure_selectors": "Configure selectors →",
 
+  "screen.adventureitemnames.color_picker.title": "Pick a color",
+  "screen.adventureitemnames.color_picker.default": "(default)",
+  "screen.adventureitemnames.color_picker.other": "Other...",
+
   "screen.adventureitemnames.selectors.title": "Selectors",
   "screen.adventureitemnames.selectors.tier.none": "(none)",
   "screen.adventureitemnames.selectors.add_custom": "+ Add custom selector",

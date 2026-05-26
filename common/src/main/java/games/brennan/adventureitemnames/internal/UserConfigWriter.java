@@ -12,6 +12,7 @@ import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NameSelector;
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -74,6 +75,7 @@ public final class UserConfigWriter {
                                             Map<String, Float> weightOverrides,
                                             EntryOverrides entryOverrides,
                                             Map<ChanceKind, Float> chanceOverrides,
+                                            Map<ChanceKind, ChatFormatting> colorOverrides,
                                             Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> selectorTierOverrides,
                                             Map<String, SegmentOverrides.SegmentEdit> segmentOverrides,
                                             Set<String> segmentResetKeys,
@@ -94,6 +96,7 @@ public final class UserConfigWriter {
         applyWeightEdits(root, weightOverrides);
         applyEntryEdits(root, entryOverrides);
         applyChanceEdits(root, chanceOverrides);
+        applyColorEdits(root, colorOverrides);
         applySelectorTierEdits(root, selectorTierOverrides);
         applySegmentEdits(root, segmentOverrides, segmentResetKeys);
         applyAppendedSegments(root, appendedSegments);
@@ -444,6 +447,36 @@ public final class UserConfigWriter {
         JsonArray rebuilt = new JsonArray();
         for (String s : ids) rebuilt.add(s);
         root.add(key, rebuilt);
+    }
+
+    /**
+     * Merge color edits into the {@code colors} block. A {@code null} value
+     * clears that key (no color override → default styling). If the resulting
+     * block is empty, the {@code colors} key is dropped entirely.
+     */
+    private static void applyColorEdits(JsonObject root, Map<ChanceKind, ChatFormatting> edits) {
+        if (edits == null || edits.isEmpty()) return;
+        JsonObject existing;
+        JsonElement el = root.get("colors");
+        if (el != null && el.isJsonObject()) {
+            existing = el.getAsJsonObject();
+        } else {
+            existing = new JsonObject();
+        }
+        for (var entry : edits.entrySet()) {
+            ChanceKind kind = entry.getKey();
+            ChatFormatting color = entry.getValue();
+            if (color == null) {
+                existing.remove(kind.key());
+            } else {
+                existing.add(kind.key(), new JsonPrimitive(color.getName()));
+            }
+        }
+        if (existing.size() == 0) {
+            root.remove("colors");
+        } else {
+            root.add("colors", existing);
+        }
     }
 
     /**

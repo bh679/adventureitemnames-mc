@@ -3,16 +3,20 @@ package games.brennan.adventureitemnames.client;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * v2 — top-level Spawn Chances editor. Four rows, one per
@@ -32,6 +36,7 @@ public final class SpawnChancesScreen extends Screen {
     private static final int GAP = 6;
     private static final int EDIT_W = 52;
     private static final int RESET_W = 20;
+    private static final int COLOR_W = 20;
     private static final int FIRST_ROW_Y = 48;
 
     private static int labelWidth(int screenWidth) {
@@ -43,15 +48,16 @@ public final class SpawnChancesScreen extends Screen {
         return Math.max(60, available);
     }
 
-    /** Side padding × 2 + edit + reset + 3 gaps between (label,slider,edit,reset). */
+    /** Side padding × 2 + edit + reset + color + 4 gaps between (label,slider,edit,reset,color). */
     private static int usedNonLabelSliderWidth() {
-        return SIDE_PAD * 2 + EDIT_W + RESET_W + GAP * 3;
+        return SIDE_PAD * 2 + EDIT_W + RESET_W + COLOR_W + GAP * 4;
     }
 
     private static int labelX() { return SIDE_PAD; }
     private static int sliderX(int screenWidth) { return labelX() + labelWidth(screenWidth) + GAP; }
     private static int editX(int screenWidth)   { return sliderX(screenWidth) + sliderWidth(screenWidth) + GAP; }
     private static int resetX(int screenWidth)  { return editX(screenWidth) + EDIT_W + GAP; }
+    private static int colorX(int screenWidth)  { return resetX(screenWidth) + RESET_W + GAP; }
 
     private final Screen parent;
     private final EditBuffer buffer;
@@ -59,6 +65,7 @@ public final class SpawnChancesScreen extends Screen {
     private PreviewPanel preview;
     private Button saveButton;
     private ConfirmDialog activeConfirm;
+    private ColorPickerPopup activeColorPicker;
     private String openFingerprint;
 
     public SpawnChancesScreen(Screen parent, EditBuffer buffer) {
@@ -132,14 +139,39 @@ public final class SpawnChancesScreen extends Screen {
         ).bounds(resetX(width), y, RESET_W, 18).build();
         addRenderableWidget(row.resetButton);
 
+        row.colorButton = new ColorSwatchButton(colorX(width), y, COLOR_W, 18,
+            buffer.effectiveColor(kind).orElse(null),
+            () -> openColorPicker(row));
+        addRenderableWidget(row.colorButton);
+
         return row;
+    }
+
+    private void openColorPicker(Row row) {
+        ChatFormatting current = buffer.effectiveColor(row.kind).orElse(null);
+        activeColorPicker = new ColorPickerPopup(width, height, current, new ColorPickerPopup.Listener() {
+            @Override
+            public void onSelected(ChatFormatting color) {
+                buffer.setColor(row.kind, color);
+                row.colorButton.setColor(color);
+                activeColorPicker = null;
+                refreshSaveAndPreview();
+            }
+
+            @Override
+            public void onCancel() {
+                activeColorPicker = null;
+            }
+        });
     }
 
     private void resetRow(Row row) {
         buffer.clearChance(row.kind);
+        buffer.clearColor(row.kind);
         float def = row.kind.defaultValue();
         row.slider.setSliderValue(def);
         row.setEditBoxValue(formatChance(def));
+        row.colorButton.setColor(null);
         refreshSaveAndPreview();
     }
 
@@ -154,6 +186,7 @@ public final class SpawnChancesScreen extends Screen {
                 float v = buffer.effectiveChance(row.kind);
                 row.slider.setSliderValue(v);
                 row.setEditBoxValue(formatChance(v));
+                row.colorButton.setColor(buffer.effectiveColor(row.kind).orElse(null));
             }
             if (saveButton != null) saveButton.active = false;
             if (preview != null) preview.rerollNow();
@@ -179,10 +212,16 @@ public final class SpawnChancesScreen extends Screen {
 
         if (saveButton != null) saveButton.active = buffer.isDirty();
         if (preview != null) preview.render(gfx, mouseX, mouseY, partial);
+
+        if (activeColorPicker != null) activeColorPicker.render(gfx, mouseX, mouseY);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (activeColorPicker != null) {
+            activeColorPicker.mouseClicked(mouseX, mouseY, button);
+            return true;
+        }
         if (activeConfirm != null) { activeConfirm.mouseClicked(mouseX, mouseY, button); return true; }
         if (preview != null && preview.mouseClicked(mouseX, mouseY, button)) return true;
         return super.mouseClicked(mouseX, mouseY, button);
@@ -190,6 +229,7 @@ public final class SpawnChancesScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeColorPicker != null && activeColorPicker.keyPressed(keyCode)) return true;
         if (activeConfirm != null && activeConfirm.keyPressed(keyCode)) return true;
         if (preview != null && preview.keyPressed(keyCode)) return true;
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -239,6 +279,7 @@ public final class SpawnChancesScreen extends Screen {
         ChanceSlider slider;
         EditBox editBox;
         Button resetButton;
+        ColorSwatchButton colorButton;
         boolean suppressEditResponder;
 
         Row(ChanceKind kind) { this.kind = kind; }
@@ -252,6 +293,59 @@ public final class SpawnChancesScreen extends Screen {
             } finally {
                 suppressEditResponder = false;
             }
+        }
+    }
+
+    /**
+     * Small swatch button that displays the row's current color override
+     * (or a hatched gray "default" pattern when no override is set) and
+     * opens the {@link ColorPickerPopup} on click.
+     */
+    private static final class ColorSwatchButton extends AbstractButton {
+
+        private ChatFormatting color;
+        private final Runnable onClick;
+
+        ColorSwatchButton(int x, int y, int w, int h, ChatFormatting initial, Runnable onClick) {
+            super(x, y, w, h, Component.empty());
+            this.color = initial;
+            this.onClick = onClick;
+        }
+
+        void setColor(ChatFormatting c) { this.color = c; }
+
+        @Override
+        public void onPress() {
+            if (onClick != null) onClick.run();
+        }
+
+        @Override
+        protected void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+            int border = isHovered() ? 0xFFFFFFFF : 0xFF666666;
+            gfx.fill(getX(), getY(), getX() + width, getY() + height, border);
+            int inset = 1;
+            int innerX1 = getX() + inset;
+            int innerY1 = getY() + inset;
+            int innerX2 = getX() + width - inset;
+            int innerY2 = getY() + height - inset;
+            if (color == null) {
+                // Hatched gray "(default)" indicator.
+                gfx.fill(innerX1, innerY1, innerX2, innerY2, 0xFF202020);
+                for (int dx = 0; dx < (innerX2 - innerX1); dx += 3) {
+                    int px = innerX1 + dx;
+                    int py = innerY1 + dx;
+                    if (py < innerY2 && px < innerX2) {
+                        gfx.fill(px, py, px + 1, py + 1, 0xFFAAAAAA);
+                    }
+                }
+            } else {
+                gfx.fill(innerX1, innerY1, innerX2, innerY2, 0xFF000000 | ColorPickerPopup.colorRgb(color));
+            }
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput out) {
+            defaultButtonNarrationText(out);
         }
     }
 
