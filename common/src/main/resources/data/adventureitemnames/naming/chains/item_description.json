@@ -17,6 +17,38 @@
           "weight": 1.0
         }
       ]
+    },
+    {
+      "chance": 0.25296757,
+      "connection": "",
+      "newline": true,
+      "label": "Second",
+      "refs": [
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25448963,
+      "connection": "",
+      "newline": true,
+      "label": "Third",
+      "refs": [
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        }
+      ]
     }
   ]
 }
