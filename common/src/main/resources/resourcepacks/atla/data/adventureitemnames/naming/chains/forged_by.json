@@ -1,0 +1,22 @@
+{
+  "id": "adventureitemnames:forged_by",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "Forged by  ",
+      "newline": false,
+      "label": "Forged by",
+      "refs": [
+        {
+          "ref": "adventureitemnames:atla_characters",
+          "weight": 34.0
+        },
+        {
+          "ref": "adventureitemnames:atla_animals",
+          "weight": 24.0
+        }
+      ]
+    }
+  ]
+}

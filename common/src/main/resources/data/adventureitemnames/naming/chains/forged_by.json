@@ -1,0 +1,38 @@
+{
+  "id": "adventureitemnames:forged_by",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "Forged by  ",
+      "newline": false,
+      "label": "Forged by",
+      "refs": [
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:mob_name",
+          "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:title_combinations",
+          "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:names",
+          "weight": 258.0
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
+        }
+      ]
+    }
+  ]
+}

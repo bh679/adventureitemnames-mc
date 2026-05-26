@@ -4,5 +4,9 @@
   "tiers": {
     "plain": "adventureitemnames:weapon_name_short",
     "enchanted": "adventureitemnames:weapon_name_full"
+  },
+  "description_tiers": {
+    "plain": "adventureitemnames:test_description",
+    "enchanted": "adventureitemnames:test_description"
   }
 }
