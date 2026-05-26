@@ -13,7 +13,7 @@
       "chance": 1.0,
       "connection": " like ",
       "newline": false,
-      "label": "Looks LIKE Something",
+      "label": "LIKE Something",
       "refs": [
         {
           "ref": "adventureitemnames:atla_characters",
@@ -26,14 +26,6 @@
         {
           "ref": "adventureitemnames:atla_animals",
           "weight": 24.0
-        },
-        {
-          "ref": "adventureitemnames:atla_titles",
-          "weight": 22.0
-        },
-        {
-          "ref": "adventureitemnames:atla_elements",
-          "weight": 21.0
         }
       ]
     }

@@ -13,7 +13,7 @@
       "chance": 1.0,
       "connection": " like ",
       "newline": false,
-      "label": "Looks LIKE Something",
+      "label": "LIKE Something",
       "refs": [
         {
           "ref": "adventureitemnames:adventuretime_characters",
@@ -29,10 +29,6 @@
         },
         {
           "ref": "adventureitemnames:adventuretime_elements",
-          "weight": 22.0
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_titles",
           "weight": 22.0
         }
       ]

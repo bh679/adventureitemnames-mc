@@ -1,0 +1,30 @@
+{
+  "id": "adventureitemnames:similie_like_a",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": [
+        {
+          "ref": "adventureitemnames:verbs",
+          "weight": 42.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " like a ",
+      "newline": false,
+      "label": "Similie \"like a\"",
+      "refs": [
+        {
+          "ref": "adventureitemnames:type_synonyms",
+          "weight": 84.0
+        }
+      ]
+    }
+  ]
+}
