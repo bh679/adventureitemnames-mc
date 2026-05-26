@@ -1,0 +1,29 @@
+{
+  "id": "adventureitemnames:christianity",
+  "entries": [
+    { "text": "Priest" },
+    { "text": "Father" },
+    { "text": "Sister" },
+    { "text": "Brother" },
+    { "text": "Nun" },
+    { "text": "Monk" },
+    { "text": "Friar" },
+    { "text": "Bishop" },
+    { "text": "Archbishop" },
+    { "text": "Cardinal" },
+    { "text": "Pope" },
+    { "text": "Patriarch" },
+    { "text": "Deacon" },
+    { "text": "Reverend" },
+    { "text": "Pastor" },
+    { "text": "Minister" },
+    { "text": "Apostle" },
+    { "text": "Saint" },
+    { "text": "Prophet" },
+    { "text": "Chaplain" },
+    { "text": "Abbot" },
+    { "text": "Abbess" },
+    { "text": "Vicar" },
+    { "text": "Curate" }
+  ]
+}
