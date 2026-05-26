@@ -1,0 +1,27 @@
+{
+  "id": "adventureitemnames:mystic_orders",
+  "entries": [
+    { "text": "Crusader" },
+    { "text": "Templar" },
+    { "text": "Hospitaller" },
+    { "text": "Teutonic Knight" },
+    { "text": "Inquisitor" },
+    { "text": "Paladin" },
+    { "text": "Cleric" },
+    { "text": "Cenobite" },
+    { "text": "Hermit" },
+    { "text": "Anchorite" },
+    { "text": "Ascetic" },
+    { "text": "Pilgrim" },
+    { "text": "Devotee" },
+    { "text": "Acolyte" },
+    { "text": "Initiate" },
+    { "text": "Adept" },
+    { "text": "Confessor" },
+    { "text": "Zealot" },
+    { "text": "Martyr" },
+    { "text": "Mystic" },
+    { "text": "Sage" },
+    { "text": "Oblate" }
+  ]
+}
