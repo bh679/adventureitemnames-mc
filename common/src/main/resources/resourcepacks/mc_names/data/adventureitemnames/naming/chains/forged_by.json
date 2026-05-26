@@ -4,9 +4,16 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "Forged by  ",
+      "connection": " ",
       "newline": false,
       "label": "Forged by",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Person",
       "refs": [
         {
           "ref": "adventureitemnames:mc_enchantments",
@@ -44,6 +51,18 @@
           "ref": "adventureitemnames:mc_skins",
           "weight": 10.0
         },
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25393516,
+      "connection": " in ",
+      "newline": false,
+      "label": "Location",
+      "refs": [
         {
           "ref": "adventureitemnames:mc_dimensions",
           "weight": 5.0

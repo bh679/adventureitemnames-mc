@@ -1,0 +1,13 @@
+{
+  "id": "adventureitemnames:the_place",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "the ",
+      "newline": false,
+      "label": "THE place",
+      "refs": []
+    }
+  ]
+}

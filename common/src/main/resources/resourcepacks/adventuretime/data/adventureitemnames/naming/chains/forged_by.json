@@ -4,9 +4,16 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "Forged by  ",
+      "connection": " ",
       "newline": false,
       "label": "Forged by",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Person",
       "refs": [
         {
           "ref": "adventureitemnames:adventuretime_characters",
@@ -15,6 +22,18 @@
         {
           "ref": "adventureitemnames:adventuretime_animals",
           "weight": 22.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25393516,
+      "connection": " in ",
+      "newline": false,
+      "label": "Location",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_places",
+          "weight": 26.0
         }
       ]
     }

@@ -4,9 +4,21 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "Forged by  ",
+      "connection": " ",
       "newline": false,
       "label": "Forged by",
+      "refs": [
+        {
+          "ref": "adventureitemnames:created_by",
+          "weight": 52.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Person",
       "refs": [
         {
           "ref": "adventureitemnames:material_or_element",
@@ -31,6 +43,22 @@
         {
           "ref": "adventureitemnames:people",
           "weight": 20.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25393516,
+      "connection": " in ",
+      "newline": false,
+      "label": "Location",
+      "refs": [
+        {
+          "ref": "adventureitemnames:places",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:the_place",
+          "weight": 50.0
         }
       ]
     }
