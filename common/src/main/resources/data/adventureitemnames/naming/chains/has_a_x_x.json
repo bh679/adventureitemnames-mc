@@ -1,0 +1,29 @@
+{
+  "id": "adventureitemnames:has_a_x_x",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "Has a ",
+      "newline": false,
+      "label": "Has a X X",
+      "refs": [
+        {
+          "ref": "adventureitemnames:it_has_a",
+          "weight": 31.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "refs": [
+        {
+          "ref": "adventureitemnames:verbs",
+          "weight": 42.0
+        }
+      ]
+    }
+  ]
+}
