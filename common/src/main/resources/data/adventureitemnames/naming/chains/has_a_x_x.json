@@ -20,7 +20,7 @@
       "newline": false,
       "refs": [
         {
-          "ref": "adventureitemnames:verbs",
+          "ref": "adventureitemnames:verbs_singular",
           "weight": 42.0
         }
       ]
