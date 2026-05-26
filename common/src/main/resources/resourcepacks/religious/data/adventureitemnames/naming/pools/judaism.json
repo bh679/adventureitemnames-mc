@@ -1,0 +1,19 @@
+{
+  "id": "adventureitemnames:judaism",
+  "entries": [
+    { "text": "Rabbi" },
+    { "text": "Rebbe" },
+    { "text": "Cantor" },
+    { "text": "Tzadik" },
+    { "text": "Maggid" },
+    { "text": "Mohel" },
+    { "text": "Sofer" },
+    { "text": "Gabbai" },
+    { "text": "Chazzan" },
+    { "text": "Mashgiach" },
+    { "text": "Posek" },
+    { "text": "Dayan" },
+    { "text": "Kohen" },
+    { "text": "Levite" }
+  ]
+}
