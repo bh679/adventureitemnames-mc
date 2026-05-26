@@ -4,9 +4,25 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "Has a ",
+      "connection": " ",
       "newline": false,
-      "label": "Has a X X",
+      "label": "Has",
+      "refs": [
+        {
+          "ref": "adventureitemnames:verbs",
+          "weight": 42.0
+        },
+        {
+          "ref": "adventureitemnames:has_a",
+          "weight": 50.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " a ",
+      "newline": false,
+      "label": "a X X",
       "refs": [
         {
           "ref": "adventureitemnames:it_has_a",
@@ -15,9 +31,26 @@
       ]
     },
     {
+      "chance": 0.2516847,
+      "connection": " ",
+      "newline": false,
+      "label": "Adj",
+      "refs": [
+        {
+          "ref": "adventureitemnames:material_or_element",
+          "weight": 25.0
+        },
+        {
+          "ref": "adventureitemnames:colors",
+          "weight": 27.0
+        }
+      ]
+    },
+    {
       "chance": 1.0,
       "connection": " ",
       "newline": false,
+      "label": "Verb",
       "refs": [
         {
           "ref": "adventureitemnames:verbs_singular",

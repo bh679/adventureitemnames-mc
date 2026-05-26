@@ -15,6 +15,10 @@
         {
           "ref": "adventureitemnames:looks_like_something",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 1.0
         }
       ]
     },
@@ -31,6 +35,10 @@
         {
           "ref": "adventureitemnames:looks_like_something",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 1.0
         }
       ]
     },
@@ -46,6 +54,10 @@
         },
         {
           "ref": "adventureitemnames:looks_like_something",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:has_a_x_x",
           "weight": 1.0
         }
       ]

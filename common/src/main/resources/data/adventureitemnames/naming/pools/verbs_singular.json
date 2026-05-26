@@ -11,25 +11,10 @@
       "text": "smell"
     },
     {
-      "text": "appear"
-    },
-    {
-      "text": "work"
-    },
-    {
       "text": "function"
     },
     {
-      "text": "move"
-    },
-    {
-      "text": "dance"
-    },
-    {
       "text": "whirl"
-    },
-    {
-      "text": "spin"
     },
     {
       "text": "hum"
@@ -92,13 +77,7 @@
       "text": "devour"
     },
     {
-      "text": "feast"
-    },
-    {
       "text": "hunt"
-    },
-    {
-      "text": "behave"
     },
     {
       "text": "act"
@@ -110,22 +89,37 @@
       "text": "fight"
     },
     {
-      "text": "sit"
-    },
-    {
-      "text": "wait"
-    },
-    {
-      "text": "endure"
-    },
-    {
-      "text": "rest"
-    },
-    {
       "text": "stand"
     },
     {
       "text": "linger"
+    },
+    {
+      "text": "appearance"
+    },
+    {
+      "text": "way of working"
+    },
+    {
+      "text": "movement"
+    },
+    {
+      "text": "shape"
+    },
+    {
+      "text": "noise"
+    },
+    {
+      "text": "behavour"
+    },
+    {
+      "text": "feeling"
+    },
+    {
+      "text": "nature"
+    },
+    {
+      "text": "feature"
     }
   ]
 }
