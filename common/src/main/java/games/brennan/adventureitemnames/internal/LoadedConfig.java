@@ -16,6 +16,7 @@ public record LoadedConfig(
     WeightOverrides weights,
     EntryOverrides entries,
     ChanceOverrides chances,
+    ColorOverrides colors,
     SelectorOverrides selectorOverrides,
     SegmentOverrides segmentOverrides,
     CustomSelectors customSelectors
@@ -26,6 +27,7 @@ public record LoadedConfig(
             new WeightOverrides(),
             new EntryOverrides(),
             new ChanceOverrides(),
+            new ColorOverrides(),
             new SelectorOverrides(),
             new SegmentOverrides(),
             new CustomSelectors());

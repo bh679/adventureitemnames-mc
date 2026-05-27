@@ -47,6 +47,7 @@ public final class UserConfigLoader {
             NamingConfig.setUserWeightOverrides(cfg.weights());
             NamingConfig.setUserEntryOverrides(cfg.entries());
             NamingConfig.setUserChances(cfg.chances());
+            NamingConfig.setUserColors(cfg.colors());
             NamingConfig.setUserSelectorOverrides(cfg.selectorOverrides());
             NamingConfig.setUserSegmentOverrides(cfg.segmentOverrides());
             NameRegistry.installUserSelectors(cfg.customSelectors().snapshot());
@@ -62,6 +63,7 @@ public final class UserConfigLoader {
         NamingConfig.setUserWeightOverrides(new WeightOverrides());
         NamingConfig.setUserEntryOverrides(new EntryOverrides());
         NamingConfig.setUserChances(new ChanceOverrides());
+        NamingConfig.setUserColors(new ColorOverrides());
         NamingConfig.setUserSelectorOverrides(new SelectorOverrides());
         NamingConfig.setUserSegmentOverrides(new SegmentOverrides());
         NameRegistry.installUserSelectors(Map.of());

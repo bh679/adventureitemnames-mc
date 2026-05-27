@@ -2,9 +2,6 @@
   "id": "adventureitemnames:atla_titles",
   "entries": [
     {
-      "text": "the Avatar"
-    },
-    {
       "text": "Fire Lord"
     },
     {
@@ -66,6 +63,9 @@
     },
     {
       "text": "Mother of Faces"
+    },
+    {
+      "text": "Avatar"
     }
   ]
 }

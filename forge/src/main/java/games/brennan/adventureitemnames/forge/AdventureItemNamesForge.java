@@ -79,7 +79,8 @@ public final class AdventureItemNamesForge {
 
         // Register before the first reload fires so the synthetic mc_blocks /
         // mc_items pools appear in the title-screen preview and at world load.
-        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
+        NameRegistry.registerSyntheticPoolSource("mod/adventureitemnames/mc_names",
+            new VanillaRegistryPoolSource());
 
         ITEMS.register(modBus);
         modBus.addListener(AdventureItemNamesForge::onBuildCreativeTab);
@@ -105,6 +106,8 @@ public final class AdventureItemNamesForge {
         event.addListener(NameRegistry.chainListener());
         event.addListener(NameRegistry.selectorListener());
         event.addListener(NameRegistry.configListener());
+        event.addListener(NameRegistry.chanceListener());
+        event.addListener(NameRegistry.colorListener());
     }
 
     private static void onAddPackFinders(AddPackFindersEvent event) {
@@ -115,6 +118,7 @@ public final class AdventureItemNamesForge {
         registerBuiltinPack(event, "discord", "Adventure Item Names — Discord Supporters");
         registerBuiltinPack(event, "atla", "Adventure Item Names — ATLA Pack");
         registerBuiltinPack(event, "adventuretime", "Adventure Item Names — Adventure Time Pack");
+        registerBuiltinPack(event, "dungeontrain", "Adventure Item Names — Dungeon Train Pack");
     }
 
     /**

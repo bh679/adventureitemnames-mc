@@ -1,0 +1,42 @@
+{
+  "id": "adventureitemnames:item_description",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Item Description",
+      "refs": [
+        {
+          "ref": "adventureitemnames:questions",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25296757,
+      "connection": "",
+      "newline": true,
+      "label": "Second",
+      "refs": [
+        {
+          "ref": "adventureitemnames:questions",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25448963,
+      "connection": "",
+      "newline": true,
+      "label": "Third",
+      "refs": [
+        {
+          "ref": "adventureitemnames:questions",
+          "weight": 6.0
+        }
+      ]
+    }
+  ]
+}

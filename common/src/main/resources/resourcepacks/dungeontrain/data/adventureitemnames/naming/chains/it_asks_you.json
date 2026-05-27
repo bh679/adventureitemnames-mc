@@ -1,0 +1,37 @@
+{
+  "id": "adventureitemnames:it_asks_you",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "It asks you",
+      "refs": [
+        {
+          "ref": "adventureitemnames:prequestion",
+          "weight": 4.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " \"",
+      "newline": false,
+      "label": "Question",
+      "refs": [
+        {
+          "ref": "adventureitemnames:questions",
+          "weight": 16.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "\"",
+      "newline": false,
+      "label": "?",
+      "refs": []
+    }
+  ]
+}

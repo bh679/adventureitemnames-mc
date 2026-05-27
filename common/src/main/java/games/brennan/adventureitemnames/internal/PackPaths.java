@@ -54,6 +54,8 @@ public final class PackPaths {
         m.put("adventureitemnames:atla",               "common/src/main/resources/resourcepacks/atla/data/adventureitemnames");
         m.put("mod/adventureitemnames/adventuretime",  "common/src/main/resources/resourcepacks/adventuretime/data/adventureitemnames");
         m.put("adventureitemnames:adventuretime",      "common/src/main/resources/resourcepacks/adventuretime/data/adventureitemnames");
+        m.put("mod/adventureitemnames/dungeontrain",   "common/src/main/resources/resourcepacks/dungeontrain/data/adventureitemnames");
+        m.put("adventureitemnames:dungeontrain",       "common/src/main/resources/resourcepacks/dungeontrain/data/adventureitemnames");
         PACK_ID_TO_PATH = m;
     }
 
@@ -104,6 +106,51 @@ public final class PackPaths {
     }
 
     /**
+     * {@code data/adventureitemnames/naming/selectors/<selectorPath>.json}
+     * resolved under the given pack. Used by {@link PackSelectorWriter}
+     * for both custom-selector creation and tier-override writes on
+     * shipped selectors.
+     */
+    public static Path selectorFile(String packId, String selectorPath) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("naming").resolve("selectors").resolve(selectorPath + ".json");
+    }
+
+    /**
+     * {@code data/adventureitemnames/disabled/<name>.json} resolved under
+     * the given pack. Used by {@link PackDisableWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path disableFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("disabled").resolve(name + ".json");
+    }
+
+    /**
+     * {@code data/adventureitemnames/chances/<name>.json} resolved under
+     * the given pack. Used by {@link PackChanceWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path chanceFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("chances").resolve(name + ".json");
+    }
+
+    /**
+     * {@code data/adventureitemnames/colors/<name>.json} resolved under
+     * the given pack. Used by {@link PackColorWriter} — typically called
+     * with {@code "defaults"} as the file name.
+     */
+    public static Path colorFile(String packId, String name) {
+        Path data = dataRootFor(packId);
+        if (data == null) return null;
+        return data.resolve("colors").resolve(name + ".json");
+    }
+
+    /**
      * Walk up from the current working directory looking for a {@code gradle.properties}
      * file with {@code mod_id=adventureitemnames}. Caches the result so subsequent
      * lookups are cheap.
@@ -145,6 +192,21 @@ public final class PackPaths {
     }
 
     /**
+     * Source-tree directory a brand-new user-created pack would live at —
+     * {@code <projectRoot>/common/src/main/resources/resourcepacks/<slug>/}.
+     * Returns {@code null} when the project root cannot be resolved
+     * (production users, or dev environments where the CWD walk failed).
+     * Caller uses this for the dev-mode mirror copy in {@code PackCreator};
+     * non-null does NOT imply the folder exists.
+     */
+    public static Path srcTreePackRoot(String slug) {
+        if (slug == null || slug.isEmpty()) return null;
+        Path root = resolveProjectRoot();
+        if (root == null) return null;
+        return root.resolve("common/src/main/resources/resourcepacks").resolve(slug);
+    }
+
+    /**
      * Canonical pack ids the {@code + New chain} popup offers as save
      * targets — the base mod plus each themed built-in pack, listed in
      * the order they should appear in the dropdown. Only includes the
@@ -160,7 +222,8 @@ public final class PackPaths {
             "mod/adventureitemnames/wholesome",
             "mod/adventureitemnames/discord",
             "mod/adventureitemnames/atla",
-            "mod/adventureitemnames/adventuretime");
+            "mod/adventureitemnames/adventuretime",
+            "mod/adventureitemnames/dungeontrain");
         for (String id : canonical) {
             if (PACK_ID_TO_PATH.containsKey(id)) out.add(id);
         }
@@ -175,11 +238,23 @@ public final class PackPaths {
      * {@code "fabric"} alias — both must collapse to {@code mod/adventureitemnames}
      * or the {@link PerPackSplitter} writes the base chain file twice
      * (with the second write clobbering the first via {@code replace: false}).
+     *
+     * <p>Themed packs have the same problem one level deeper — Fabric reports
+     * them as {@code adventureitemnames:<sub>} while Forge/NeoForge report
+     * them as {@code mod/adventureitemnames/<sub>}. Both point at the same
+     * on-disk directory, so we fold the Fabric form into the Forge canonical
+     * form. Without this, a chain referencing both a synthetic pool (tagged
+     * with the canonical form on every loader) and a JSON-loaded pool in the
+     * same pack (tagged with the loader-native form) would split into two
+     * pack layers and clobber each other's writes on Fabric.
      */
     public static String canonicalize(String packId) {
         if (packId == null) return null;
         if (packId.startsWith("generated_")) return "mod/adventureitemnames";
         if ("fabric".equals(packId)) return "mod/adventureitemnames";
+        if (packId.startsWith("adventureitemnames:")) {
+            return "mod/adventureitemnames/" + packId.substring("adventureitemnames:".length());
+        }
         return packId;
     }
 }

@@ -1,11 +1,13 @@
 package games.brennan.adventureitemnames.api;
 
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
+import games.brennan.adventureitemnames.internal.ColorOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
 import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.SelectorOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -65,8 +67,13 @@ public final class NamingConfig {
     private static final EntryOverrides USER_ENTRIES = new EntryOverrides();
     private static final EntryOverrides API_ENTRIES = new EntryOverrides();
 
+    private static final ChanceOverrides DATAPACK_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides USER_CHANCES = new ChanceOverrides();
     private static final ChanceOverrides API_CHANCES = new ChanceOverrides();
+
+    private static final ColorOverrides DATAPACK_COLORS = new ColorOverrides();
+    private static final ColorOverrides USER_COLORS = new ColorOverrides();
+    private static final ColorOverrides API_COLORS = new ColorOverrides();
 
     private static final SelectorOverrides USER_SELECTORS = new SelectorOverrides();
     private static final SelectorOverrides API_SELECTORS = new SelectorOverrides();
@@ -117,6 +124,40 @@ public final class NamingConfig {
         synchronized (LOCK) {
             USER_CHANCES.clear();
             if (newOverrides != null) USER_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /** Replace the user-config-layer color overrides. Internal — called by the user-config loader. */
+    public static void setUserColors(ColorOverrides newOverrides) {
+        synchronized (LOCK) {
+            USER_COLORS.clear();
+            if (newOverrides != null) USER_COLORS.mergeFrom(newOverrides);
+        }
+    }
+
+    /**
+     * Replace the datapack-layer chance overrides. Internal — called by
+     * the {@link games.brennan.adventureitemnames.internal.ChanceLoader}
+     * reload listener with the union of every datapack's
+     * {@code data/<ns>/chances/*.json} file.
+     */
+    public static void setDatapackChances(ChanceOverrides newOverrides) {
+        synchronized (LOCK) {
+            DATAPACK_CHANCES.clear();
+            if (newOverrides != null) DATAPACK_CHANCES.mergeFrom(newOverrides);
+        }
+    }
+
+    /**
+     * Replace the datapack-layer color overrides. Internal — called by
+     * the {@link games.brennan.adventureitemnames.internal.ColorLoader}
+     * reload listener with the union of every datapack's
+     * {@code data/<ns>/colors/*.json} file.
+     */
+    public static void setDatapackColors(ColorOverrides newOverrides) {
+        synchronized (LOCK) {
+            DATAPACK_COLORS.clear();
+            if (newOverrides != null) DATAPACK_COLORS.mergeFrom(newOverrides);
         }
     }
 
@@ -466,8 +507,8 @@ public final class NamingConfig {
 
     /**
      * Effective probability for one {@link ChanceKind} gate. Precedence
-     * API → user → {@link ChanceKind#defaultValue()}. Returned value is
-     * already clamped to {@code [0, 1]}.
+     * API → user → datapack → {@link ChanceKind#defaultValue()}. Returned
+     * value is already clamped to {@code [0, 1]}.
      */
     public static float chanceFor(ChanceKind kind) {
         if (kind == null) return 0f;
@@ -476,14 +517,19 @@ public final class NamingConfig {
             if (api != null) return clamp01(api);
             Float user = USER_CHANCES.values.get(kind);
             if (user != null) return clamp01(user);
+            Float datapack = DATAPACK_CHANCES.values.get(kind);
+            if (datapack != null) return clamp01(datapack);
         }
         return kind.defaultValue();
     }
 
-    public static float chancePlain()       { return chanceFor(ChanceKind.PLAIN); }
-    public static float chanceEnchanted()   { return chanceFor(ChanceKind.ENCHANTED); }
-    public static float chanceMobPassive()  { return chanceFor(ChanceKind.MOB_PASSIVE); }
-    public static float chanceMobVillager() { return chanceFor(ChanceKind.MOB_VILLAGER); }
+    public static float chancePlain()                { return chanceFor(ChanceKind.PLAIN); }
+    public static float chanceEnchanted()            { return chanceFor(ChanceKind.ENCHANTED); }
+    public static float chanceDescriptionPlain()     { return chanceFor(ChanceKind.DESCRIPTION_PLAIN); }
+    public static float chanceDescriptionEnchanted() { return chanceFor(ChanceKind.DESCRIPTION_ENCHANTED); }
+    public static float chanceMobPassive()           { return chanceFor(ChanceKind.MOB_PASSIVE); }
+    public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
+    public static float chanceCraftedDescription()   { return chanceFor(ChanceKind.CRAFTED_DESCRIPTION); }
 
     private static float clamp01(float v) {
         if (v < 0f) return 0f;
@@ -494,6 +540,30 @@ public final class NamingConfig {
     /** Read-only snapshot of user-layer chance overrides. UI uses this to seed edit widgets. */
     public static Map<ChanceKind, Float> snapshotUserChances() {
         synchronized (LOCK) { return USER_CHANCES.snapshot(); }
+    }
+
+    /**
+     * Effective color override for one {@link ChanceKind} row, with
+     * precedence API → user → datapack. Returns {@link Optional#empty()}
+     * when no layer has set a color — caller should leave vanilla default
+     * styling in place.
+     */
+    public static Optional<ChatFormatting> colorFor(ChanceKind kind) {
+        if (kind == null) return Optional.empty();
+        synchronized (LOCK) {
+            ChatFormatting api = API_COLORS.values.get(kind);
+            if (api != null) return Optional.of(api);
+            ChatFormatting user = USER_COLORS.values.get(kind);
+            if (user != null) return Optional.of(user);
+            ChatFormatting datapack = DATAPACK_COLORS.values.get(kind);
+            if (datapack != null) return Optional.of(datapack);
+        }
+        return Optional.empty();
+    }
+
+    /** Read-only snapshot of user-layer color overrides. UI uses this to seed edit widgets. */
+    public static Map<ChanceKind, ChatFormatting> snapshotUserColors() {
+        synchronized (LOCK) { return USER_COLORS.snapshot(); }
     }
 
     /**

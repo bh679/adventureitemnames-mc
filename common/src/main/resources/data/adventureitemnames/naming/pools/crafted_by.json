@@ -1,0 +1,20 @@
+{
+  "id": "adventureitemnames:crafted_by",
+  "entries": [
+    {
+      "text": "Crafted"
+    },
+    {
+      "text": "Designed"
+    },
+    {
+      "text": "Made"
+    },
+    {
+      "text": "Built"
+    },
+    {
+      "text": "Forged"
+    }
+  ]
+}

@@ -119,6 +119,8 @@ public final class NameRegistry {
     public static SimplePreparableReloadListener<ChainPrepResult> chainListener() { return new ChainListener(); }
     public static SimpleJsonResourceReloadListener selectorListener() { return new SelectorListener(); }
     public static SimpleJsonResourceReloadListener configListener()   { return new ConfigListener(); }
+    public static SimpleJsonResourceReloadListener chanceListener()   { return new ChanceLoader(); }
+    public static SimpleJsonResourceReloadListener colorListener()    { return new ColorLoader(); }
 
     /**
      * Register a synthetic pool source whose pools are overlaid on top of
@@ -171,6 +173,27 @@ public final class NameRegistry {
     private static final Map<ResourceLocation, NamePool> POOL_OVERLAY = new LinkedHashMap<>();
 
     /**
+     * Pack-id side table for overlay pools created in-session (typically by
+     * {@link PoolCreator} for the {@code + New pool} UI). The reload listener
+     * doesn't see source-tree files that were created after the dev launcher
+     * cached the classpath, so {@link #POOL_PACKS} would lose the entry on
+     * every reload. Re-applying this map in {@link #replacePools} keeps the
+     * new pool grouped under the pack the user picked, so it stays visible
+     * in the {@code PoolListScreen} after the post-create reload.
+     */
+    private static final Map<ResourceLocation, String> POOL_OVERLAY_PACKS = new LinkedHashMap<>();
+
+    /**
+     * Pool ids the user removed via {@link PoolDeleter} this session. The
+     * symmetric problem to {@link #POOL_OVERLAY_PACKS}: a source-tree
+     * deletion isn't visible to the dev resource manager, so a reload
+     * would re-add the pool from the stale classpath. Re-applying these
+     * tombstones in {@link #replacePools} keeps deletions visible until
+     * the next launch (when the classpath is rebuilt without the file).
+     */
+    private static final java.util.Set<ResourceLocation> POOL_TOMBSTONES = new java.util.LinkedHashSet<>();
+
+    /**
      * Synchronously overwrite one chain in the in-memory registry and pin
      * it as a session overlay so subsequent {@code /reload}-style refreshes
      * don't revert it. Used by the dev-mode datapack editor so a saved
@@ -195,14 +218,52 @@ public final class NameRegistry {
      * subsequent server resource reload.
      */
     public static synchronized void putPoolInMemory(NamePool pool) {
+        putPoolInMemory(pool, null);
+    }
+
+    /**
+     * Overlay variant that also records {@code packId} so the pool stays
+     * grouped under the right pack in {@link #POOL_PACKS} after a reload
+     * that didn't pick up the just-written disk file. Used by
+     * {@link PoolCreator} when scaffolding a brand-new pool from the UI —
+     * the dev-mode resource manager can't see source-tree changes mid-run,
+     * so without this side-table the new pool would land under
+     * {@link #UNKNOWN_PACK} and disappear from the {@code PoolListScreen}.
+     */
+    public static synchronized void putPoolInMemory(NamePool pool, String packId) {
         if (pool == null) return;
+        // Re-creating a previously-deleted pool clears the tombstone so it
+        // stops being filtered out by replacePools after a reload.
+        POOL_TOMBSTONES.remove(pool.id());
         POOLS.put(pool.id(), pool);
         POOL_OVERLAY.put(pool.id(), pool);
+        if (packId != null) {
+            POOL_PACKS.put(pool.id(), packId);
+            POOL_OVERLAY_PACKS.put(pool.id(), packId);
+        }
     }
 
     /** Drop a pool from the dev overlay (its next reload-derived form will stick). */
     public static synchronized void clearPoolOverlay(ResourceLocation id) {
         POOL_OVERLAY.remove(id);
+        POOL_OVERLAY_PACKS.remove(id);
+    }
+
+    /**
+     * Synchronously evict a pool from the in-memory registry and record a
+     * tombstone so a subsequent reload doesn't re-add it from the
+     * still-cached dev classpath. Mirror of {@link #putPoolInMemory(NamePool, String)}
+     * for the {@link PoolDeleter} flow — without this, deleting the pool
+     * file via the {@code 🗑} UI would have no visible effect until the
+     * next game launch.
+     */
+    public static synchronized void removePoolFromMemory(ResourceLocation id) {
+        if (id == null) return;
+        POOLS.remove(id);
+        POOL_PACKS.remove(id);
+        POOL_OVERLAY.remove(id);
+        POOL_OVERLAY_PACKS.remove(id);
+        POOL_TOMBSTONES.add(id);
     }
 
     /** Immutable view of every registered pool — keyed by id, insertion-order preserved. */
@@ -315,8 +376,22 @@ public final class NameRegistry {
         }
         POOL_PACKS.clear();
         POOL_PACKS.putAll(packs);
-        LOGGER.info("[AdventureItemNames] pools reloaded — {} ({} overlay)",
-            POOLS.size(), POOL_OVERLAY.size());
+        // Fill in pack ids for overlay pools the listener didn't see (newly
+        // created files in the dev classpath aren't visible until the next
+        // launch). putIfAbsent keeps the listener-derived id authoritative
+        // for any pool that did make it onto disk in time.
+        for (Map.Entry<ResourceLocation, String> e : POOL_OVERLAY_PACKS.entrySet()) {
+            POOL_PACKS.putIfAbsent(e.getKey(), e.getValue());
+        }
+        // Honor tombstones — a pool the user deleted this session must
+        // stay gone even if the dev classpath still serves the file. The
+        // tombstone clears on next launch when the classpath is rebuilt.
+        for (ResourceLocation id : POOL_TOMBSTONES) {
+            POOLS.remove(id);
+            POOL_PACKS.remove(id);
+        }
+        LOGGER.info("[AdventureItemNames] pools reloaded — {} ({} overlay, {} tombstoned)",
+            POOLS.size(), POOL_OVERLAY.size(), POOL_TOMBSTONES.size());
     }
 
     private static synchronized void replaceChains(Map<ResourceLocation, NameChain> next,

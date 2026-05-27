@@ -1,0 +1,6 @@
+{
+  "_comment": "Pack-level color defaults — keys match ChanceKind keys (plain, enchanted, description_plain, description_enchanted, mob_passive, mob_villager); values are lowercase ChatFormatting color names (e.g. dark_gray, gold). Unknown keys, non-string values, and non-color formats (bold, italic, reset) are logged and skipped. Underscore-prefixed keys like this comment are silently ignored.",
+  "description_plain": "dark_gray",
+  "description_enchanted": "dark_gray",
+  "crafted_description": "dark_gray"
+}

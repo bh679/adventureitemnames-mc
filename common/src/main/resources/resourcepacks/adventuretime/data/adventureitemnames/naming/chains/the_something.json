@@ -4,12 +4,27 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "the ",
+      "connection": " ",
+      "newline": false,
+      "label": "the",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "THE something",
       "refs": [
         {
           "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_elements",
+          "weight": 22.0
+        },
+        {
+          "ref": "adventureitemnames:adventuretime_titles",
           "weight": 22.0
         }
       ]

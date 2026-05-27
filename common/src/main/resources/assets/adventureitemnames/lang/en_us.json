@@ -8,7 +8,15 @@
   "screen.adventureitemnames.config.chains": "Chains",
 
   "screen.adventureitemnames.datapacks.title": "Datapacks",
+  "screen.adventureitemnames.datapacks.new_pack": "+ New pack",
+  "screen.adventureitemnames.datapacks.new_pack.title": "New pack",
+  "screen.adventureitemnames.datapacks.new_pack.no_world": "Open a world to create packs",
+  "screen.adventureitemnames.datapacks.new_pack.collision": "⚠ pack folder already exists",
   "screen.adventureitemnames.pools.title": "Pools — %s",
+  "screen.adventureitemnames.pools.new_pool": "+ New pool",
+  "screen.adventureitemnames.pools.new_pool.title": "New pool",
+  "screen.adventureitemnames.pools.new_pool.read_only": "This pack is read-only — start a Loom dev environment or pick a user-created pack to add pools.",
+  "screen.adventureitemnames.pools.new_pool.collision": "⚠ pool with this id already exists",
   "screen.adventureitemnames.entries.title": "Entries — %s",
   "screen.adventureitemnames.entries.add_placeholder": "Add new entry…",
   "screen.adventureitemnames.entries.last_entry_tooltip": "Cannot remove the last entry — pool would be empty.",
@@ -16,9 +24,15 @@
   "screen.adventureitemnames.spawn_chances.title": "Spawn Chances",
   "screen.adventureitemnames.spawn_chances.plain": "Plain item naming",
   "screen.adventureitemnames.spawn_chances.enchanted": "Enchanted item naming",
+  "screen.adventureitemnames.spawn_chances.description_plain": "Plain item description",
+  "screen.adventureitemnames.spawn_chances.description_enchanted": "Enchanted item description",
   "screen.adventureitemnames.spawn_chances.mob_passive": "Passive mob naming",
   "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
   "screen.adventureitemnames.spawn_chances.configure_selectors": "Configure selectors →",
+
+  "screen.adventureitemnames.color_picker.title": "Pick a color",
+  "screen.adventureitemnames.color_picker.default": "(default)",
+  "screen.adventureitemnames.color_picker.other": "Other...",
 
   "screen.adventureitemnames.selectors.title": "Selectors",
   "screen.adventureitemnames.selectors.tier.none": "(none)",
@@ -44,6 +58,16 @@
   "screen.adventureitemnames.action.add": "+ Add",
   "screen.adventureitemnames.action.delete": "✕",
   "screen.adventureitemnames.action.reset": "↺",
+  "screen.adventureitemnames.action.delete_mode_tooltip": "Toggle delete mode — when on, each row shows a ✕ button.",
+
+  "screen.adventureitemnames.delete.title": "Delete %s?",
+  "screen.adventureitemnames.delete.confirm": "Delete",
+  "screen.adventureitemnames.delete.read_only": "This pack is read-only in this environment.",
+  "screen.adventureitemnames.delete.pack.body": "This will permanently delete the pack folder and all its files from disk. This cannot be undone.",
+  "screen.adventureitemnames.delete.pool.body": "This will permanently delete this pool's JSON file. This cannot be undone.",
+  "screen.adventureitemnames.delete.chain.body": "This will permanently delete this chain's JSON file. This cannot be undone.",
+  "screen.adventureitemnames.delete.entry.body": "Remove this entry from the pool? (Saved on next Save.)",
+  "screen.adventureitemnames.delete.segment.body": "Hide this segment from naming output? (Saved on next Save.)",
 
   "command.adventureitemnames.config.client_only": "The naming config screen is client-only — run this command on a singleplayer or remote-client session.",
 

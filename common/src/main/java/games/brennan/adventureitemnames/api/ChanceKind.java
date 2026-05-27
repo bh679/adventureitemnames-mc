@@ -16,10 +16,16 @@ public enum ChanceKind {
     PLAIN("plain", 0.30f),
     /** Enchanted item matches a selector. */
     ENCHANTED("enchanted", 0.50f),
+    /** Plain (unenchanted) item description (lore) roll. Independent of name chance. */
+    DESCRIPTION_PLAIN("description_plain", 0.30f),
+    /** Enchanted item description (lore) roll. Independent of name chance. */
+    DESCRIPTION_ENCHANTED("description_enchanted", 0.50f),
     /** Passive mob (Animal / WaterAnimal / AmbientCreature / Allay / AbstractGolem) spawns. */
     MOB_PASSIVE("mob_passive", 0.05f),
     /** Villager / wandering trader spawns. */
-    MOB_VILLAGER("mob_villager", 1.00f);
+    MOB_VILLAGER("mob_villager", 1.00f),
+    /** Player takes a freshly-crafted item from a crafting result slot — gates the appended description (lore). */
+    CRAFTED_DESCRIPTION("crafted_description", 1.00f);
 
     private final String key;
     private final float defaultValue;

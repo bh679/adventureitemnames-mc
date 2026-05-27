@@ -1,0 +1,51 @@
+{
+  "id": "adventureitemnames:forged_by",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Forged by",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Person",
+      "refs": [
+        {
+          "ref": "adventureitemnames:discord_people",
+          "weight": 59.0
+        }
+      ]
+    },
+    {
+      "chance": 0.25393516,
+      "connection": " in ",
+      "newline": false,
+      "label": "Location",
+      "refs": []
+    },
+    {
+      "chance": 0.12329957,
+      "connection": " from ",
+      "newline": false,
+      "label": "From",
+      "refs": []
+    },
+    {
+      "chance": 0.1,
+      "connection": " for",
+      "newline": false,
+      "label": "Just for",
+      "refs": [
+        {
+          "ref": "adventureitemnames:discord_people",
+          "weight": 59.0
+        }
+      ]
+    }
+  ]
+}

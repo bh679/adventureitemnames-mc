@@ -4,6 +4,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NameChain;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -54,7 +57,7 @@ public final class PackChainWriter {
         try {
             Files.createDirectories(file.getParent());
             JsonObject root = NameCodec.writeChain(chain, replace);
-            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root);
+            String body = new GsonBuilder().setPrettyPrinting().serializeNulls().create().toJson(root) + "\n";
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
             Files.writeString(tmp, body, StandardCharsets.UTF_8);
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
@@ -69,18 +72,54 @@ public final class PackChainWriter {
 
     /**
      * Delete the pack's chain file (used when a pack's contribution to a
-     * chain has been emptied out by the user). Silent on missing files.
+     * chain has been emptied out by the user, or when the user explicitly
+     * deletes the chain via the in-game editor). Silent on missing files.
      * Returns false if the path can't be resolved or deletion fails.
+     *
+     * <p>Resolves user-created world packs ({@code file/<slug>}) to the
+     * world's {@code datapacks/<slug>/.../<chainPath>.json} path; built-in
+     * packs resolve through {@link PackPaths#chainFile} (dev-mode source
+     * tree only).
      */
     public static boolean deleteChain(String packId, String chainPath) {
-        Path file = PackPaths.chainFile(packId, chainPath);
+        Path file = resolveChainFile(packId, chainPath);
         if (file == null) return false;
         try {
-            Files.deleteIfExists(file);
+            boolean existed = Files.deleteIfExists(file);
+            if (existed) {
+                LOGGER.info("[AdventureItemNames] deleted chain '{}' from pack '{}' ({})",
+                    chainPath, packId, file);
+            }
             return true;
         } catch (IOException ex) {
             LOGGER.warn("[AdventureItemNames] failed to delete chain file at '{}': {}", file, ex.getMessage());
             return false;
         }
+    }
+
+    /**
+     * True when {@link #deleteChain} could resolve a writable path for this
+     * pack id right now — used by the UI to gate the per-row ✕ button.
+     */
+    public static boolean canDeleteChain(String packId) {
+        if (packId == null) return false;
+        if (packId.startsWith("file/")) {
+            return Minecraft.getInstance().getSingleplayerServer() != null;
+        }
+        return PackPaths.chainFile(PackPaths.canonicalize(packId), "probe") != null;
+    }
+
+    private static Path resolveChainFile(String packId, String chainPath) {
+        if (packId == null || chainPath == null) return null;
+        if (packId.startsWith("file/")) {
+            IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+            if (server == null) return null;
+            String packSlug = packId.substring("file/".length());
+            return server.getWorldPath(LevelResource.DATAPACK_DIR)
+                .resolve(packSlug)
+                .resolve("data").resolve("adventureitemnames").resolve("naming").resolve("chains")
+                .resolve(chainPath + ".json");
+        }
+        return PackPaths.chainFile(PackPaths.canonicalize(packId), chainPath);
     }
 }

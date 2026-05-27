@@ -1,0 +1,25 @@
+{
+  "id": "adventureitemnames:similie_like_a",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " like a ",
+      "newline": false,
+      "label": "Similie \"like a\"",
+      "refs": [
+        {
+          "ref": "adventureitemnames:adventuretime_animals",
+          "weight": 22.0
+        }
+      ]
+    }
+  ]
+}

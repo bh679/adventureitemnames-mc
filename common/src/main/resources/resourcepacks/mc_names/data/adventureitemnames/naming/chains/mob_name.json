@@ -9,6 +9,14 @@
       "label": "Title",
       "refs": [
         {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 15.0
+        },
+        {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 30.0
         },
@@ -38,7 +46,7 @@
         },
         {
           "ref": "adventureitemnames:mc_hostile_mobs",
-          "weight": 35.0
+          "weight": 30.0
         },
         {
           "ref": "adventureitemnames:mc_technoblade",
@@ -57,10 +65,6 @@
           "weight": 18.0
         },
         {
-          "ref": "adventureitemnames:mc_events",
-          "weight": 12.0
-        },
-        {
           "ref": "adventureitemnames:mc_skins",
           "weight": 10.0
         },
@@ -73,16 +77,20 @@
           "weight": 5.0
         },
         {
+          "ref": "adventureitemnames:mc_events",
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:mc_dimensions",
+          "weight": 5.0
+        },
+        {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 1.0
         },
         {
           "ref": "adventureitemnames:mc_potions_effects",
           "weight": 1.0
-        },
-        {
-          "ref": "adventureitemnames:mc_dimensions",
-          "weight": 5.0
         }
       ]
     },
@@ -92,6 +100,14 @@
       "newline": false,
       "label": "Last Name",
       "refs": [
+        {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 15.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 10.0
+        },
         {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 42.0

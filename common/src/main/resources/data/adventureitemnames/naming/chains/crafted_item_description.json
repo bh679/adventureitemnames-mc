@@ -1,0 +1,42 @@
+{
+  "id": "adventureitemnames:crafted_item_name",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Crafted",
+      "refs": [
+        {
+          "ref": "adventureitemnames:hand_crafted_with_love",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Player",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/player_name",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.15056606,
+      "connection": " from ",
+      "newline": false,
+      "label": "Using",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/item_material",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}

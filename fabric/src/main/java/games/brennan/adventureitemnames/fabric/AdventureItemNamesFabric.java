@@ -72,13 +72,16 @@ public final class AdventureItemNamesFabric implements ModInitializer {
 
         // Register before the first reload fires so the synthetic mc_blocks /
         // mc_items pools appear in the title-screen preview and at world load.
-        NameRegistry.registerSyntheticPoolSource("mc_names", new VanillaRegistryPoolSource());
+        NameRegistry.registerSyntheticPoolSource("mod/adventureitemnames/mc_names",
+            new VanillaRegistryPoolSource());
 
         ResourceManagerHelper rh = ResourceManagerHelper.get(PackType.SERVER_DATA);
         rh.registerReloadListener(wrap(NameRegistry.poolListener(),     "pools"));
         rh.registerReloadListener(wrap(NameRegistry.chainListener(),    "chains"));
         rh.registerReloadListener(wrap(NameRegistry.selectorListener(), "selectors"));
         rh.registerReloadListener(wrap(NameRegistry.configListener(),   "disabled"));
+        rh.registerReloadListener(wrap(NameRegistry.chanceListener(),   "chances"));
+        rh.registerReloadListener(wrap(NameRegistry.colorListener(),    "colors"));
 
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
             .register(entries -> {
@@ -92,6 +95,7 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         registerBuiltinPack("discord",       "Adventure Item Names — Discord Supporters");
         registerBuiltinPack("atla",          "Adventure Item Names — ATLA Pack");
         registerBuiltinPack("adventuretime", "Adventure Item Names — Adventure Time Pack");
+        registerBuiltinPack("dungeontrain",  "Adventure Item Names — Dungeon Train Pack");
     }
 
     /**

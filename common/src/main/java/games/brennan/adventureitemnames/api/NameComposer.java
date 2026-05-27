@@ -2,10 +2,14 @@ package games.brennan.adventureitemnames.api;
 
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.NameRegistry;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ambient.AmbientCreature;
@@ -15,11 +19,15 @@ import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.npc.AbstractVillager;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,16 +61,46 @@ public final class NameComposer {
     public static final ResourceLocation REF_ITEM_MATERIAL =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/item_material");
 
+    /** Virtual ref resolved from the {@link NamingContext}'s player display name. */
+    public static final ResourceLocation REF_PLAYER_NAME =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/player_name");
+
     private static final ResourceLocation POOL_TYPE_SYNONYMS =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "type_synonyms");
 
     private static final ResourceLocation CHAIN_MOB_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
 
+    /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
+    public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "crafted_item_description");
+
+    /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
+    private static final TagKey<Item> TAG_CRAFTABLE_NAMABLE =
+        TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
+            "adventureitemnames", "craftable_namable"));
+
     /** Pool ids that already triggered the user-blanked-pool fallback warning. */
     private static final Set<ResourceLocation> FALLBACK_WARNED = ConcurrentHashMap.newKeySet();
 
+    /**
+     * All context refs known to the composer, in display order. These
+     * resolve in {@link #resolveRef} from the {@link ItemStack} or the
+     * {@link NamingContext} rather than the chain/pool registry — chain
+     * editors should surface them in the ref-picker UI so authors can
+     * discover them without hand-editing JSON.
+     */
+    private static final List<ResourceLocation> CONTEXT_REFS = List.of(
+        REF_ITEM_MATERIAL,
+        REF_PLAYER_NAME
+    );
+
     private NameComposer() {}
+
+    /** Immutable list of {@link ResourceLocation}s for every known context ref. */
+    public static List<ResourceLocation> contextRefs() {
+        return CONTEXT_REFS;
+    }
 
     /**
      * Generate a name for {@code stack} and apply it as
@@ -105,22 +143,88 @@ public final class NameComposer {
 
     private static void composeAndApply(ItemStack stack, NameSelector sel, boolean enchanted, RandomSource rng) {
         NameTier tier = enchanted ? NameTier.ENCHANTED : NameTier.PLAIN;
+        applyComposedName(stack, sel, tier, rng);
+        applyComposedDescription(stack, sel, tier, rng);
+    }
+
+    private static void applyComposedName(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
         ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return;
 
-        String name = compose(chainId, stack, sel.appliesTo(), rng, 0);
+        String name = compose(chainId, stack, sel.appliesTo(), rng, 0, NamingContext.EMPTY);
         if (name == null || name.isBlank()) return;
 
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+        ChanceKind colorKind = tier == NameTier.ENCHANTED ? ChanceKind.ENCHANTED : ChanceKind.PLAIN;
+        stack.set(DataComponents.CUSTOM_NAME, withColor(Component.literal(name), colorKind));
     }
 
     /**
-     * Walk overrides + shipped JSON to find the chain id for one tier on
-     * one selector. ENCHANTED falls back to PLAIN only when no explicit
-     * override is set — an explicit {@code (none)} override on ENCHANTED
-     * suppresses naming for enchanted items without spilling into PLAIN.
+     * Resolve and apply the per-tier description chain to the stack as
+     * appended {@code DataComponents.LORE} lines. Description tiers are
+     * optional — a selector with an empty description map produces no
+     * lore changes. PLAIN fallback for ENCHANTED mirrors name-tier
+     * resolution: explicit {@code (none)} on ENCHANTED suppresses, missing
+     * ENCHANTED key falls through to PLAIN.
+     *
+     * <p>Description-tier resolution intentionally bypasses the
+     * {@code NamingConfig} override layer used by name-tier resolution —
+     * config-side overrides for description tiers are an editor-UI
+     * feature deferred to a follow-up.
+     */
+    private static void applyComposedDescription(ItemStack stack, NameSelector sel, NameTier tier, RandomSource rng) {
+        ResourceLocation descChainId = resolveDescriptionTierChain(sel, tier).orElse(null);
+        if (descChainId == null) return;
+
+        ChanceKind kind = tier == NameTier.ENCHANTED
+            ? ChanceKind.DESCRIPTION_ENCHANTED
+            : ChanceKind.DESCRIPTION_PLAIN;
+        float chance = NamingConfig.chanceFor(kind);
+        if (rng.nextFloat() >= chance) return;
+
+        String desc = compose(descChainId, stack, sel.appliesTo(), rng, 0, NamingContext.EMPTY);
+        if (desc == null || desc.isBlank()) return;
+
+        appendLore(stack, desc, kind);
+    }
+
+    /**
+     * Description-tier counterpart of {@link #resolveTierChain}. Looks up
+     * the {@code description_<tier>} key in the selector override layer
+     * (lets the UI re-point a description chain without editing the
+     * shipped JSON), falling back to the selector's shipped
+     * {@code description_tiers} map and then the PLAIN tier when ENCHANTED
+     * isn't explicitly bound.
+     */
+    private static Optional<ResourceLocation> resolveDescriptionTierChain(NameSelector sel, NameTier tier) {
+        String descKey = DESCRIPTION_TIER_PREFIX + tier.key();
+        Map<String, ResourceLocation> shippedDescTiers = sel.descriptionTiers();
+        ResourceLocation shipped = shippedDescTiers.get(tier.key());
+        Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(sel.id(), descKey, shipped);
+        if (chain.isPresent()) return chain;
+        if (NamingConfig.hasTierOverride(sel.id(), descKey)) return chain;
+        if (tier == NameTier.PLAIN) return chain;
+        String plainDescKey = DESCRIPTION_TIER_PREFIX + NameTier.PLAIN.key();
+        return NamingConfig.effectiveTierChain(sel.id(), plainDescKey,
+            shippedDescTiers.get(NameTier.PLAIN.key()));
+    }
+
+    /**
+     * Tier-key prefix for description-tier overrides stored in the same
+     * {@link games.brennan.adventureitemnames.internal.SelectorOverrides}
+     * map as name-tier overrides. Keeps the override layer single, while
+     * letting {@link games.brennan.adventureitemnames.internal.PackSelectorWriter}
+     * route these keys to the JSON's {@code description_tiers} block.
+     */
+    public static final String DESCRIPTION_TIER_PREFIX = "description_";
+
+    /**
+     * Walk overrides + shipped JSON to find the name chain id for one
+     * tier on one selector. ENCHANTED falls back to PLAIN only when no
+     * explicit override is set — an explicit {@code (none)} override on
+     * ENCHANTED suppresses naming for enchanted items without spilling
+     * into PLAIN.
      */
     private static Optional<ResourceLocation> resolveTierChain(NameSelector sel, NameTier tier) {
         Optional<ResourceLocation> chain = NamingConfig.effectiveTierChain(
@@ -133,6 +237,48 @@ public final class NameComposer {
     }
 
     /**
+     * Resolve a tier-chain id from a shipped tier map without consulting
+     * the {@code NamingConfig} override layer. ENCHANTED falls back to
+     * PLAIN when the ENCHANTED key is absent.
+     */
+    private static ResourceLocation resolveShippedTierChain(Map<String, ResourceLocation> tierMap, NameTier tier) {
+        ResourceLocation chainId = tierMap.get(tier.key());
+        if (chainId != null) return chainId;
+        if (tier == NameTier.PLAIN) return null;
+        return tierMap.get(NameTier.PLAIN.key());
+    }
+
+    /**
+     * Split {@code text} on {@code \n} and append the resulting lines to
+     * the stack's existing {@code DataComponents.LORE} component (or an
+     * empty lore if the stack has none). Each line takes its color from
+     * {@link NamingConfig#colorFor(ChanceKind) colorFor(colorKind)};
+     * vanilla's default lore styling (dark purple italic) applies on top
+     * when no color override is set. Clamped to {@link ItemLore#MAX_LINES}
+     * so a misconfigured chain can't blow the vanilla constructor's size
+     * check.
+     */
+    private static void appendLore(ItemStack stack, String text, ChanceKind colorKind) {
+        ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
+        List<Component> merged = new ArrayList<>(existing.lines());
+        for (String line : text.split("\n", -1)) {
+            if (merged.size() >= ItemLore.MAX_LINES) break;
+            merged.add(withColor(Component.literal(line), colorKind));
+        }
+        stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
+    }
+
+    /**
+     * Wrap {@code component} in the configured color for {@code colorKind}.
+     * Returns the original component unchanged when no color override is
+     * set so vanilla default styling stays untouched.
+     */
+    private static Component withColor(MutableComponent component, ChanceKind colorKind) {
+        Optional<ChatFormatting> color = NamingConfig.colorFor(colorKind);
+        return color.isPresent() ? component.withStyle(color.get()) : component;
+    }
+
+    /**
      * Variant of {@link #applyName} that bypasses the per-tier
      * probability gate so a single roll always returns a name (or an
      * empty string if no selector matches / chain resolves empty). Used
@@ -140,6 +286,16 @@ public final class NameComposer {
      * {@code client/PreviewRoller}.
      */
     public static String composePreview(ItemStack stack, boolean enchanted, RandomSource rng) {
+        return composePreview(stack, enchanted, rng, NamingContext.EMPTY);
+    }
+
+    /**
+     * Context-aware variant of {@link #composePreview(ItemStack, boolean, RandomSource)}
+     * — pass a non-{@link NamingContext#EMPTY} context (e.g.
+     * {@link NamingContext#ofPlayer}) so {@link #REF_PLAYER_NAME}-style
+     * refs resolve in the preview the way they will at runtime.
+     */
+    public static String composePreview(ItemStack stack, boolean enchanted, RandomSource rng, NamingContext ctx) {
         Optional<NameSelector> maybeSel = NameRegistry.findMatching(stack);
         if (maybeSel.isEmpty()) return "";
         NameSelector sel = maybeSel.get();
@@ -148,7 +304,7 @@ public final class NameComposer {
         ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return "";
 
-        String name = compose(chainId, stack, sel.appliesTo(), rng, 0);
+        String name = compose(chainId, stack, sel.appliesTo(), rng, 0, ctx);
         if (name == null || name.isBlank()) return "";
         return applyTypeSynonym(name, stack, sel.appliesTo(), rng);
     }
@@ -158,10 +314,22 @@ public final class NameComposer {
      * the chain-editor preview to show what the chain would produce on
      * its own (no item-material substitution, no type-synonym wrap).
      * Context refs that read the stack (e.g. {@link #REF_ITEM_MATERIAL})
-     * resolve to empty and are skipped by the composer.
+     * or the {@link NamingContext} (e.g. {@link #REF_PLAYER_NAME}) resolve
+     * to empty and are skipped by the composer.
      */
     public static String composeChainPreview(ResourceLocation chainId, RandomSource rng) {
-        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0);
+        return composeChainPreview(chainId, rng, NamingContext.EMPTY);
+    }
+
+    /**
+     * Context-aware variant of {@link #composeChainPreview(ResourceLocation, RandomSource)}
+     * — pass a non-{@link NamingContext#EMPTY} context (e.g.
+     * {@link NamingContext#ofPlayer}) so the chain editor shows
+     * realistic output for chains that reference {@link #REF_PLAYER_NAME}
+     * instead of silently skipping those segments.
+     */
+    public static String composeChainPreview(ResourceLocation chainId, RandomSource rng, NamingContext ctx) {
+        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0, ctx);
         return name == null ? "" : name;
     }
 
@@ -196,19 +364,54 @@ public final class NameComposer {
 
         float chance;
         boolean nameVisible;
+        ChanceKind colorKind;
         switch (cat) {
-            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; }
-            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true; }
+            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
+            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
             default -> { return; }
         }
 
         if (rng.nextFloat() >= chance) return;
 
-        String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0);
+        String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
         if (name == null || name.isBlank()) return;
 
-        mob.setCustomName(Component.literal(name));
+        mob.setCustomName(withColor(Component.literal(name), colorKind));
         mob.setCustomNameVisible(nameVisible);
+    }
+
+    /**
+     * Generate a description line for a freshly-crafted {@link ItemStack}
+     * and append it to {@link DataComponents#LORE}. Intended to be called
+     * from a mixin on {@code ResultSlot#onTake(Player, ItemStack)} so it
+     * fires exactly once per craft cycle (never on recipe preview / ghost
+     * items).
+     *
+     * <p>Filters: tag-gated by {@code adventureitemnames:craftable_namable}
+     * (weapons, armor, tools by default — datapack-overridable), and gated
+     * by {@link NamingConfig#chanceCraftedDescription()} (defaults to 1.0).
+     * Unlike the {@code CUSTOM_NAME} path, pre-existing lore is preserved
+     * and the generated description is appended below it.</p>
+     *
+     * <p>Routes through the hardcoded {@link #CHAIN_CRAFTED_ITEM_DESCRIPTION}
+     * chain — selector lookup is intentionally skipped so this entrypoint
+     * is independent of the loot-naming selector system. Chains can pull
+     * the crafting player's display name via the {@link #REF_PLAYER_NAME}
+     * context ref.</p>
+     */
+    public static void applyCraftedDescription(ItemStack stack, RandomSource rng, Player player) {
+        if (player == null) return;
+        if (stack == null || stack.isEmpty()) return;
+        if (!stack.is(TAG_CRAFTABLE_NAMABLE)) return;
+        if (!NamingConfig.isItemEnabled(stack)) return;
+        if (rng.nextFloat() >= NamingConfig.chanceCraftedDescription()) return;
+
+        NamingContext ctx = NamingContext.ofPlayer(player.getName().getString());
+
+        String desc = compose(CHAIN_CRAFTED_ITEM_DESCRIPTION, stack, null, rng, 0, ctx);
+        if (desc == null || desc.isBlank()) return;
+
+        appendLore(stack, desc, ChanceKind.CRAFTED_DESCRIPTION);
     }
 
     /**
@@ -273,7 +476,8 @@ public final class NameComposer {
     }
 
     private static String compose(ResourceLocation chainId, ItemStack stack,
-                                  ResourceLocation targetTagId, RandomSource rng, int depth) {
+                                  ResourceLocation targetTagId, RandomSource rng, int depth,
+                                  NamingContext ctx) {
         if (depth >= MAX_DEPTH) {
             LOGGER.warn("[AdventureItemNames] max compose depth reached at chain {}", chainId);
             return "";
@@ -296,30 +500,61 @@ public final class NameComposer {
             if (chance < 1f && rng.nextFloat() >= chance) continue;
 
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
-            NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
-            if (picked == null) continue;
+            String connection = NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection());
+            boolean newline = NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline());
 
-            String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1);
-            if (fragment == null || fragment.isEmpty()) continue;
-
-            if (out.length() > 0) {
-                out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
-                if (NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) out.append('\n');
+            String fragment;
+            if (refs.isEmpty()) {
+                // Connection-only segment — author left refs empty but still
+                // wants the prefix to emit (e.g. a trailing "?" on a
+                // "Do you know X?" chain). Skip when there's nothing at all
+                // to emit so an empty trailing segment stays a no-op.
+                if (connection.isEmpty()) continue;
+                fragment = "";
+            } else {
+                NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
+                if (picked == null) continue;
+                fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1, ctx);
+                // A non-empty refs list that resolves to empty (e.g.
+                // context/item_material on an item with no material prefix)
+                // stays a skip — the connection assumes a fragment follows.
+                if (fragment == null || fragment.isEmpty()) continue;
             }
+
+            // Newline emits BEFORE the connection so the connection can read
+            // as a line-leading prefix (e.g. "Wielded by  " on a new line).
+            // Suppressed when this segment is the first to fire so the chain
+            // never starts with a stray newline.
+            if (out.length() > 0 && newline) {
+                out.append('\n');
+            }
+            // Connection ALWAYS prepends — it's the segment's prefix, not a
+            // between-segment glue. When a chain's first-firing segment has a
+            // non-empty connection (e.g. "the " in {@code the_something},
+            // "Forged by  " in a description chain), the prefix emits. The
+            // {@code stripLeading} below covers the inverse case where a
+            // segment's connection was authored as a separator (" ") and the
+            // segment ends up firing first: any leading whitespace at the
+            // chain level is dropped so older chains read identically.
+            out.append(connection);
             out.append(fragment);
         }
-        return out.toString();
+        return out.toString().stripLeading();
     }
 
     private static String resolveRef(ResourceLocation refId, ItemStack stack,
-                                     ResourceLocation targetTagId, RandomSource rng, int depth) {
+                                     ResourceLocation targetTagId, RandomSource rng, int depth,
+                                     NamingContext ctx) {
         if (refId.equals(REF_ITEM_MATERIAL)) {
             return materialOf(stack);
+        }
+        if (refId.equals(REF_PLAYER_NAME)) {
+            return ctx.playerName().orElse("");
         }
         Optional<NameChain> chain = NameRegistry.chain(refId);
         if (chain.isPresent()) {
             if (!NamingConfig.isChainEnabled(refId)) return "";
-            return compose(refId, stack, targetTagId, rng, depth);
+            return compose(refId, stack, targetTagId, rng, depth, ctx);
         }
         Optional<NamePool> pool = NameRegistry.pool(refId);
         if (pool.isPresent()) {
@@ -347,7 +582,16 @@ public final class NameComposer {
                 compatible.add(e);
             }
         }
-        if (compatible.isEmpty()) return "";
+        // Fallback: if every entry filtered out by item_types (e.g. type_synonyms
+        // picked for a villager — no item context — or a shield item with no
+        // shield entries in the pool), pick from the whole pool instead of
+        // returning empty. Keeps segments from going blank when a fully-typed
+        // pool is referenced in an incompatible context — without this, ~9%
+        // of villagers spawn nameless because First Name rolls type_synonyms.
+        if (compatible.isEmpty()) {
+            if (source.isEmpty()) return "";
+            return source.get(rng.nextInt(source.size())).text();
+        }
         return compatible.get(rng.nextInt(compatible.size())).text();
     }
 

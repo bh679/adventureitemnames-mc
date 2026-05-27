@@ -10,6 +10,7 @@ import games.brennan.adventureitemnames.internal.SegmentOverrides;
 import games.brennan.adventureitemnames.internal.WeightOverrides;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -48,6 +49,12 @@ public final class EditBuffer {
     private final Map<ResourceLocation, Set<String>> pendingRemovedEntries = new LinkedHashMap<>();
 
     private final Map<ChanceKind, Float> pendingChances = new EnumMap<>(ChanceKind.class);
+    /**
+     * Pending color overrides. A key present with a {@code null} value signals
+     * "clear" (sentinel mirroring the negative-float sentinel used for chances);
+     * a non-null value is a staged override.
+     */
+    private final Map<ChanceKind, ChatFormatting> pendingColors = new EnumMap<>(ChanceKind.class);
     /** selectorId → tier → Optional<chainId> (empty = (none) suppression). */
     private final Map<ResourceLocation, Map<String, Optional<ResourceLocation>>> pendingSelectorTiers = new HashMap<>();
     private final Map<ResourceLocation, Boolean> pendingSelectorEnabled = new HashMap<>();
@@ -291,14 +298,54 @@ public final class EditBuffer {
             if (pending < 0f) return kind.defaultValue();
             return pending;
         }
-        Map<ChanceKind, Float> userSnap = NamingConfig.snapshotUserChances();
-        Float user = userSnap.get(kind);
-        if (user != null) return user;
-        return kind.defaultValue();
+        // Delegate to NamingConfig so the full layer stack (API → user →
+        // datapack → default) is consulted. The user-only snapshot used
+        // previously misses the datapack layer, which is critical in dev
+        // mode where {@code ConfigSave} bakes chance overrides into the
+        // datapack {@code chances/*.json} file and wipes the user-config
+        // entry — reopening this screen would otherwise show the default.
+        return NamingConfig.chanceFor(kind);
     }
 
     public Map<ChanceKind, Float> snapshotChances() {
         return new EnumMap<>(pendingChances);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Colors (per ChanceKind row)
+    // ────────────────────────────────────────────────────────────
+
+    /** Stage a color override. Pass {@code null} to clear the color (revert to default styling). */
+    public void setColor(ChanceKind kind, ChatFormatting color) {
+        if (kind == null) return;
+        pendingColors.put(kind, color);
+    }
+
+    /** Reset a color to its default — also clears any saved user-layer override on commit. */
+    public void clearColor(ChanceKind kind) {
+        if (kind == null) return;
+        pendingColors.put(kind, null);
+    }
+
+    public boolean hasPendingColor(ChanceKind kind) {
+        return pendingColors.containsKey(kind);
+    }
+
+    /**
+     * Effective color for the UI: pending → user-layer → empty.
+     * Empty means no color override; the row's swatch should show "(default)".
+     */
+    public Optional<ChatFormatting> effectiveColor(ChanceKind kind) {
+        if (pendingColors.containsKey(kind)) {
+            ChatFormatting pending = pendingColors.get(kind);
+            return Optional.ofNullable(pending);
+        }
+        Map<ChanceKind, ChatFormatting> userSnap = NamingConfig.snapshotUserColors();
+        return Optional.ofNullable(userSnap.get(kind));
+    }
+
+    public Map<ChanceKind, ChatFormatting> snapshotColors() {
+        return new EnumMap<>(pendingColors);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -339,6 +386,33 @@ public final class EditBuffer {
             copy.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
         }
         return copy;
+    }
+
+    /**
+     * Convenience for the Selectors screen: stage the same description
+     * chain on both the {@code description_plain} and
+     * {@code description_enchanted} tier keys for {@code selectorId}.
+     * Pass {@code null} to clear both keys (reverts to the selector's
+     * shipped {@code description_tiers}).
+     */
+    public void setSelectorDescriptionTier(ResourceLocation selectorId, Optional<ResourceLocation> chainId) {
+        if (selectorId == null) return;
+        setSelectorTier(selectorId, "description_plain", chainId);
+        setSelectorTier(selectorId, "description_enchanted", chainId);
+    }
+
+    /**
+     * Effective description tier chain for the UI: pending → user-layer →
+     * the selector's shipped {@code description_tiers.<tier>} map. Used
+     * by the Selectors screen to seed the description dropdown's label —
+     * looks at the PLAIN description tier since the convenience setter
+     * keeps both tiers in sync.
+     */
+    public Optional<ResourceLocation> effectiveDescriptionTierChain(NameSelector selector) {
+        if (selector == null) return Optional.empty();
+        String descKey = "description_plain";
+        ResourceLocation shipped = selector.descriptionTiers().get("plain");
+        return effectiveTierChain(selector.id(), descKey, shipped);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -637,6 +711,7 @@ public final class EditBuffer {
             || !pendingAddedEntries.isEmpty()
             || !pendingRemovedEntries.isEmpty()
             || !pendingChances.isEmpty()
+            || !pendingColors.isEmpty()
             || !pendingSelectorTiers.isEmpty()
             || !pendingSelectorEnabled.isEmpty()
             || !pendingSegmentEdits.isEmpty()
@@ -654,6 +729,7 @@ public final class EditBuffer {
         pendingAddedEntries.clear();
         pendingRemovedEntries.clear();
         pendingChances.clear();
+        pendingColors.clear();
         pendingSelectorTiers.clear();
         pendingSelectorEnabled.clear();
         pendingSegmentEdits.clear();

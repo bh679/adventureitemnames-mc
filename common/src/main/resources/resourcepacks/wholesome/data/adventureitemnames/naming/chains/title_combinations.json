@@ -18,12 +18,12 @@
           "weight": 50.0
         },
         {
-          "ref": "adventureitemnames:inclusion",
-          "weight": 30.0
-        },
-        {
           "ref": "adventureitemnames:wholesome_things",
           "weight": 40.0
+        },
+        {
+          "ref": "adventureitemnames:inclusion",
+          "weight": 30.0
         }
       ]
     }
