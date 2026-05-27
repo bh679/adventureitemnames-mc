@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Inject into vanilla {@link ResultSlot#onTake(Player, ItemStack)} so every
  * item the player takes out of a crafting result slot (the 2x2 inventory
  * grid or the 3x3 crafting table) flows through
- * {@link NameComposer#applyCraftedName(ItemStack, net.minecraft.util.RandomSource, Player)}.
+ * {@link NameComposer#applyCraftedDescription(ItemStack, net.minecraft.util.RandomSource, Player)}.
  *
  * <p>{@code ResultSlot} is the canonical crafting-result slot for vanilla
  * recipes — smithing, anvil, brewing, and furnace results use different
@@ -30,8 +30,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CraftingResultMixin {
 
     @Inject(method = "onTake", at = @At("HEAD"))
-    private void adventureitemnames$nameCrafted(Player player, ItemStack stack, CallbackInfo ci) {
+    private void adventureitemnames$describeCrafted(Player player, ItemStack stack, CallbackInfo ci) {
         if (!(player instanceof ServerPlayer)) return;
-        NameComposer.applyCraftedName(stack, player.level().getRandom(), player);
+        NameComposer.applyCraftedDescription(stack, player.level().getRandom(), player);
     }
 }

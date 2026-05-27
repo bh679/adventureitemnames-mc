@@ -71,11 +71,11 @@ public final class NameComposer {
     private static final ResourceLocation CHAIN_MOB_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
 
-    /** Chain id used by {@link #applyCraftedName} for items taken from a crafting result slot. */
-    public static final ResourceLocation CHAIN_CRAFTED_ITEM_NAME =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "crafted_item_name");
+    /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
+    public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "crafted_item_description");
 
-    /** Item-tag gate for {@link #applyCraftedName} — only items in this tag receive a crafted name. */
+    /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
     private static final TagKey<Item> TAG_CRAFTABLE_NAMABLE =
         TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
             "adventureitemnames", "craftable_namable"));
@@ -83,7 +83,24 @@ public final class NameComposer {
     /** Pool ids that already triggered the user-blanked-pool fallback warning. */
     private static final Set<ResourceLocation> FALLBACK_WARNED = ConcurrentHashMap.newKeySet();
 
+    /**
+     * All context refs known to the composer, in display order. These
+     * resolve in {@link #resolveRef} from the {@link ItemStack} or the
+     * {@link NamingContext} rather than the chain/pool registry — chain
+     * editors should surface them in the ref-picker UI so authors can
+     * discover them without hand-editing JSON.
+     */
+    private static final List<ResourceLocation> CONTEXT_REFS = List.of(
+        REF_ITEM_MATERIAL,
+        REF_PLAYER_NAME
+    );
+
     private NameComposer() {}
+
+    /** Immutable list of {@link ResourceLocation}s for every known context ref. */
+    public static List<ResourceLocation> contextRefs() {
+        return CONTEXT_REFS;
+    }
 
     /**
      * Generate a name for {@code stack} and apply it as
@@ -364,38 +381,37 @@ public final class NameComposer {
     }
 
     /**
-     * Generate a name for a freshly-crafted {@link ItemStack} and apply it
-     * as {@link DataComponents#CUSTOM_NAME}. Intended to be called from a
-     * mixin on {@code ResultSlot#onTake(Player, ItemStack)} so it fires
-     * exactly once per craft cycle (never on recipe preview / ghost items).
+     * Generate a description line for a freshly-crafted {@link ItemStack}
+     * and append it to {@link DataComponents#LORE}. Intended to be called
+     * from a mixin on {@code ResultSlot#onTake(Player, ItemStack)} so it
+     * fires exactly once per craft cycle (never on recipe preview / ghost
+     * items).
      *
      * <p>Filters: tag-gated by {@code adventureitemnames:craftable_namable}
-     * (weapons, armor, tools by default — datapack-overridable), respects
-     * pre-existing {@link DataComponents#CUSTOM_NAME} (banner / written
-     * book recipes that ship their own name pass through untouched), and
-     * gated by {@link NamingConfig#chanceCrafted()} (defaults to 1.0).</p>
+     * (weapons, armor, tools by default — datapack-overridable), and gated
+     * by {@link NamingConfig#chanceCraftedDescription()} (defaults to 1.0).
+     * Unlike the {@code CUSTOM_NAME} path, pre-existing lore is preserved
+     * and the generated description is appended below it.</p>
      *
-     * <p>Routes through the hardcoded {@link #CHAIN_CRAFTED_ITEM_NAME}
+     * <p>Routes through the hardcoded {@link #CHAIN_CRAFTED_ITEM_DESCRIPTION}
      * chain — selector lookup is intentionally skipped so this entrypoint
      * is independent of the loot-naming selector system. Chains can pull
-     * the crafting player's display name via the
-     * {@link #REF_PLAYER_NAME} context ref.</p>
+     * the crafting player's display name via the {@link #REF_PLAYER_NAME}
+     * context ref.</p>
      */
-    public static void applyCraftedName(ItemStack stack, RandomSource rng, Player player) {
+    public static void applyCraftedDescription(ItemStack stack, RandomSource rng, Player player) {
         if (player == null) return;
         if (stack == null || stack.isEmpty()) return;
-        if (stack.has(DataComponents.CUSTOM_NAME)) return;
         if (!stack.is(TAG_CRAFTABLE_NAMABLE)) return;
         if (!NamingConfig.isItemEnabled(stack)) return;
-        if (rng.nextFloat() >= NamingConfig.chanceCrafted()) return;
+        if (rng.nextFloat() >= NamingConfig.chanceCraftedDescription()) return;
 
         NamingContext ctx = NamingContext.ofPlayer(player.getName().getString());
 
-        String name = compose(CHAIN_CRAFTED_ITEM_NAME, stack, null, rng, 0, ctx);
-        if (name == null || name.isBlank()) return;
+        String desc = compose(CHAIN_CRAFTED_ITEM_DESCRIPTION, stack, null, rng, 0, ctx);
+        if (desc == null || desc.isBlank()) return;
 
-        stack.set(DataComponents.CUSTOM_NAME,
-            withColor(Component.literal(name), ChanceKind.PLAIN));
+        appendLore(stack, desc, ChanceKind.CRAFTED_DESCRIPTION);
     }
 
     /**
