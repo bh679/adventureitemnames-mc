@@ -1,6 +1,7 @@
 package games.brennan.adventureitemnames.client;
 
 import games.brennan.adventureitemnames.api.NameChain;
+import games.brennan.adventureitemnames.api.NameComposer;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.NameRegistry;
@@ -153,6 +154,14 @@ public final class RefEditorScreen extends Screen {
         for (NameSegment.WeightedRef r : liveRefs) excluded.add(r.ref());
 
         List<RefPicker.Entry> entries = new ArrayList<>();
+        // Context refs first so authors discover them without hand-editing
+        // JSON. They tag as POOL so the picker colour matches a pool ref —
+        // RefPicker already groups context/ paths under the "Context"
+        // pack chip via packKeyOf().
+        for (ResourceLocation rl : NameComposer.contextRefs()) {
+            if (excluded.contains(rl)) continue;
+            entries.add(new RefPicker.Entry(rl, RefPicker.Kind.POOL));
+        }
         NameRegistry.allChains().keySet().stream()
             .filter(rl -> !excluded.contains(rl))
             .sorted(Comparator.comparing(ResourceLocation::toString))

@@ -4,7 +4,19 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "the ",
+      "connection": " ",
+      "newline": false,
+      "label": "the",
+      "refs": [
+        {
+          "ref": "adventureitemnames:determiners_a",
+          "weight": 6.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "THE something",
       "refs": [

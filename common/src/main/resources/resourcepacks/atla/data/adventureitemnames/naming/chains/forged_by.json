@@ -36,6 +36,25 @@
           "weight": 26.0
         }
       ]
+    },
+    {
+      "chance": 0.12329957,
+      "connection": " from ",
+      "newline": false,
+      "label": "From",
+      "refs": []
+    },
+    {
+      "chance": 0.1,
+      "connection": " for",
+      "newline": false,
+      "label": "Just for",
+      "refs": [
+        {
+          "ref": "adventureitemnames:atla_characters",
+          "weight": 34.0
+        }
+      ]
     }
   ]
 }

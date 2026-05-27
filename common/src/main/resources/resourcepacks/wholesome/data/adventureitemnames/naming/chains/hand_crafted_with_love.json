@@ -1,31 +1,34 @@
 {
-  "id": "adventureitemnames:the_something",
+  "id": "adventureitemnames:hand_crafted_with_love",
   "replace": false,
   "segments": [
     {
-      "chance": 1.0,
-      "connection": " ",
+      "chance": 0.29578075,
+      "connection": "Hand",
       "newline": false,
-      "label": "the",
+      "label": "hand",
       "refs": []
     },
     {
       "chance": 1.0,
       "connection": " ",
       "newline": false,
-      "label": "THE something",
+      "label": "Crafted",
+      "refs": []
+    },
+    {
+      "chance": 0.29920536,
+      "connection": " with ",
+      "newline": false,
+      "label": "With Love",
       "refs": [
         {
           "ref": "adventureitemnames:feelings",
-          "weight": 50.0
-        },
-        {
-          "ref": "adventureitemnames:inclusion",
-          "weight": 30.0
+          "weight": 16.0
         },
         {
           "ref": "adventureitemnames:wholesome_things",
-          "weight": 30.0
+          "weight": 5.0
         }
       ]
     }
