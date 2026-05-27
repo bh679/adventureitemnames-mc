@@ -1,0 +1,48 @@
+{
+  "id": "adventureitemnames:do_you_know_x",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Do you know",
+      "refs": [
+        {
+          "ref": "adventureitemnames:noun_questions",
+          "weight": 9.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Noun",
+      "refs": [
+        {
+          "ref": "adventureitemnames:dungeontrain_characters",
+          "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:dungeontrain_first_names",
+          "weight": 19.0
+        },
+        {
+          "ref": "adventureitemnames:dungeontrain_last_names",
+          "weight": 9.0
+        },
+        {
+          "ref": "adventureitemnames:dungeontrain_mythic_titles",
+          "weight": 4.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "?",
+      "newline": false,
+      "refs": []
+    }
+  ]
+}
