@@ -484,18 +484,32 @@ public final class NameComposer {
             if (chance < 1f && rng.nextFloat() >= chance) continue;
 
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
-            NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
-            if (picked == null) continue;
+            String connection = NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection());
+            boolean newline = NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline());
 
-            String fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1, ctx);
-            if (fragment == null || fragment.isEmpty()) continue;
+            String fragment;
+            if (refs.isEmpty()) {
+                // Connection-only segment — author left refs empty but still
+                // wants the prefix to emit (e.g. a trailing "?" on a
+                // "Do you know X?" chain). Skip when there's nothing at all
+                // to emit so an empty trailing segment stays a no-op.
+                if (connection.isEmpty()) continue;
+                fragment = "";
+            } else {
+                NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
+                if (picked == null) continue;
+                fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1, ctx);
+                // A non-empty refs list that resolves to empty (e.g.
+                // context/item_material on an item with no material prefix)
+                // stays a skip — the connection assumes a fragment follows.
+                if (fragment == null || fragment.isEmpty()) continue;
+            }
 
             // Newline emits BEFORE the connection so the connection can read
             // as a line-leading prefix (e.g. "Wielded by  " on a new line).
             // Suppressed when this segment is the first to fire so the chain
             // never starts with a stray newline.
-            if (out.length() > 0
-                && NamingConfig.effectiveSegmentNewline(chainId, segIdx, seg.newline())) {
+            if (out.length() > 0 && newline) {
                 out.append('\n');
             }
             // Connection ALWAYS prepends — it's the segment's prefix, not a
@@ -506,7 +520,7 @@ public final class NameComposer {
             // segment's connection was authored as a separator (" ") and the
             // segment ends up firing first: any leading whitespace at the
             // chain level is dropped so older chains read identically.
-            out.append(NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection()));
+            out.append(connection);
             out.append(fragment);
         }
         return out.toString().stripLeading();
