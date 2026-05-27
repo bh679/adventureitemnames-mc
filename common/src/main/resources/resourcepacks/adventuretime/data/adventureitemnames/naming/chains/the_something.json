@@ -4,7 +4,14 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "the ",
+      "connection": " ",
+      "newline": false,
+      "label": "the",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "THE something",
       "refs": [

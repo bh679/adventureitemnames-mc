@@ -4,7 +4,7 @@
   "segments": [
     {
       "chance": 0.29578075,
-      "connection": "Hand ",
+      "connection": "Hand",
       "newline": false,
       "label": "hand",
       "refs": []

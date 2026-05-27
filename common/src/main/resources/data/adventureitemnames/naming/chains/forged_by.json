@@ -29,8 +29,12 @@
           "weight": 100.0
         },
         {
-          "ref": "adventureitemnames:mob_name",
-          "weight": 100.0
+          "ref": "adventureitemnames:names",
+          "weight": 258.0
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
         },
         {
           "ref": "adventureitemnames:the_something",
@@ -39,14 +43,6 @@
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 100.0
-        },
-        {
-          "ref": "adventureitemnames:names",
-          "weight": 258.0
-        },
-        {
-          "ref": "adventureitemnames:people",
-          "weight": 20.0
         }
       ]
     },
@@ -63,6 +59,38 @@
         {
           "ref": "adventureitemnames:the_place",
           "weight": 50.0
+        }
+      ]
+    },
+    {
+      "chance": 0.12329957,
+      "connection": " from ",
+      "newline": false,
+      "label": "From",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/item_material",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.1,
+      "connection": " for",
+      "newline": false,
+      "label": "Just for",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/player_name",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:people",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 150.0
         }
       ]
     }

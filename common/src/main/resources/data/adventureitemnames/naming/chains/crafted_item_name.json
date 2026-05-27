@@ -25,6 +25,18 @@
           "weight": 1.0
         }
       ]
+    },
+    {
+      "chance": 0.15056606,
+      "connection": " from ",
+      "newline": false,
+      "label": "Using",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/item_material",
+          "weight": 1.0
+        }
+      ]
     }
   ]
 }

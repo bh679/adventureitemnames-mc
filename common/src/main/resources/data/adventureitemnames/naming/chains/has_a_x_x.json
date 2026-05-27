@@ -28,7 +28,19 @@
     },
     {
       "chance": 1.0,
-      "connection": " a ",
+      "connection": " ",
+      "newline": false,
+      "label": "the/a",
+      "refs": [
+        {
+          "ref": "adventureitemnames:determiners_a",
+          "weight": 6.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "a X X",
       "refs": [
