@@ -1,0 +1,31 @@
+{
+  "id": "adventureitemnames:do_you_know_x",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Do you know",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Noun",
+      "refs": [
+        {
+          "ref": "adventureitemnames:discord_people",
+          "weight": 20.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "?",
+      "newline": false,
+      "refs": []
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "adventureitemnames:do_you_know_x",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Do you know",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Noun",
+      "refs": [
+        {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 5.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "?",
+      "newline": false,
+      "refs": []
+    }
+  ]
+}
