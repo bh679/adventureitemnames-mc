@@ -1,0 +1,53 @@
+{
+  "id": "adventureitemnames:questions",
+  "entries": [
+    {
+      "text": "Do you have a description?"
+    },
+    {
+      "text": "Why do you want me?"
+    },
+    {
+      "text": "What is your plan?"
+    },
+    {
+      "text": "How did you get here?"
+    },
+    {
+      "text": "Where are you from?"
+    },
+    {
+      "text": "What is this place?"
+    },
+    {
+      "text": "Why are you here?"
+    },
+    {
+      "text": "Why me?"
+    },
+    {
+      "text": "Why now?"
+    },
+    {
+      "text": "When will you be done with it?"
+    },
+    {
+      "text": "What do you want me for?"
+    },
+    {
+      "text": "Have I see you before?"
+    },
+    {
+      "text": "Is this your first time?"
+    },
+    {
+      "text": "Are you a friend?"
+    },
+    {
+      "text": "Do you know fear?"
+    },
+    {
+      "text": "Why not?"
+    }
+  ]
+}
