@@ -23,7 +23,9 @@ public enum ChanceKind {
     /** Passive mob (Animal / WaterAnimal / AmbientCreature / Allay / AbstractGolem) spawns. */
     MOB_PASSIVE("mob_passive", 0.05f),
     /** Villager / wandering trader spawns. */
-    MOB_VILLAGER("mob_villager", 1.00f);
+    MOB_VILLAGER("mob_villager", 1.00f),
+    /** Player takes a freshly-crafted item from a crafting result slot. */
+    CRAFTED("crafted", 1.00f);
 
     private final String key;
     private final float defaultValue;
