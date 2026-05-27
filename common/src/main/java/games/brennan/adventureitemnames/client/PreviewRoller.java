@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NameComposer;
 import games.brennan.adventureitemnames.api.NamingConfig;
+import games.brennan.adventureitemnames.api.NamingContext;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -182,9 +183,10 @@ public final class PreviewRoller {
     private static List<String> doChainRolls(ResourceLocation chainId, int count) {
         Minecraft mc = Minecraft.getInstance();
         RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        NamingContext ctx = previewContext(mc);
         List<String> out = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            String name = NameComposer.composeChainPreview(chainId, rng);
+            String name = NameComposer.composeChainPreview(chainId, rng, ctx);
             out.add(name == null || name.isEmpty() ? "—" : name);
         }
         return out;
@@ -202,9 +204,24 @@ public final class PreviewRoller {
                                      : NamingConfig.chanceFor(ChanceKind.PLAIN);
             if (rng.nextFloat() >= chance) return new Result(stack, "—");
         }
-        String name = NameComposer.composePreview(stack, enchanted, rng);
+        NamingContext ctx = previewContext(Minecraft.getInstance());
+        String name = NameComposer.composePreview(stack, enchanted, rng, ctx);
         if (name.isEmpty()) logEmptyPreview(stack);
         return new Result(stack, name.isEmpty() ? "—" : name);
+    }
+
+    /**
+     * Build a {@link NamingContext} for the preview that mirrors what a
+     * runtime craft would supply — currently the client player's
+     * display name so {@link NameComposer#REF_PLAYER_NAME} resolves to
+     * something readable instead of dropping silently. Falls back to
+     * "Steve" when no user / level is available (very early init).
+     */
+    private static NamingContext previewContext(Minecraft mc) {
+        String name = mc.player != null ? mc.player.getName().getString()
+                    : mc.getUser() != null ? mc.getUser().getName()
+                    : "Steve";
+        return NamingContext.ofPlayer(name);
     }
 
     /**

@@ -4,30 +4,26 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "",
+      "connection": " ",
+      "newline": false,
+      "label": "Crafted",
+      "refs": [
+        {
+          "ref": "adventureitemnames:hand_crafted_with_love",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
       "newline": false,
       "label": "Player",
       "refs": [
-        { "ref": "adventureitemnames:context/player_name", "weight": 1.0 }
-      ]
-    },
-    {
-      "chance": 0.7,
-      "connection": "'s ",
-      "newline": false,
-      "label": "Material or Color",
-      "refs": [
-        { "ref": "adventureitemnames:context/item_material", "weight": 3.0 },
-        { "ref": "adventureitemnames:colors",                "weight": 1.0 }
-      ]
-    },
-    {
-      "chance": 0.35,
-      "connection": " ",
-      "newline": false,
-      "label": "Title",
-      "refs": [
-        { "ref": "adventureitemnames:titles", "weight": 1.0 }
+        {
+          "ref": "adventureitemnames:context/player_name",
+          "weight": 1.0
+        }
       ]
     }
   ]

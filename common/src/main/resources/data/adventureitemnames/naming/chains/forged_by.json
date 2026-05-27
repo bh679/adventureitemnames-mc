@@ -11,6 +11,10 @@
         {
           "ref": "adventureitemnames:created_by",
           "weight": 52.0
+        },
+        {
+          "ref": "adventureitemnames:hand_crafted_with_love",
+          "weight": 30.0
         }
       ]
     },

@@ -1,0 +1,39 @@
+{
+  "id": "adventureitemnames:crafted_item_name",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.28868145,
+      "connection": "Hand ",
+      "newline": false,
+      "label": "Hand",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Crafted",
+      "refs": []
+    },
+    {
+      "chance": 0.29975984,
+      "connection": " with ",
+      "newline": false,
+      "label": "with love",
+      "refs": [
+        {
+          "ref": "adventureitemnames:feelings",
+          "weight": 16.0
+        }
+      ]
+    },
+    {
+      "chance": 0.5,
+      "connection": " by ",
+      "newline": false,
+      "label": "Player",
+      "refs": []
+    }
+  ]
+}

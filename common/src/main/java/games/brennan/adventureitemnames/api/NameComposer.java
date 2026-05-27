@@ -269,6 +269,16 @@ public final class NameComposer {
      * {@code client/PreviewRoller}.
      */
     public static String composePreview(ItemStack stack, boolean enchanted, RandomSource rng) {
+        return composePreview(stack, enchanted, rng, NamingContext.EMPTY);
+    }
+
+    /**
+     * Context-aware variant of {@link #composePreview(ItemStack, boolean, RandomSource)}
+     * — pass a non-{@link NamingContext#EMPTY} context (e.g.
+     * {@link NamingContext#ofPlayer}) so {@link #REF_PLAYER_NAME}-style
+     * refs resolve in the preview the way they will at runtime.
+     */
+    public static String composePreview(ItemStack stack, boolean enchanted, RandomSource rng, NamingContext ctx) {
         Optional<NameSelector> maybeSel = NameRegistry.findMatching(stack);
         if (maybeSel.isEmpty()) return "";
         NameSelector sel = maybeSel.get();
@@ -277,7 +287,7 @@ public final class NameComposer {
         ResourceLocation chainId = resolveTierChain(sel, tier).orElse(null);
         if (chainId == null) return "";
 
-        String name = compose(chainId, stack, sel.appliesTo(), rng, 0, NamingContext.EMPTY);
+        String name = compose(chainId, stack, sel.appliesTo(), rng, 0, ctx);
         if (name == null || name.isBlank()) return "";
         return applyTypeSynonym(name, stack, sel.appliesTo(), rng);
     }
@@ -291,7 +301,18 @@ public final class NameComposer {
      * to empty and are skipped by the composer.
      */
     public static String composeChainPreview(ResourceLocation chainId, RandomSource rng) {
-        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
+        return composeChainPreview(chainId, rng, NamingContext.EMPTY);
+    }
+
+    /**
+     * Context-aware variant of {@link #composeChainPreview(ResourceLocation, RandomSource)}
+     * — pass a non-{@link NamingContext#EMPTY} context (e.g.
+     * {@link NamingContext#ofPlayer}) so the chain editor shows
+     * realistic output for chains that reference {@link #REF_PLAYER_NAME}
+     * instead of silently skipping those segments.
+     */
+    public static String composeChainPreview(ResourceLocation chainId, RandomSource rng, NamingContext ctx) {
+        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0, ctx);
         return name == null ? "" : name;
     }
 
