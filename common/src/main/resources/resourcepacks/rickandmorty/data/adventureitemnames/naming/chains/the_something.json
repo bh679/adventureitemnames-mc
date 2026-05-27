@@ -4,7 +4,31 @@
   "segments": [
     {
       "chance": 1.0,
-      "connection": "the ",
+      "connection": " ",
+      "newline": false,
+      "label": "the",
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_titles",
+          "weight": 35.0
+        },
+        {
+          "ref": "adventureitemnames:rickandmorty_creatures",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:rickandmorty_places",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:rickandmorty_things",
+          "weight": 30.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "THE something",
       "refs": [

@@ -7,24 +7,14 @@
       "connection": " ",
       "newline": false,
       "label": "Item Description",
-      "refs": [
-        {
-          "ref": "adventureitemnames:questions",
-          "weight": 1.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 0.25296757,
       "connection": "",
       "newline": true,
       "label": "Second",
-      "refs": [
-        {
-          "ref": "adventureitemnames:questions",
-          "weight": 1.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 0.25448963,
@@ -34,7 +24,7 @@
       "refs": [
         {
           "ref": "adventureitemnames:questions",
-          "weight": 6.0
+          "weight": 2.0
         }
       ]
     }
