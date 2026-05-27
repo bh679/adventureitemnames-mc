@@ -10,18 +10,22 @@
       "refs": [
         {
           "ref": "adventureitemnames:has_a_x_x",
-          "weight": 2.0
+          "weight": 5.0
         },
         {
           "ref": "adventureitemnames:forged_by",
-          "weight": 2.0
+          "weight": 5.0
         },
         {
           "ref": "adventureitemnames:looks_like_something",
-          "weight": 2.0
+          "weight": 5.0
         },
         {
           "ref": "adventureitemnames:do_you_know_x",
+          "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:it_asks_you",
           "weight": 1.0
         }
       ]
@@ -34,19 +38,23 @@
       "refs": [
         {
           "ref": "adventureitemnames:has_a_x_x",
-          "weight": 2.0
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 5.0
+        },
+        {
+          "ref": "adventureitemnames:looks_like_something",
+          "weight": 5.0
         },
         {
           "ref": "adventureitemnames:do_you_know_x",
           "weight": 1.0
         },
         {
-          "ref": "adventureitemnames:forged_by",
-          "weight": 2.0
-        },
-        {
-          "ref": "adventureitemnames:looks_like_something",
-          "weight": 2.0
+          "ref": "adventureitemnames:it_asks_you",
+          "weight": 1.0
         }
       ]
     },
@@ -71,6 +79,10 @@
         {
           "ref": "adventureitemnames:looks_like_something",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:it_asks_you",
+          "weight": 6.0
         }
       ]
     }
