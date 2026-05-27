@@ -65,20 +65,20 @@
       "label": "Post Title",
       "refs": [
         {
-          "ref": "adventureitemnames:titles",
-          "weight": 53.0
-        },
-        {
-          "ref": "adventureitemnames:math",
-          "weight": 23.0
-        },
-        {
           "ref": "adventureitemnames:the_something",
           "weight": 1.0
         },
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 1.0
+        },
+        {
+          "ref": "adventureitemnames:titles",
+          "weight": 53.0
+        },
+        {
+          "ref": "adventureitemnames:math",
+          "weight": 23.0
         }
       ]
     }

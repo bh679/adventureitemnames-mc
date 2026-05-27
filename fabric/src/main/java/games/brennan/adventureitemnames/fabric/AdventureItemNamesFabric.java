@@ -96,6 +96,7 @@ public final class AdventureItemNamesFabric implements ModInitializer {
         registerBuiltinPack("atla",          "Adventure Item Names — ATLA Pack");
         registerBuiltinPack("adventuretime", "Adventure Item Names — Adventure Time Pack");
         registerBuiltinPack("dungeontrain",  "Adventure Item Names — Dungeon Train Pack");
+        registerBuiltinPack("rickandmorty",  "Adventure Item Names — Rick and Morty Pack");
     }
 
     /**
