@@ -1,0 +1,33 @@
+{
+  "id": "adventureitemnames:looks_like_something",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Verb",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " like ",
+      "newline": false,
+      "label": "LIKE Something",
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_creatures",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:rickandmorty_places",
+          "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:rickandmorty_characters",
+          "weight": 25.0
+        }
+      ]
+    }
+  ]
+}

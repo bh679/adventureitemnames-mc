@@ -9,14 +9,6 @@
       "label": "Item Description",
       "refs": [
         {
-          "ref": "adventureitemnames:has_a_x_x",
-          "weight": 5.0
-        },
-        {
-          "ref": "adventureitemnames:forged_by",
-          "weight": 5.0
-        },
-        {
           "ref": "adventureitemnames:looks_like_something",
           "weight": 5.0
         },
@@ -25,8 +17,16 @@
           "weight": 1.0
         },
         {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 5.0
+        },
+        {
           "ref": "adventureitemnames:it_asks_you",
-          "weight": 1.0
+          "weight": 2.0
+        },
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 5.0
         }
       ]
     },
@@ -37,14 +37,6 @@
       "label": "Second",
       "refs": [
         {
-          "ref": "adventureitemnames:has_a_x_x",
-          "weight": 5.0
-        },
-        {
-          "ref": "adventureitemnames:forged_by",
-          "weight": 5.0
-        },
-        {
           "ref": "adventureitemnames:looks_like_something",
           "weight": 5.0
         },
@@ -53,8 +45,16 @@
           "weight": 1.0
         },
         {
+          "ref": "adventureitemnames:has_a_x_x",
+          "weight": 5.0
+        },
+        {
           "ref": "adventureitemnames:it_asks_you",
-          "weight": 1.0
+          "weight": 2.0
+        },
+        {
+          "ref": "adventureitemnames:forged_by",
+          "weight": 5.0
         }
       ]
     },

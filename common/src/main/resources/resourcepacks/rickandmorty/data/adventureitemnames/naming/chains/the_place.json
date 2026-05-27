@@ -1,0 +1,18 @@
+{
+  "id": "adventureitemnames:the_place",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "the ",
+      "newline": false,
+      "label": "THE place",
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_places",
+          "weight": 30.0
+        }
+      ]
+    }
+  ]
+}

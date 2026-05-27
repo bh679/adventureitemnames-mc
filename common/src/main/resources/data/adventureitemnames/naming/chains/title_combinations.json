@@ -8,16 +8,16 @@
       "newline": false,
       "refs": [
         {
-          "ref": "adventureitemnames:titles",
-          "weight": 2.0
+          "ref": "adventureitemnames:title_prefix",
+          "weight": 250.0
         },
         {
           "ref": "adventureitemnames:mob_titles",
           "weight": 30.0
         },
         {
-          "ref": "adventureitemnames:title_prefix",
-          "weight": 250.0
+          "ref": "adventureitemnames:titles",
+          "weight": 2.0
         }
       ]
     },
@@ -26,6 +26,10 @@
       "connection": " of ",
       "newline": false,
       "refs": [
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 250.0
+        },
         {
           "ref": "adventureitemnames:material_or_element",
           "weight": 30.0
@@ -81,10 +85,6 @@
         {
           "ref": "adventureitemnames:technology",
           "weight": 2.0
-        },
-        {
-          "ref": "adventureitemnames:the_something",
-          "weight": 250.0
         }
       ]
     }

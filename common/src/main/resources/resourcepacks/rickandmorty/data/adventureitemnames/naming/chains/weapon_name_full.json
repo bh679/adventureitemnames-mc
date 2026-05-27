@@ -7,34 +7,31 @@
       "connection": "",
       "newline": false,
       "label": "Pre Title",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_titles",
+          "weight": 5.0
+        }
+      ]
     },
     {
       "chance": 1.0,
       "connection": " ",
       "newline": false,
       "label": "Main",
-      "refs": [
-        {
-          "ref": "adventureitemnames:adventuretime_characters",
-          "weight": 38.0
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_animals",
-          "weight": 22.0
-        },
-        {
-          "ref": "adventureitemnames:adventuretime_elements",
-          "weight": 22.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 0.79931927,
       "connection": ", ",
       "newline": false,
       "label": "Post Title",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_titles",
+          "weight": 5.0
+        }
+      ]
     }
   ]
 }

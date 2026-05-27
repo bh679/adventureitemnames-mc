@@ -111,6 +111,7 @@ public final class AdventureItemNamesNeoForge {
         registerBuiltinPack(event, "atla", "Adventure Item Names — ATLA Pack");
         registerBuiltinPack(event, "adventuretime", "Adventure Item Names — Adventure Time Pack");
         registerBuiltinPack(event, "dungeontrain", "Adventure Item Names — Dungeon Train Pack");
+        registerBuiltinPack(event, "rickandmorty", "Adventure Item Names — Rick and Morty Pack");
     }
 
     /**

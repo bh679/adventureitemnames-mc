@@ -69,11 +69,11 @@
           "weight": 10.0
         },
         {
-          "ref": "adventureitemnames:mc_biomes",
+          "ref": "adventureitemnames:mc_minigames",
           "weight": 5.0
         },
         {
-          "ref": "adventureitemnames:mc_minigames",
+          "ref": "adventureitemnames:mc_biomes",
           "weight": 5.0
         },
         {
@@ -100,14 +100,6 @@
       "newline": false,
       "label": "Last Name",
       "refs": [
-        {
-          "ref": "adventureitemnames:mc_items",
-          "weight": 15.0
-        },
-        {
-          "ref": "adventureitemnames:mc_blocks",
-          "weight": 10.0
-        },
         {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 42.0
@@ -149,12 +141,20 @@
           "weight": 18.0
         },
         {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 15.0
+        },
+        {
           "ref": "adventureitemnames:mc_villager_professions",
           "weight": 14.0
         },
         {
           "ref": "adventureitemnames:mc_events",
           "weight": 12.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:mc_minigames",

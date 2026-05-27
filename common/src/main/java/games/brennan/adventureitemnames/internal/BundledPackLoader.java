@@ -77,7 +77,7 @@ public final class BundledPackLoader {
      */
     private static final List<String> BUNDLED_PACK_IDS = List.of(
         BASE_MOD_PACK,
-        "mc_names", "wholesome", "discord", "atla", "adventuretime"
+        "mc_names", "wholesome", "discord", "atla", "adventuretime", "rickandmorty"
     );
 
     private BundledPackLoader() {}

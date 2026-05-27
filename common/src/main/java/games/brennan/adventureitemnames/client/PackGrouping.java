@@ -71,6 +71,7 @@ public final class PackGrouping {
             case "mod/adventureitemnames/atla" -> "ATLA Pack";
             case "mod/adventureitemnames/adventuretime" -> "Adventure Time Pack";
             case "mod/adventureitemnames/dungeontrain" -> "Dungeon Train Pack";
+            case "mod/adventureitemnames/rickandmorty" -> "Rick and Morty Pack";
             // Fabric format — the pack id is the ResourceLocation toString() of
             // what was passed to registerBuiltinResourcePack (namespace:path).
             case "adventureitemnames:mc_names" -> "Minecraft Pack";
@@ -79,6 +80,7 @@ public final class PackGrouping {
             case "adventureitemnames:atla" -> "ATLA Pack";
             case "adventureitemnames:adventuretime" -> "Adventure Time Pack";
             case "adventureitemnames:dungeontrain" -> "Dungeon Train Pack";
+            case "adventureitemnames:rickandmorty" -> "Rick and Morty Pack";
             default -> {
                 boolean wasFile = packId.startsWith("file/");
                 String stripped = packId.startsWith("mod/") ? packId.substring(4)

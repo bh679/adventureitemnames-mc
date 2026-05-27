@@ -1,0 +1,37 @@
+{
+  "id": "adventureitemnames:weapon_name_short",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.300423,
+      "connection": "",
+      "newline": false,
+      "label": "Pre Title",
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_titles",
+          "weight": 10.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "Main",
+      "refs": []
+    },
+    {
+      "chance": 0.29738978,
+      "connection": ", ",
+      "newline": false,
+      "label": "Post Title",
+      "refs": [
+        {
+          "ref": "adventureitemnames:rickandmorty_titles",
+          "weight": 5.0
+        }
+      ]
+    }
+  ]
+}
