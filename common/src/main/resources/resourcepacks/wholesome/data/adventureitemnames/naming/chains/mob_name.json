@@ -3,7 +3,7 @@
   "replace": false,
   "segments": [
     {
-      "chance": 0.09851185,
+      "chance": 0.10047965,
       "connection": " ",
       "newline": false,
       "label": "Title",
@@ -31,7 +31,7 @@
       ]
     },
     {
-      "chance": 0.082704246,
+      "chance": 0.05,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
@@ -52,7 +52,7 @@
     },
     {
       "chance": 0.014733723,
-      "connection": "",
+      "connection": ", ",
       "newline": false,
       "label": "Title",
       "refs": []
