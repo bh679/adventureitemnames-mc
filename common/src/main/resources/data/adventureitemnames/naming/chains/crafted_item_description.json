@@ -39,11 +39,16 @@
       ]
     },
     {
-      "chance": 0.01,
+      "chance": 0.009645718,
       "connection": "No thanks to ",
       "newline": true,
       "label": "No thanks",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 2.0
+        }
+      ]
     }
   ]
 }

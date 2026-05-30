@@ -3,19 +3,11 @@
   "replace": false,
   "segments": [
     {
-      "chance": 0.10047743,
+      "chance": 0.09851185,
       "connection": " ",
       "newline": false,
       "label": "Title",
       "refs": [
-        {
-          "ref": "adventureitemnames:mc_items",
-          "weight": 20.0
-        },
-        {
-          "ref": "adventureitemnames:mc_blocks",
-          "weight": 15.0
-        },
         {
           "ref": "adventureitemnames:mc_enchantments",
           "weight": 30.0
@@ -31,6 +23,14 @@
         {
           "ref": "adventureitemnames:mc_structures",
           "weight": 24.0
+        },
+        {
+          "ref": "adventureitemnames:mc_items",
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:mc_blocks",
+          "weight": 15.0
         }
       ]
     },
@@ -95,7 +95,7 @@
       ]
     },
     {
-      "chance": 0.14849176,
+      "chance": 0.082704246,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
@@ -171,8 +171,8 @@
       ]
     },
     {
-      "chance": 0.05292426,
-      "connection": ", ",
+      "chance": 0.014733723,
+      "connection": "",
       "newline": false,
       "label": "Title",
       "refs": []

@@ -24,18 +24,18 @@
       "refs": []
     },
     {
-      "chance": 0.01,
+      "chance": 0.009645718,
       "connection": "No thanks to ",
       "newline": true,
       "label": "No thanks",
       "refs": [
         {
           "ref": "adventureitemnames:mc_items",
-          "weight": 1000.0
+          "weight": 1.0
         },
         {
           "ref": "adventureitemnames:mc_blocks",
-          "weight": 1000.0
+          "weight": 1.0
         }
       ]
     }

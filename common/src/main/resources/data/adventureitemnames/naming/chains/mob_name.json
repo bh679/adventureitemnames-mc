@@ -3,7 +3,7 @@
   "replace": true,
   "segments": [
     {
-      "chance": 0.10047743,
+      "chance": 0.09851185,
       "connection": " ",
       "newline": false,
       "label": "Title",
@@ -11,6 +11,10 @@
         {
           "ref": "adventureitemnames:material_or_element",
           "weight": 40.0
+        },
+        {
+          "ref": "adventureitemnames:title_prefix",
+          "weight": 120.0
         },
         {
           "ref": "adventureitemnames:the_something",
@@ -39,15 +43,15 @@
       ]
     },
     {
-      "chance": 0.14849176,
+      "chance": 0.082704246,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
       "refs": []
     },
     {
-      "chance": 0.05292426,
-      "connection": ", ",
+      "chance": 0.014733723,
+      "connection": "",
       "newline": false,
       "label": "Title",
       "refs": [
