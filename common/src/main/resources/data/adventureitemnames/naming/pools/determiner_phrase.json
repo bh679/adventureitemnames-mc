@@ -1,0 +1,26 @@
+{
+  "id": "adventureitemnames:determiner_phrase",
+  "entries": [
+    { "text": "that one" },
+    { "text": "the one true" },
+    { "text": "another" },
+    { "text": "the second" },
+    { "text": "the last" },
+    { "text": "the first" },
+    { "text": "one more" },
+    { "text": "yet another" },
+    { "text": "some kind of" },
+    { "text": "what appears to be" },
+    { "text": "a definitive" },
+    { "text": "a probable" },
+    { "text": "a humble" },
+    { "text": "a solitary" },
+    { "text": "a strapping" },
+    { "text": "a mighty" },
+    { "text": "a paltry" },
+    { "text": "a noble" },
+    { "text": "a worthy" },
+    { "text": "a mere" },
+    { "text": "a lone" }
+  ]
+}
