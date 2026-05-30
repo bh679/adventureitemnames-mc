@@ -16,7 +16,19 @@
     },
     {
       "chance": 1.0,
-      "connection": " like a ",
+      "connection": " like ",
+      "newline": false,
+      "label": "like a/the",
+      "refs": [
+        {
+          "ref": "adventureitemnames:determiners",
+          "weight": 11.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "Similie \"like a\"",
       "refs": [

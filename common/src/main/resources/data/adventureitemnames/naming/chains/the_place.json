@@ -9,7 +9,7 @@
       "label": "The",
       "refs": [
         {
-          "ref": "adventureitemnames:determiners_a",
+          "ref": "adventureitemnames:determiners",
           "weight": 6.0
         }
       ]

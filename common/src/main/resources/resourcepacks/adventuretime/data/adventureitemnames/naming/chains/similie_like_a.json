@@ -11,7 +11,14 @@
     },
     {
       "chance": 1.0,
-      "connection": " like a ",
+      "connection": " like ",
+      "newline": false,
+      "label": "like a/the",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
       "newline": false,
       "label": "Similie \"like a\"",
       "refs": [
