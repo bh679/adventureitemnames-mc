@@ -28,6 +28,13 @@ import java.util.Map;
  * {@code minecraft:air} — the empty-string name would corrupt assembled
  * mob names with stray spaces.</p>
  *
+ * <p>Both pools additionally drop any entry whose display name is three
+ * or more whitespace-separated words (e.g. {@code "Dark Oak Planks"},
+ * {@code "Polished Blackstone Brick Stairs"}, {@code "Music Disc Fragment"}).
+ * Long compound names make rolled output unwieldy when chains splice them
+ * in mid-phrase; keeping only one- and two-word names gives consistently
+ * readable results.</p>
+ *
  * <p>Display names are resolved via {@link Block#getName()} and
  * {@link Item#getDescription()}, both of which return a translatable
  * {@link net.minecraft.network.chat.Component}. Server-side the resolution
@@ -65,35 +72,64 @@ public final class VanillaRegistryPoolSource implements SyntheticPoolSource {
     }
 
     private static NamePool buildBlockPool() {
+        int totalConsidered = 0;
         List<NamePool.PoolEntry> entries = new ArrayList<>(BuiltInRegistries.BLOCK.size());
         for (Map.Entry<net.minecraft.resources.ResourceKey<Block>, Block> e : BuiltInRegistries.BLOCK.entrySet()) {
             ResourceLocation id = e.getKey().location();
             if (!includeId(id)) continue;
             String name = e.getValue().getName().getString();
             if (name == null || name.isEmpty()) continue;
+            totalConsidered++;
+            if (!keepByWordCount(name)) continue;
             entries.add(NamePool.PoolEntry.universal(name));
         }
         if (entries.isEmpty()) {
             LOGGER.warn("[AdventureItemNames] mc_blocks synthetic pool is empty — BuiltInRegistries.BLOCK had no usable entries");
         } else {
-            LOGGER.info("[AdventureItemNames] mc_blocks synthetic pool — {} entries", entries.size());
+            LOGGER.info("[AdventureItemNames] mc_blocks synthetic pool — {} of {} entries (filtered names with 3+ words)",
+                entries.size(), totalConsidered);
         }
         return new NamePool(MC_BLOCKS, List.copyOf(entries));
     }
 
+    /**
+     * Returns {@code true} when {@code name} has fewer than three
+     * whitespace-separated tokens. Used by {@link #buildBlockPool()} and
+     * {@link #buildItemPool()} to drop long compound names that don't
+     * splice cleanly into rolled output. Package-private for unit testing.
+     */
+    static boolean keepByWordCount(String name) {
+        int words = 0;
+        boolean inWord = false;
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.isWhitespace(name.charAt(i))) {
+                inWord = false;
+            } else if (!inWord) {
+                inWord = true;
+                words++;
+                if (words >= 3) return false;
+            }
+        }
+        return true;
+    }
+
     private static NamePool buildItemPool() {
+        int totalConsidered = 0;
         List<NamePool.PoolEntry> entries = new ArrayList<>(BuiltInRegistries.ITEM.size());
         for (Map.Entry<net.minecraft.resources.ResourceKey<Item>, Item> e : BuiltInRegistries.ITEM.entrySet()) {
             ResourceLocation id = e.getKey().location();
             if (!includeId(id)) continue;
             String name = e.getValue().getDescription().getString();
             if (name == null || name.isEmpty()) continue;
+            totalConsidered++;
+            if (!keepByWordCount(name)) continue;
             entries.add(NamePool.PoolEntry.universal(name));
         }
         if (entries.isEmpty()) {
             LOGGER.warn("[AdventureItemNames] mc_items synthetic pool is empty — BuiltInRegistries.ITEM had no usable entries");
         } else {
-            LOGGER.info("[AdventureItemNames] mc_items synthetic pool — {} entries", entries.size());
+            LOGGER.info("[AdventureItemNames] mc_items synthetic pool — {} of {} entries (filtered names with 3+ words)",
+                entries.size(), totalConsidered);
         }
         return new NamePool(MC_ITEMS, List.copyOf(entries));
     }
