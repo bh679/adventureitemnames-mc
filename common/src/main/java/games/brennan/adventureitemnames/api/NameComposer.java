@@ -11,6 +11,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ambient.AmbientCreature;
 import net.minecraft.world.entity.animal.AbstractGolem;
@@ -70,6 +71,18 @@ public final class NameComposer {
 
     private static final ResourceLocation CHAIN_MOB_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
+
+    /** Chain id used to name PlayerMob mobs — a copy of {@link #CHAIN_MOB_NAME}. */
+    private static final ResourceLocation CHAIN_PLAYERMOB_NAME =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "playermob_name");
+
+    /**
+     * Entity-type id of the PlayerMob mod's mob. Matched by string so AIN has
+     * no compile-time or runtime hard dependency on PlayerMob — naming simply
+     * never triggers when the mod (and therefore the entity type) is absent.
+     */
+    private static final ResourceLocation PLAYERMOB_ENTITY_ID =
+        ResourceLocation.fromNamespaceAndPath("playermob", "player_mob");
 
     /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
     public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
@@ -347,6 +360,10 @@ public final class NameComposer {
      *   <li>{@link Animal} / {@link WaterAnimal} / {@link AmbientCreature} /
      *       {@link AbstractGolem} / {@link Allay} that are <em>not</em>
      *       {@link Enemy}: 5%, name <em>always visible</em> (rare → stand out).</li>
+     *   <li>PlayerMob ({@code playermob:player_mob}, detected by entity-type id):
+     *       100%, name <em>always visible</em> like a player nameplate — also
+     *       carries into the vanilla death message. Uses the
+     *       {@code playermob_name} chain.</li>
      *   <li>All other mobs: no-op.</li>
      * </ul>
      *
@@ -366,14 +383,18 @@ public final class NameComposer {
         boolean nameVisible;
         ChanceKind colorKind;
         switch (cat) {
-            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
-            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
+            case VILLAGER   -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
+            case PASSIVE    -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
+            // PlayerMob: named like a real player — always-visible nameplate, which
+            // also surfaces the generated name in the vanilla death message.
+            case PLAYER_MOB -> { chance = NamingConfig.chanceMobPlayer();   nameVisible = true;  colorKind = ChanceKind.MOB_PLAYER; }
             default -> { return; }
         }
 
         if (rng.nextFloat() >= chance) return;
 
-        String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
+        ResourceLocation chainId = cat == MobCategory.PLAYER_MOB ? CHAIN_PLAYERMOB_NAME : CHAIN_MOB_NAME;
+        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
         if (name == null || name.isBlank()) return;
 
         mob.setCustomName(withColor(Component.literal(name), colorKind));
@@ -419,6 +440,9 @@ public final class NameComposer {
      * mob isn't a naming target (hostile, generic, ender dragon, etc.).
      */
     private static MobCategory categorize(Mob mob) {
+        // PlayerMob first: it's a hostile Monster, so it must be caught before
+        // the !Enemy passive gate below would reject it.
+        if (isPlayerMob(mob.getType())) return MobCategory.PLAYER_MOB;
         if (mob instanceof AbstractVillager) return MobCategory.VILLAGER;
         if ((mob instanceof Animal
               || mob instanceof WaterAnimal
@@ -429,6 +453,23 @@ public final class NameComposer {
             return MobCategory.PASSIVE;
         }
         return null;
+    }
+
+    /**
+     * True when {@code type} is the PlayerMob mod's mob. Resolves the type's
+     * registry id via {@link BuiltInRegistries#ENTITY_TYPE} (an O(1) lookup)
+     * and defers to {@link #isPlayerMobId}.
+     */
+    private static boolean isPlayerMob(EntityType<?> type) {
+        return isPlayerMobId(BuiltInRegistries.ENTITY_TYPE.getKey(type));
+    }
+
+    /**
+     * Pure id comparison split out from {@link #isPlayerMob} so it's unit
+     * testable without a bootstrapped Minecraft registry. Null-safe.
+     */
+    static boolean isPlayerMobId(ResourceLocation id) {
+        return PLAYERMOB_ENTITY_ID.equals(id);
     }
 
     /**
