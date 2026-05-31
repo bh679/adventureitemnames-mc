@@ -4,13 +4,19 @@ import java.util.Locale;
 
 /**
  * Coarse mob grouping used by {@link NameComposer#applyMobName} and by the
- * enable/disable config. Only the two categories that are namable today
- * are exposed — additional values will be added as the composer learns to
+ * enable/disable config. Only the categories that are namable today are
+ * exposed — additional values will be added as the composer learns to
  * name new mob kinds.
  */
 public enum MobCategory {
     VILLAGER,
-    PASSIVE;
+    PASSIVE,
+    /**
+     * Mobs from the PlayerMob mod ({@code playermob:player_mob}). Hostile, so
+     * detected by entity-type id in {@link NameComposer} rather than by the
+     * {@code !Enemy} passive gate. Named via the {@code playermob_name} chain.
+     */
+    PLAYER_MOB;
 
     /** Lowercase key used in config JSON files. */
     public String key() {
