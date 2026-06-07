@@ -1,0 +1,13 @@
+{
+  "id": "adventureitemnames:playernamesuffix",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "playernamesuffix",
+      "refs": []
+    }
+  ]
+}

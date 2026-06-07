@@ -1,26 +1,13 @@
 {
   "id": "adventureitemnames:playermob_name",
-  "replace": true,
+  "replace": false,
   "segments": [
     {
       "chance": 0.10047965,
       "connection": " ",
       "newline": false,
       "label": "Title",
-      "refs": [
-        {
-          "ref": "adventureitemnames:material_or_element",
-          "weight": 40.0
-        },
-        {
-          "ref": "adventureitemnames:title_prefix",
-          "weight": 200.0
-        },
-        {
-          "ref": "adventureitemnames:the_something",
-          "weight": 80.0
-        }
-      ]
+      "refs": []
     },
     {
       "chance": 1.0,
@@ -29,16 +16,8 @@
       "label": "First Name",
       "refs": [
         {
-          "ref": "adventureitemnames:names",
-          "weight": 250.0
-        },
-        {
-          "ref": "adventureitemnames:type_synonyms",
-          "weight": 30.0
-        },
-        {
-          "ref": "adventureitemnames:colors",
-          "weight": 20.0
+          "ref": "adventureitemnames:discord_people",
+          "weight": 100.0
         }
       ]
     },
@@ -68,16 +47,7 @@
       "connection": ", ",
       "newline": false,
       "label": "Title",
-      "refs": [
-        {
-          "ref": "adventureitemnames:title_combinations",
-          "weight": 100.0
-        },
-        {
-          "ref": "adventureitemnames:the_something",
-          "weight": 80.0
-        }
-      ]
+      "refs": []
     }
   ]
 }
