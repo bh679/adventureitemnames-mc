@@ -43,25 +43,44 @@
       ]
     },
     {
-      "chance": 0.05,
+      "chance": 0.052698065,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
       "refs": []
     },
     {
-      "chance": 0.014733723,
+      "chance": 0.2,
+      "connection": " ",
+      "newline": false,
+      "label": "Fan",
+      "refs": []
+    },
+    {
+      "chance": 0.3,
+      "connection": "",
+      "newline": false,
+      "label": "Suffix",
+      "refs": [
+        {
+          "ref": "adventureitemnames:playernamesuffix",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.01,
       "connection": ", ",
       "newline": false,
       "label": "Title",
       "refs": [
         {
-          "ref": "adventureitemnames:the_something",
-          "weight": 80.0
-        },
-        {
           "ref": "adventureitemnames:title_combinations",
           "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:the_something",
+          "weight": 80.0
         }
       ]
     }
