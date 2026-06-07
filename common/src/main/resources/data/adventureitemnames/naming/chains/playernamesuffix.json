@@ -3,7 +3,7 @@
   "replace": true,
   "segments": [
     {
-      "chance": 0.39887807,
+      "chance": 1.0,
       "connection": "",
       "newline": false,
       "label": "playernamesuffix",
@@ -15,8 +15,8 @@
       ]
     },
     {
-      "chance": 0.20310949,
-      "connection": "20",
+      "chance": 0.1960102,
+      "connection": "200",
       "newline": false,
       "refs": [
         {
@@ -26,13 +26,18 @@
       ]
     },
     {
-      "chance": 0.15719785,
+      "chance": 0.20216364,
       "connection": "9",
       "newline": false,
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:numbers",
+          "weight": 10.0
+        }
+      ]
     },
     {
-      "chance": 0.3992151,
+      "chance": 0.22258088,
       "connection": "",
       "newline": false,
       "refs": [
@@ -43,8 +48,8 @@
       ]
     },
     {
-      "chance": 0.20104384,
-      "connection": "",
+      "chance": 0.06383079,
+      "connection": "201",
       "newline": false,
       "refs": [
         {

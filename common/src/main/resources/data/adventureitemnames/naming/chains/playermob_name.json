@@ -57,14 +57,19 @@
       "refs": []
     },
     {
-      "chance": 0.2035661,
+      "chance": 0.3,
       "connection": "",
       "newline": false,
       "label": "Suffix",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:playernamesuffix",
+          "weight": 1.0
+        }
+      ]
     },
     {
-      "chance": 0.1,
+      "chance": 0.01,
       "connection": ", ",
       "newline": false,
       "label": "Title",
