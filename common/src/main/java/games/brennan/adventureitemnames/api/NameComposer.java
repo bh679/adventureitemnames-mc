@@ -376,6 +376,14 @@ public final class NameComposer {
         MobCategory cat = categorize(mob);
         if (cat == null) return;
 
+        // Ambient naming (villagers + passive animals) can be vetoed by a
+        // host-registered gate — e.g. Dungeon Train restricts it to mobs on the
+        // train. PlayerMob is an explicit always-on nameplate and is never
+        // gated. With no gate registered, isMobNameAllowed is always true, so
+        // standalone behavior is unchanged.
+        if ((cat == MobCategory.VILLAGER || cat == MobCategory.PASSIVE)
+                && !NamingConfig.isMobNameAllowed(mob)) return;
+
         if (!NamingConfig.isMobCategoryEnabled(cat)) return;
         if (!NamingConfig.isEntityEnabled(mob.getType())) return;
 
