@@ -17,6 +17,16 @@ on:
         required: false
         type: boolean
         default: false
+      auto:
+        description: "Set true when dispatched by an automated cascade. Manual dispatches leave this false; the changelog mark-released step only runs when auto is false."
+        required: false
+        type: boolean
+        default: false
+      changelog:
+        description: "Custom release notes (Markdown). When non-empty, overrides the auto-generated commit notes for the GitHub Release body + Modrinth/CurseForge changelog. The agent passes the rendered unreleased changelog here."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   release:
@@ -104,12 +114,37 @@ jobs:
             exit 1
           fi
 
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ env.RELEASE_TAG }}
+          CHANGELOG_INPUT: ${{ inputs.changelog }}
+        run: |
+          if [ -n "$CHANGELOG_INPUT" ]; then
+            printf '%s\n' "$CHANGELOG_INPUT" > release-notes.md
+            echo "Using operator-provided changelog input ($(wc -c < release-notes.md) bytes)."
+          else
+            gh api -X POST \
+              -H "Accept: application/vnd.github+json" \
+              "repos/$REPO/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish=main \
+              --jq .body > release-notes.md
+            if [ ! -s release-notes.md ]; then
+              echo "Initial release — no prior tag to diff against." > release-notes.md
+            fi
+          fi
+          echo "::group::Generated release notes"
+          cat release-notes.md
+          echo "::endgroup::"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Adventure Item Names ${{ env.RELEASE_TAG }}
           tag_name: ${{ env.RELEASE_TAG }}
-          generate_release_notes: true
+          body_path: release-notes.md
           files: release-artifacts/*.jar
           fail_on_unmatched_files: true
           prerelease: ${{ steps.release_type.outputs.prerelease == 'true' }}
@@ -172,6 +207,7 @@ jobs:
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: release-artifacts/adventureitemnames-fabric-${{ env.MOD_VERSION }}.jar
+          changelog-file: release-notes.md
           name: Adventure Item Names ${{ env.RELEASE_TAG }} (Fabric)
           version: ${{ env.RELEASE_TAG }}+fabric
           version-type: ${{ steps.release_type.outputs.type }}
@@ -192,6 +228,7 @@ jobs:
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: release-artifacts/adventureitemnames-forge-${{ env.MOD_VERSION }}.jar
+          changelog-file: release-notes.md
           name: Adventure Item Names ${{ env.RELEASE_TAG }} (Forge)
           version: ${{ env.RELEASE_TAG }}+forge
           version-type: ${{ steps.release_type.outputs.type }}
@@ -212,6 +249,7 @@ jobs:
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: release-artifacts/adventureitemnames-neoforge-${{ env.MOD_VERSION }}.jar
+          changelog-file: release-notes.md
           name: Adventure Item Names ${{ env.RELEASE_TAG }} (NeoForge)
           version: ${{ env.RELEASE_TAG }}+neoforge
           version-type: ${{ steps.release_type.outputs.type }}
@@ -221,6 +259,41 @@ jobs:
           retry-attempts: 2
           retry-delay: 10000
           fail-mode: warn
+
+      # After a successful real release (auto=false), mark the shipped changelog
+      # entries released so the next release's "unreleased" set starts clean.
+      # These repos have no auto-release cascade today, so every release is real
+      # and entries are always marked; the auto gate is kept for parity with DT
+      # and forward-compatibility. Commits to main with [skip ci] (no version-bump
+      # or build workflows here to trigger anyway).
+      - name: Mark changelog entries released
+        if: ${{ success() && inputs.auto == false }}
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-notes/mark-released.py --released-in "$RELEASE_TAG"
+          if git diff --quiet -- .github/release-notes/changelog.json; then
+            echo "No changelog entries to mark — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/release-notes/changelog.json
+          git commit -m "chore(release-notes): mark $RELEASE_TAG released [skip ci]"
+          for attempt in 1 2; do
+            if git push origin HEAD:main; then
+              echo "Pushed changelog update on attempt $attempt."
+              exit 0
+            fi
+            if [ "$attempt" = "2" ]; then
+              echo "::error::Failed to push changelog update after rebase retry."
+              exit 1
+            fi
+            echo "Push rejected — fetching and rebasing before retry."
+            git fetch origin main
+            git rebase origin/main
+          done
 
       - name: Check Discord webhook prerequisites
         id: discord_check
