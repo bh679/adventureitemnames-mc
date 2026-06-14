@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:emerald",
+    "minecraft:emerald_block",
+    "minecraft:gravel",
+    "minecraft:clay",
+    { "id": "#minecraft:saplings", "required": false },
+    { "id": "#minecraft:logs", "required": false },
+    { "id": "#minecraft:leaves", "required": false },
+    { "id": "#minecraft:flowers", "required": false },
+    { "id": "#minecraft:dirt", "required": false },
+    { "id": "#minecraft:sand", "required": false }
+  ]
+}

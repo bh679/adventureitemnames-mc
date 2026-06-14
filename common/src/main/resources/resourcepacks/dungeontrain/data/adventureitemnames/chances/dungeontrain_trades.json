@@ -1,0 +1,4 @@
+{
+  "_comment": "Dungeon Train pack — when this pack is enabled, named villager trades are capped to a single use (1 in stock). Standalone Adventure Item Names leaves trade_stock_limit at its 0.0 default (unlimited stock).",
+  "trade_stock_limit": 1.0
+}
