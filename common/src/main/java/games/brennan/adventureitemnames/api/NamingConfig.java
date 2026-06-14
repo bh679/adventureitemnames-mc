@@ -590,6 +590,9 @@ public final class NamingConfig {
     public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
     public static float chanceMobPlayer()            { return chanceFor(ChanceKind.MOB_PLAYER); }
     public static float chanceCraftedDescription()   { return chanceFor(ChanceKind.CRAFTED_DESCRIPTION); }
+    public static float chancePurchasedDescription() { return chanceFor(ChanceKind.PURCHASED_DESCRIPTION); }
+    public static float chanceTradeItem()            { return chanceFor(ChanceKind.TRADE_ITEM); }
+    public static float chanceTradeStockLimit()      { return chanceFor(ChanceKind.TRADE_STOCK_LIMIT); }
 
     private static float clamp01(float v) {
         if (v < 0f) return 0f;
