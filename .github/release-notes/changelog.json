@@ -10,9 +10,9 @@
         "JJ, Freshboii, VidTu, DanMizu, and Varocraft25 can now appear as item name contributors"
       ],
       "date": "2026-06-19",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.44.0",
+      "released_at": "2026-06-19T12:42:32Z"
     }
   ]
 }
