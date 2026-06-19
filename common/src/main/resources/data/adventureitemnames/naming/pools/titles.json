@@ -32,7 +32,7 @@
       "text": "Thunderstorm Copper Defender"
     },
     {
-      "text": "Hell's Scream, Shortsword of the Cataclysm"
+      "text": "Hell\u0027s Scream, Shortsword of the Cataclysm"
     },
     {
       "text": "Orenmir, Swiftblade of Dark Souls"
@@ -63,12 +63,6 @@
     },
     {
       "text": "Doombringer, Last Stand of the Sky"
-    },
-    {
-      "text": "Doombringer, Last Stand of the Sky\\n"
-    },
-    {
-      "text": "Worldbreaker, Savagery, The Master.\\n"
     },
     {
       "text": "And devourer of all things."
@@ -159,6 +153,12 @@
     },
     {
       "text": "Toothpick, Blood Blade of Agony"
+    },
+    {
+      "text": "Doombringer, Last Stand of the Sky"
+    },
+    {
+      "text": "Worldbreaker, Savagery, The Master."
     }
   ]
 }
