@@ -9,7 +9,7 @@
       "label": "the",
       "refs": [
         {
-          "ref": "adventureitemnames:determiners_a",
+          "ref": "adventureitemnames:determiners",
           "weight": 6.0
         }
       ]
@@ -47,6 +47,10 @@
         {
           "ref": "adventureitemnames:math",
           "weight": 23.0
+        },
+        {
+          "ref": "adventureitemnames:numbers",
+          "weight": 10.0
         }
       ]
     }

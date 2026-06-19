@@ -12,6 +12,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Public configuration surface for enabling/disabling parts of the naming
@@ -80,6 +82,12 @@ public final class NamingConfig {
 
     private static final SegmentOverrides USER_SEGMENTS = new SegmentOverrides();
     private static final SegmentOverrides API_SEGMENTS = new SegmentOverrides();
+
+    // Mob-name gates — see registerMobNameGate. Deliberately NOT part of the
+    // datapack/user/API config layers and excluded from snapshotApiLayer /
+    // restoreApiLayer, so a host mod's registration survives config-editor
+    // preview snapshots.
+    private static final List<Predicate<Mob>> MOB_NAME_GATES = new ArrayList<>();
 
     private NamingConfig() {}
 
@@ -369,6 +377,57 @@ public final class NamingConfig {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Mob-name gates
+    //
+    // A host mod (e.g. Dungeon Train) can register a veto predicate to
+    // restrict AIN's ambient mob naming to a subset of entities.
+    // NameComposer.applyMobName consults these for villagers and passive
+    // animals only — always-on categories like PlayerMob bypass them. With no
+    // gate registered, every mob is eligible (the standalone default). Gates
+    // stack with AND semantics: a mob is eligible only if every gate permits it.
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Register a veto predicate for ambient mob naming. The predicate is
+     * called once per nameable villager/passive spawn; returning {@code false}
+     * suppresses the AIN-generated name for that mob. Null gates are ignored.
+     *
+     * <p>Registration is process-global and additive — there is no unregister
+     * beyond {@link #clearMobNameGates()}. Intended to be called once during
+     * mod setup.
+     */
+    public static void registerMobNameGate(Predicate<Mob> gate) {
+        if (gate == null) return;
+        synchronized (LOCK) {
+            MOB_NAME_GATES.add(gate);
+        }
+    }
+
+    /** Remove all registered mob-name gates. Primarily for tests. */
+    public static void clearMobNameGates() {
+        synchronized (LOCK) {
+            MOB_NAME_GATES.clear();
+        }
+    }
+
+    /**
+     * @return true when every registered gate permits naming {@code mob} (or
+     *         when no gate is registered). Predicates are snapshotted under the
+     *         lock and evaluated outside it to avoid re-entrancy hazards.
+     */
+    public static boolean isMobNameAllowed(Mob mob) {
+        List<Predicate<Mob>> gates;
+        synchronized (LOCK) {
+            if (MOB_NAME_GATES.isEmpty()) return true;
+            gates = new ArrayList<>(MOB_NAME_GATES);
+        }
+        for (Predicate<Mob> gate : gates) {
+            if (!gate.test(mob)) return false;
+        }
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Queries
     // ─────────────────────────────────────────────────────────────
 
@@ -529,7 +588,11 @@ public final class NamingConfig {
     public static float chanceDescriptionEnchanted() { return chanceFor(ChanceKind.DESCRIPTION_ENCHANTED); }
     public static float chanceMobPassive()           { return chanceFor(ChanceKind.MOB_PASSIVE); }
     public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
+    public static float chanceMobPlayer()            { return chanceFor(ChanceKind.MOB_PLAYER); }
     public static float chanceCraftedDescription()   { return chanceFor(ChanceKind.CRAFTED_DESCRIPTION); }
+    public static float chancePurchasedDescription() { return chanceFor(ChanceKind.PURCHASED_DESCRIPTION); }
+    public static float chanceTradeItem()            { return chanceFor(ChanceKind.TRADE_ITEM); }
+    public static float chanceTradeStockLimit()      { return chanceFor(ChanceKind.TRADE_STOCK_LIMIT); }
 
     private static float clamp01(float v) {
         if (v < 0f) return 0f;

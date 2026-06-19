@@ -11,6 +11,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ambient.AmbientCreature;
 import net.minecraft.world.entity.animal.AbstractGolem;
@@ -65,20 +66,49 @@ public final class NameComposer {
     public static final ResourceLocation REF_PLAYER_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/player_name");
 
+    /** Virtual ref resolved from the {@link NamingContext}'s villager display name (trade hook). */
+    public static final ResourceLocation REF_VILLAGER_NAME =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/villager_name");
+
     private static final ResourceLocation POOL_TYPE_SYNONYMS =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "type_synonyms");
 
     private static final ResourceLocation CHAIN_MOB_NAME =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
 
+    /** Chain id used to name PlayerMob mobs — a copy of {@link #CHAIN_MOB_NAME}. */
+    private static final ResourceLocation CHAIN_PLAYERMOB_NAME =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "playermob_name");
+
+    /**
+     * Entity-type id of the PlayerMob mod's mob. Matched by string so AIN has
+     * no compile-time or runtime hard dependency on PlayerMob — naming simply
+     * never triggers when the mod (and therefore the entity type) is absent.
+     */
+    private static final ResourceLocation PLAYERMOB_ENTITY_ID =
+        ResourceLocation.fromNamespaceAndPath("playermob", "player_mob");
+
     /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
     public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
         ResourceLocation.fromNamespaceAndPath("adventureitemnames", "crafted_item_description");
+
+    /** Chain id used by {@link #applyVillagerTradeNaming} for items bought from a villager. */
+    public static final ResourceLocation CHAIN_PURCHASED_ITEM_DESCRIPTION =
+        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "purchased_item_description");
 
     /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
     private static final TagKey<Item> TAG_CRAFTABLE_NAMABLE =
         TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
             "adventureitemnames", "craftable_namable"));
+
+    /**
+     * Item-tag <em>exclusion</em> gate for {@link #applyVillagerTradeNaming}. Unlike
+     * {@link #TAG_CRAFTABLE_NAMABLE}, this is a denylist: every traded item receives the
+     * villager-provenance lore <em>except</em> those tagged here (emeralds, raw nature blocks).
+     */
+    private static final TagKey<Item> TAG_TRADE_DESCRIPTION_EXCLUDED =
+        TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
+            "adventureitemnames", "trade_description_excluded"));
 
     /** Pool ids that already triggered the user-blanked-pool fallback warning. */
     private static final Set<ResourceLocation> FALLBACK_WARNED = ConcurrentHashMap.newKeySet();
@@ -92,7 +122,8 @@ public final class NameComposer {
      */
     private static final List<ResourceLocation> CONTEXT_REFS = List.of(
         REF_ITEM_MATERIAL,
-        REF_PLAYER_NAME
+        REF_PLAYER_NAME,
+        REF_VILLAGER_NAME
     );
 
     private NameComposer() {}
@@ -347,6 +378,10 @@ public final class NameComposer {
      *   <li>{@link Animal} / {@link WaterAnimal} / {@link AmbientCreature} /
      *       {@link AbstractGolem} / {@link Allay} that are <em>not</em>
      *       {@link Enemy}: 5%, name <em>always visible</em> (rare → stand out).</li>
+     *   <li>PlayerMob ({@code playermob:player_mob}, detected by entity-type id):
+     *       100%, name <em>always visible</em> like a player nameplate — also
+     *       carries into the vanilla death message. Uses the
+     *       {@code playermob_name} chain.</li>
      *   <li>All other mobs: no-op.</li>
      * </ul>
      *
@@ -359,6 +394,14 @@ public final class NameComposer {
         MobCategory cat = categorize(mob);
         if (cat == null) return;
 
+        // Ambient naming (villagers + passive animals) can be vetoed by a
+        // host-registered gate — e.g. Dungeon Train restricts it to mobs on the
+        // train. PlayerMob is an explicit always-on nameplate and is never
+        // gated. With no gate registered, isMobNameAllowed is always true, so
+        // standalone behavior is unchanged.
+        if ((cat == MobCategory.VILLAGER || cat == MobCategory.PASSIVE)
+                && !NamingConfig.isMobNameAllowed(mob)) return;
+
         if (!NamingConfig.isMobCategoryEnabled(cat)) return;
         if (!NamingConfig.isEntityEnabled(mob.getType())) return;
 
@@ -366,14 +409,18 @@ public final class NameComposer {
         boolean nameVisible;
         ChanceKind colorKind;
         switch (cat) {
-            case VILLAGER -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
-            case PASSIVE  -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
+            case VILLAGER   -> { chance = NamingConfig.chanceMobVillager(); nameVisible = false; colorKind = ChanceKind.MOB_VILLAGER; }
+            case PASSIVE    -> { chance = NamingConfig.chanceMobPassive();  nameVisible = true;  colorKind = ChanceKind.MOB_PASSIVE; }
+            // PlayerMob: named like a real player — always-visible nameplate, which
+            // also surfaces the generated name in the vanilla death message.
+            case PLAYER_MOB -> { chance = NamingConfig.chanceMobPlayer();   nameVisible = true;  colorKind = ChanceKind.MOB_PLAYER; }
             default -> { return; }
         }
 
         if (rng.nextFloat() >= chance) return;
 
-        String name = compose(CHAIN_MOB_NAME, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
+        ResourceLocation chainId = cat == MobCategory.PLAYER_MOB ? CHAIN_PLAYERMOB_NAME : CHAIN_MOB_NAME;
+        String name = compose(chainId, ItemStack.EMPTY, null, rng, 0, NamingContext.EMPTY);
         if (name == null || name.isBlank()) return;
 
         mob.setCustomName(withColor(Component.literal(name), colorKind));
@@ -415,10 +462,60 @@ public final class NameComposer {
     }
 
     /**
+     * Name and/or describe the result {@link ItemStack} of a single villager
+     * trade offer. Intended to be called from a mixin on
+     * {@code AbstractVillager#addOffersFromItemListings(...)} once per
+     * newly-created offer, server-side. Mutates {@code result} in place — it's
+     * the offer's live result stack, so the changes surface in the trade menu
+     * and on the bought item.
+     *
+     * <p>Two independent effects:
+     * <ul>
+     *   <li><b>Provenance lore</b> — appended {@link DataComponents#LORE} that names the
+     *       selling {@code villagerName}, via {@link #CHAIN_PURCHASED_ITEM_DESCRIPTION}
+     *       (a duplicate of the crafted chain that reads {@link #REF_VILLAGER_NAME}).
+     *       Gated by {@link NamingConfig#chancePurchasedDescription()} (default 1.0) and the
+     *       {@link #TAG_TRADE_DESCRIPTION_EXCLUDED} denylist (emeralds, raw nature blocks).</li>
+     *   <li><b>Procedural name</b> — a generated {@link DataComponents#CUSTOM_NAME} on
+     *       selector-matched gear via the shared loot-naming pipeline, gated by
+     *       {@link NamingConfig#chanceTradeItem()} (default 0.75). The name path deliberately
+     *       skips the loot-style description so trades carry only the provenance line above —
+     *       mirroring how crafting names vs describes.</li>
+     * </ul>
+     *
+     * <p>Returns {@code true} iff a {@code CUSTOM_NAME} was applied. The caller uses this to
+     * decide whether to cap the offer's stock (see {@link NamingConfig#chanceTradeStockLimit()}).
+     */
+    public static boolean applyVillagerTradeNaming(ItemStack result, String villagerName, RandomSource rng) {
+        if (result == null || result.isEmpty()) return false;
+        if (!NamingConfig.isItemEnabled(result)) return false;
+
+        // (1) Villager-provenance lore — every traded item except the exclusion denylist.
+        if (!result.is(TAG_TRADE_DESCRIPTION_EXCLUDED)
+                && rng.nextFloat() < NamingConfig.chancePurchasedDescription()) {
+            NamingContext ctx = NamingContext.ofVillager(villagerName);
+            String desc = compose(CHAIN_PURCHASED_ITEM_DESCRIPTION, result, null, rng, 0, ctx);
+            if (desc != null && !desc.isBlank()) {
+                appendLore(result, desc, ChanceKind.PURCHASED_DESCRIPTION);
+            }
+        }
+
+        // (2) Procedural CUSTOM_NAME — selector-matched gear only, independent 75% roll.
+        NameSelector sel = matchAndCheckConfig(result);
+        if (sel == null) return false;
+        if (rng.nextFloat() >= NamingConfig.chanceTradeItem()) return false;
+        applyComposedName(result, sel, result.isEnchanted() ? NameTier.ENCHANTED : NameTier.PLAIN, rng);
+        return true;
+    }
+
+    /**
      * Classify a mob into one of the namable categories, or null when the
      * mob isn't a naming target (hostile, generic, ender dragon, etc.).
      */
     private static MobCategory categorize(Mob mob) {
+        // PlayerMob first: it's a hostile Monster, so it must be caught before
+        // the !Enemy passive gate below would reject it.
+        if (isPlayerMob(mob.getType())) return MobCategory.PLAYER_MOB;
         if (mob instanceof AbstractVillager) return MobCategory.VILLAGER;
         if ((mob instanceof Animal
               || mob instanceof WaterAnimal
@@ -429,6 +526,23 @@ public final class NameComposer {
             return MobCategory.PASSIVE;
         }
         return null;
+    }
+
+    /**
+     * True when {@code type} is the PlayerMob mod's mob. Resolves the type's
+     * registry id via {@link BuiltInRegistries#ENTITY_TYPE} (an O(1) lookup)
+     * and defers to {@link #isPlayerMobId}.
+     */
+    private static boolean isPlayerMob(EntityType<?> type) {
+        return isPlayerMobId(BuiltInRegistries.ENTITY_TYPE.getKey(type));
+    }
+
+    /**
+     * Pure id comparison split out from {@link #isPlayerMob} so it's unit
+     * testable without a bootstrapped Minecraft registry. Null-safe.
+     */
+    static boolean isPlayerMobId(ResourceLocation id) {
+        return PLAYERMOB_ENTITY_ID.equals(id);
     }
 
     /**
@@ -550,6 +664,9 @@ public final class NameComposer {
         }
         if (refId.equals(REF_PLAYER_NAME)) {
             return ctx.playerName().orElse("");
+        }
+        if (refId.equals(REF_VILLAGER_NAME)) {
+            return ctx.villagerName().orElse("");
         }
         Optional<NameChain> chain = NameRegistry.chain(refId);
         if (chain.isPresent()) {

@@ -28,6 +28,11 @@
   "screen.adventureitemnames.spawn_chances.description_enchanted": "Enchanted item description",
   "screen.adventureitemnames.spawn_chances.mob_passive": "Passive mob naming",
   "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
+  "screen.adventureitemnames.spawn_chances.mob_player": "Player mob naming",
+  "screen.adventureitemnames.spawn_chances.crafted_description": "Crafted item description",
+  "screen.adventureitemnames.spawn_chances.purchased_description": "Purchased item description",
+  "screen.adventureitemnames.spawn_chances.trade_item": "Villager trade naming",
+  "screen.adventureitemnames.spawn_chances.trade_stock_limit": "Named trade stock limit",
   "screen.adventureitemnames.spawn_chances.configure_selectors": "Configure selectors →",
 
   "screen.adventureitemnames.color_picker.title": "Pick a color",

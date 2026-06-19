@@ -1,7 +1,7 @@
 package games.brennan.adventureitemnames.api;
 
 /**
- * The four top-level naming probability gates. Each value is the
+ * The top-level naming probability gates. Each value is the
  * probability that a given trigger event fires a naming roll. Defaults
  * match the previous hard-coded constants in {@link NameComposer} prior
  * to the v2 config refactor.
@@ -24,8 +24,20 @@ public enum ChanceKind {
     MOB_PASSIVE("mob_passive", 0.05f),
     /** Villager / wandering trader spawns. */
     MOB_VILLAGER("mob_villager", 1.00f),
+    /** PlayerMob ({@code playermob:player_mob}) spawns — named like a player. */
+    MOB_PLAYER("mob_player", 1.00f),
     /** Player takes a freshly-crafted item from a crafting result slot — gates the appended description (lore). */
-    CRAFTED_DESCRIPTION("crafted_description", 1.00f);
+    CRAFTED_DESCRIPTION("crafted_description", 1.00f),
+    /** Player buys an item from a villager — gates the appended villager-provenance description (lore). */
+    PURCHASED_DESCRIPTION("purchased_description", 1.00f),
+    /** A villager trade offer (gear) receives a generated {@code CUSTOM_NAME} shown in the trade menu. */
+    TRADE_ITEM("trade_item", 0.75f),
+    /**
+     * Probability a <em>named</em> villager trade is capped to a single use ("1 in stock").
+     * Default {@code 0.0} = unlimited (standalone). The built-in Dungeon Train pack ships a
+     * datapack override of {@code 1.0} so every named trade caps at one use when it's active.
+     */
+    TRADE_STOCK_LIMIT("trade_stock_limit", 0.00f);
 
     private final String key;
     private final float defaultValue;

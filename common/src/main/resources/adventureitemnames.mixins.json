@@ -6,7 +6,9 @@
   "mixins": [
     "LootTableMixin",
     "MobSpawnMixin",
-    "CraftingResultMixin"
+    "CraftingResultMixin",
+    "VillagerTradeMixin",
+    "MerchantOfferAccessor"
   ],
   "client": [],
   "server": [],

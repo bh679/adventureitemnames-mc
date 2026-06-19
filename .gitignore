@@ -39,3 +39,7 @@ src/generated/
 .claude/hook-versions.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+
+# Python bytecode (release-notes tooling)
+__pycache__/
+*.pyc

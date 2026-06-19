@@ -1,0 +1,14 @@
+{
+  "id": "adventureitemnames:determiner_singular",
+  "entries": [
+    { "text": "a" },
+    { "text": "one" },
+    { "text": "this" },
+    { "text": "that" },
+    { "text": "the" },
+    { "text": "THE" },
+    { "text": "The" },
+    { "text": "some" },
+    { "text": "another" }
+  ]
+}

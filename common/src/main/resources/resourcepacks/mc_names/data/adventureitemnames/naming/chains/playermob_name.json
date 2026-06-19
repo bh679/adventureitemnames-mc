@@ -1,0 +1,58 @@
+{
+  "id": "adventureitemnames:playermob_name",
+  "replace": false,
+  "segments": [
+    {
+      "chance": 0.10047965,
+      "connection": " ",
+      "newline": false,
+      "label": "Title",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " ",
+      "newline": false,
+      "label": "First Name",
+      "refs": [
+        {
+          "ref": "adventureitemnames:mc_streamers",
+          "weight": 50.0
+        }
+      ]
+    },
+    {
+      "chance": 0.052698065,
+      "connection": " ",
+      "newline": false,
+      "label": "Last Name",
+      "refs": []
+    },
+    {
+      "chance": 0.2,
+      "connection": " ",
+      "newline": false,
+      "label": "Fan",
+      "refs": [
+        {
+          "ref": "adventureitemnames:fan_suffix",
+          "weight": 4.0
+        }
+      ]
+    },
+    {
+      "chance": 0.3,
+      "connection": "",
+      "newline": false,
+      "label": "Suffix",
+      "refs": []
+    },
+    {
+      "chance": 0.01,
+      "connection": ", ",
+      "newline": false,
+      "label": "Title",
+      "refs": []
+    }
+  ]
+}
