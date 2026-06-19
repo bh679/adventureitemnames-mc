@@ -1,3 +1,18 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "discord-people-new-members",
+      "version": "0.44.0",
+      "type": "content",
+      "title": "New Discord members added to name pool",
+      "summary": "Added JJ, Freshboii, VidTu, DanMizu, and Varocraft25 to the Discord community name pool.",
+      "highlights": [
+        "JJ, Freshboii, VidTu, DanMizu, and Varocraft25 can now appear as item name contributors"
+      ],
+      "date": "2026-06-19",
+      "released": false,
+      "released_in": null,
+      "released_at": null
+    }
+  ]
 }
