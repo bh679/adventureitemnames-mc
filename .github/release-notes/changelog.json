@@ -24,9 +24,9 @@
         "anuncommonguy can now appear as an item name contributor"
       ],
       "date": "2026-06-19",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.45.0",
+      "released_at": "2026-06-19T12:57:14Z"
     }
   ]
 }
