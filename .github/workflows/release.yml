@@ -92,25 +92,24 @@ jobs:
             echo "Not a major bump ($RELEASE_TAG) — Discord only fires if notify_discord=true."
           fi
 
-      - run: ./gradlew build --no-daemon
+      - run: ./gradlew chiseledBuild --no-daemon
 
-      # Multi-loader builds put each loader's production jar in its own
-      # subproject's build/libs/. Stage them into one directory so the
-      # GitHub-release / Modrinth / CurseForge upload steps have a single
-      # glob target, and so any dev/sources/dev-shadow classified jars are
-      # excluded by being filtered out here rather than in every upload step.
+      # Stonecutter's chiseledBuild collects every (loader, MC version) production +
+      # sources jar under build/libs/<mod_version>/<loader>/. Stage the production jars
+      # (names carry a +<mc> build-metadata suffix, e.g. ...+1.21.1.jar) into one dir so
+      # the GitHub-release upload has a single glob target; *-sources.jar are filtered out
+      # here rather than in every upload step.
       - name: Stage loader jars for release
         run: |
           mkdir -p release-artifacts
-          cp fabric/build/libs/adventureitemnames-fabric-${MOD_VERSION}.jar      release-artifacts/
-          cp forge/build/libs/adventureitemnames-forge-${MOD_VERSION}.jar        release-artifacts/
-          cp neoforge/build/libs/adventureitemnames-neoforge-${MOD_VERSION}.jar  release-artifacts/
+          find "build/libs/${MOD_VERSION}" -name 'adventureitemnames-*.jar' ! -name '*-sources.jar' \
+            -exec cp {} release-artifacts/ \;
           echo "=== release-artifacts contents ==="
           ls -la release-artifacts/
-          # Sanity check: exactly 3 jars, all production (no classifier).
+          # Sanity check: exactly 5 jars — Fabric+Forge @1.20.1, Fabric+Forge+NeoForge @1.21.1.
           COUNT=$(ls release-artifacts/*.jar | wc -l)
-          if [ "$COUNT" -ne 3 ]; then
-            echo "::error::Expected 3 loader jars in release-artifacts/, found $COUNT"
+          if [ "$COUNT" -ne 5 ]; then
+            echo "::error::Expected 5 loader/version jars in release-artifacts/, found $COUNT"
             exit 1
           fi
 
@@ -191,13 +190,14 @@ jobs:
           echo "modrinth=$MODRINTH_READY" >> "$GITHUB_OUTPUT"
           echo "curseforge=$CURSEFORGE_READY" >> "$GITHUB_OUTPUT"
 
-      # Each loader publishes as its own Modrinth/CurseForge version, tagged
-      # with exactly one loader and containing exactly one jar. Modrinth and
-      # CurseForge launchers (and the website filters) then auto-pick the
-      # right file for the user's installed loader. version_number uses SemVer
-      # build-metadata suffix (e.g. 0.2.0+fabric) so the three versions stay
-      # distinct on the platforms while sharing a human-readable release tag.
-      - name: Publish Fabric to Modrinth + CurseForge
+      # Each (loader, MC version) publishes as its own Modrinth/CurseForge version —
+      # exactly one loader + one game version + one jar — so the launchers and website
+      # filters auto-pick the right file for the user's installed loader AND MC version.
+      # version_number uses a SemVer build-metadata suffix (e.g. v0.46.0+fabric-1.21.1)
+      # so all five versions stay distinct while sharing the human-readable release tag.
+      # NeoForge ships 1.21.1 only (no standalone 1.20.1 artifact). The 1.21.1 step ids
+      # stay publish_{fabric,forge,neoforge} so the Discord summary keeps resolving them.
+      - name: Publish Fabric 1.21.1 to Modrinth + CurseForge
         id: publish_fabric
         if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
@@ -206,10 +206,10 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: release-artifacts/adventureitemnames-fabric-${{ env.MOD_VERSION }}.jar
+          files: release-artifacts/adventureitemnames-fabric-${{ env.MOD_VERSION }}+1.21.1.jar
           changelog-file: release-notes.md
-          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Fabric)
-          version: ${{ env.RELEASE_TAG }}+fabric
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Fabric 1.21.1)
+          version: ${{ env.RELEASE_TAG }}+fabric-1.21.1
           version-type: ${{ steps.release_type.outputs.type }}
           loaders: fabric
           game-versions: 1.21.1
@@ -218,7 +218,28 @@ jobs:
           retry-delay: 10000
           fail-mode: warn
 
-      - name: Publish Forge to Modrinth + CurseForge
+      - name: Publish Fabric 1.20.1 to Modrinth + CurseForge
+        id: publish_fabric_1201
+        if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ steps.publish_check.outputs.modrinth == 'true' && vars.MODRINTH_PROJECT_ID || '' }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: release-artifacts/adventureitemnames-fabric-${{ env.MOD_VERSION }}+1.20.1.jar
+          changelog-file: release-notes.md
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Fabric 1.20.1)
+          version: ${{ env.RELEASE_TAG }}+fabric-1.20.1
+          version-type: ${{ steps.release_type.outputs.type }}
+          loaders: fabric
+          game-versions: 1.20.1
+          java: 17
+          retry-attempts: 2
+          retry-delay: 10000
+          fail-mode: warn
+
+      - name: Publish Forge 1.21.1 to Modrinth + CurseForge
         id: publish_forge
         if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
@@ -227,10 +248,10 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: release-artifacts/adventureitemnames-forge-${{ env.MOD_VERSION }}.jar
+          files: release-artifacts/adventureitemnames-forge-${{ env.MOD_VERSION }}+1.21.1.jar
           changelog-file: release-notes.md
-          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Forge)
-          version: ${{ env.RELEASE_TAG }}+forge
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Forge 1.21.1)
+          version: ${{ env.RELEASE_TAG }}+forge-1.21.1
           version-type: ${{ steps.release_type.outputs.type }}
           loaders: forge
           game-versions: 1.21.1
@@ -239,7 +260,28 @@ jobs:
           retry-delay: 10000
           fail-mode: warn
 
-      - name: Publish NeoForge to Modrinth + CurseForge
+      - name: Publish Forge 1.20.1 to Modrinth + CurseForge
+        id: publish_forge_1201
+        if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ steps.publish_check.outputs.modrinth == 'true' && vars.MODRINTH_PROJECT_ID || '' }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: release-artifacts/adventureitemnames-forge-${{ env.MOD_VERSION }}+1.20.1.jar
+          changelog-file: release-notes.md
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (Forge 1.20.1)
+          version: ${{ env.RELEASE_TAG }}+forge-1.20.1
+          version-type: ${{ steps.release_type.outputs.type }}
+          loaders: forge
+          game-versions: 1.20.1
+          java: 17
+          retry-attempts: 2
+          retry-delay: 10000
+          fail-mode: warn
+
+      - name: Publish NeoForge 1.21.1 to Modrinth + CurseForge
         id: publish_neoforge
         if: steps.publish_check.outputs.modrinth == 'true' || steps.publish_check.outputs.curseforge == 'true'
         uses: Kir-Antipov/mc-publish@v3.3
@@ -248,10 +290,10 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ steps.publish_check.outputs.curseforge == 'true' && vars.CURSEFORGE_PROJECT_ID || '' }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files: release-artifacts/adventureitemnames-neoforge-${{ env.MOD_VERSION }}.jar
+          files: release-artifacts/adventureitemnames-neoforge-${{ env.MOD_VERSION }}+1.21.1.jar
           changelog-file: release-notes.md
-          name: Adventure Item Names ${{ env.RELEASE_TAG }} (NeoForge)
-          version: ${{ env.RELEASE_TAG }}+neoforge
+          name: Adventure Item Names ${{ env.RELEASE_TAG }} (NeoForge 1.21.1)
+          version: ${{ env.RELEASE_TAG }}+neoforge-1.21.1
           version-type: ${{ steps.release_type.outputs.type }}
           loaders: neoforge
           game-versions: 1.21.1

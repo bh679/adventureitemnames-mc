@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.fabric;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.internal.ConfigPaths;
 import games.brennan.adventureitemnames.internal.NameRegistry;
@@ -49,19 +50,19 @@ public final class AdventureItemNamesFabric implements ModInitializer {
 
     public static final Item RANDOM_CHEST = Registry.register(
         BuiltInRegistries.ITEM,
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_chest"),
+        Ids.of("adventureitemnames", "random_chest"),
         new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.DEFAULT)
     );
 
     public static final Item RANDOM_NAMED_CHEST = Registry.register(
         BuiltInRegistries.ITEM,
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_named_chest"),
+        Ids.of("adventureitemnames", "random_named_chest"),
         new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ALWAYS_NAMED)
     );
 
     public static final Item RANDOM_ENCHANTED_CHEST = Registry.register(
         BuiltInRegistries.ITEM,
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "random_enchanted_chest"),
+        Ids.of("adventureitemnames", "random_enchanted_chest"),
         new RandomChestItem(new Item.Properties(), RandomChestItem.Mode.ENCHANTED)
     );
 
@@ -122,7 +123,7 @@ public final class AdventureItemNamesFabric implements ModInitializer {
             return;
         }
         boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", packPath),
+            Ids.of("adventureitemnames", packPath),
             owner,
             Component.literal(displayName),
             ResourcePackActivationType.DEFAULT_ENABLED
@@ -152,7 +153,7 @@ public final class AdventureItemNamesFabric implements ModInitializer {
     }
 
     private static IdentifiableResourceReloadListener wrap(PreparableReloadListener inner, String id) {
-        ResourceLocation fabricId = ResourceLocation.fromNamespaceAndPath("adventureitemnames", id);
+        ResourceLocation fabricId = Ids.of("adventureitemnames", id);
         return new IdentifiableResourceReloadListener() {
             @Override public ResourceLocation getFabricId() { return fabricId; }
             @Override public List<ResourceLocation> getFabricDependencies() { return List.of(); }

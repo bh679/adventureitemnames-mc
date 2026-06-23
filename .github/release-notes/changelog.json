@@ -27,6 +27,23 @@
       "released": true,
       "released_in": "v0.45.0",
       "released_at": "2026-06-19T12:57:14Z"
+    },
+    {
+      "id": "mc-1201-build-target",
+      "version": "0.46.0",
+      "type": "feat",
+      "title": "Now available for Minecraft 1.20.1",
+      "summary": "Adventure Item Names now runs on Minecraft 1.20.1 as well as 1.21.1 \u2014 the same procedural item names, provenance lore, themed packs, and in-game naming editor, just on the older version. Fabric and Forge are supported on 1.20.1; NeoForge remains 1.21.1.",
+      "highlights": [
+        "New: Fabric and Forge builds for Minecraft 1.20.1",
+        "Same naming engine, lore, bundled themed packs, and in-game editor on both 1.21.1 and 1.20.1",
+        "Existing 1.21.1 builds (Fabric / Forge / NeoForge) are unchanged"
+      ],
+      "pr": 81,
+      "date": "2026-06-23",
+      "released": true,
+      "released_in": "v0.46.0",
+      "released_at": "2026-06-23T09:42:52Z"
     }
   ]
 }

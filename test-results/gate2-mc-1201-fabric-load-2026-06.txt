@@ -1,0 +1,23 @@
+[Architectury Transformer] Listening at /Users/brennanhatton/Projects/AdventureItemNames/.claude/worktrees/tender-lehmann-0bf35d/versions/1.20.1/build/devlibs/adventureitemnames-common-0.45.5+1.20.1-dev.jar
+	- adventureitemnames 0.45.5
+[17:19:04] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_16
+[17:19:04] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_17
+[17:19:08] [Render thread/INFO] (NameRegistry) [AdventureItemNames] synthetic pool source registered for pack 'mod/adventureitemnames/mc_names'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'mc_names' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'wholesome' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'discord' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'atla' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'adventuretime' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'dungeontrain' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (AdventureItemNamesFabric) [AdventureItemNames] registered built-in data pack 'rickandmorty' via container 'generated_7650f3b'
+[17:19:08] [Render thread/INFO] (VanillaRegistryPoolSource) [AdventureItemNames] mc_blocks synthetic pool — 582 of 1002 entries (filtered names with 3+ words)
+[17:19:08] [Render thread/INFO] (VanillaRegistryPoolSource) [AdventureItemNames] mc_items synthetic pool — 770 of 1254 entries (filtered names with 3+ words)
+[17:19:08] [Render thread/INFO] (NameRegistry) [AdventureItemNames] overlaid 2 synthetic pool(s) across 1 source(s)
+[17:19:08] [Render thread/INFO] (NameRegistry) [AdventureItemNames] pools reloaded — 67 (0 overlay, 0 tombstoned)
+[17:19:08] [Render thread/INFO] (NameRegistry) [AdventureItemNames] chains reloaded — 21 (0 overlay)
+[17:19:08] [Render thread/INFO] (NameRegistry) [AdventureItemNames] selectors reloaded — 11 (0 user)
+[17:19:08] [Render thread/INFO] (ConfigListener) [AdventureItemNames] disabled layer reloaded — 1 file(s)
+[17:19:08] [Render thread/INFO] (ChanceLoader) [AdventureItemNames] chance layer reloaded — 1 file(s)
+[17:19:08] [Render thread/INFO] (BundledPackLoader) [AdventureItemNames] client-init preload complete — 7 bundled pack(s)
+[17:19:10] [Render thread/INFO] (Minecraft) OpenAL initialized on device MacBook Pro Speakers
+[17:19:10] [Render thread/INFO] (Minecraft) Sound engine started

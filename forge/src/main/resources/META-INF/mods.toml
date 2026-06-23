@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[51,)"
+loaderVersion="${forge_loader_range}"
 license="${mod_license}"
 issueTrackerURL="https://github.com/bh679/adventureitemnames-mc/issues"
 
@@ -17,13 +17,13 @@ config="adventureitemnames.mixins.json"
 [[dependencies.adventureitemnames]]
     modId="forge"
     mandatory=true
-    versionRange="[51,)"
+    versionRange="${forge_loader_range}"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.adventureitemnames]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.21.1]"
+    versionRange="${minecraft_range}"
     ordering="NONE"
     side="BOTH"
