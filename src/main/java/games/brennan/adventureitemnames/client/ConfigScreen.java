@@ -71,7 +71,7 @@ public final class ConfigScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }

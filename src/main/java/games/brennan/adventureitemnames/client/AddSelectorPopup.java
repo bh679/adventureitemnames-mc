@@ -124,12 +124,12 @@ public final class AddSelectorPopup extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeTagPicker != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeTagPicker.render(gfx, mouseX, mouseY);
             return;
         }
         if (activeChainPicker != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeChainPicker.render(gfx, mouseX, mouseY);
             return;
         }
@@ -251,12 +251,20 @@ public final class AddSelectorPopup extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    // MC 1.21 added a horizontal-scroll (scrollX) parameter to mouseScrolled.
     @Override
+    //? if >=1.21.1 {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (activeTagPicker != null && activeTagPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         if (activeChainPicker != null && activeChainPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
+    //?} else {
+    /*public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (activeTagPicker != null && activeTagPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        if (activeChainPicker != null && activeChainPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
+    }*///?}
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {

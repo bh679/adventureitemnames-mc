@@ -22,8 +22,8 @@ public final class Ids {
         //? if >=1.21.1 {
         return ResourceLocation.fromNamespaceAndPath(namespace, path);
         //?} else {
-        /*return new ResourceLocation(namespace, path);*/
-        //?}
+        /*return new ResourceLocation(namespace, path);
+        *///?}
     }
 
     /** Parse a {@code namespace:path} string. 1.21.1 {@code parse}; 1.20.1 constructor. */
@@ -31,7 +31,7 @@ public final class Ids {
         //? if >=1.21.1 {
         return ResourceLocation.parse(id);
         //?} else {
-        /*return new ResourceLocation(id);*/
-        //?}
+        /*return new ResourceLocation(id);
+        *///?}
     }
 }

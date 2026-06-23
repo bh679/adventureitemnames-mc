@@ -157,8 +157,8 @@ public final class RandomChestItem extends Item {
                 //? if >=1.21.1 {
                 EnchantmentHelper.enchantItem(rng, stack, ENCHANT_LEVEL, level.registryAccess(), Optional.empty());
                 //?} else {
-                /*EnchantmentHelper.enchantItem(rng, stack, ENCHANT_LEVEL, true);*/
-                //?}
+                /*EnchantmentHelper.enchantItem(rng, stack, ENCHANT_LEVEL, true);
+                *///?}
                 NameComposer.applyNameAlways(stack, rng);
             }
         }

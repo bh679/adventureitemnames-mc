@@ -117,7 +117,7 @@ public final class ChainsListScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -223,7 +223,11 @@ public final class ChainsListScreen extends Screen {
 
         ChainList(Minecraft mc, int width, int height, int top,
                   List<NameChain> chains, ChainsListScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, ENTRY_H);
+            //?} else {
+            /*super(mc, width, height, top, top + height, ENTRY_H);
+            *///?}
             for (NameChain c : chains) addEntry(new RowEntry(c, host));
         }
 
@@ -243,14 +247,10 @@ public final class ChainsListScreen extends Screen {
                 this.host = host;
 
                 boolean enabledNow = NamingConfig.isChainEnabled(chain.id());
-                this.enabledBox = Checkbox.builder(Component.literal(""), Minecraft.getInstance().font)
-                    .pos(0, 0)
-                    .selected(enabledNow)
-                    .onValueChange((c, v) -> {
-                        // No EditBuffer slot for chain enable yet — display only.
-                        c.onPress(); // toggle back
-                    })
-                    .build();
+                // No EditBuffer slot for chain enable yet — display only (active = false
+                // below, so the value-change callback is never reached).
+                this.enabledBox = GuiCompat.checkbox(0, 0, Component.literal(""),
+                    Minecraft.getInstance().font, enabledNow, v -> { });
                 this.enabledBox.active = false;
 
                 this.openButton = Button.builder(

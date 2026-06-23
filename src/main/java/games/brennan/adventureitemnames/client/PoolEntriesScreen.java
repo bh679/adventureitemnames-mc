@@ -125,7 +125,7 @@ public final class PoolEntriesScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -235,7 +235,11 @@ public final class PoolEntriesScreen extends Screen {
     static final class EntriesList extends ContainerObjectSelectionList<EntriesList.Entry> {
 
         EntriesList(Minecraft mc, int width, int height, int top, PoolEntriesScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, 24);
+            //?} else {
+            /*super(mc, width, height, top, top + height, 24);
+            *///?}
             // Re-fetch the shipped pool from the registry so layer-aware effective view stays correct
             // even after the user-config reload swaps the runtime state.
             NamePool live = NameRegistry.pool(host.pool().id()).orElse(host.pool());

@@ -37,8 +37,8 @@ public final class ItemNameCompat {
         //? if >=1.21.1 {
         stack.set(DataComponents.CUSTOM_NAME, name);
         //?} else {
-        /*stack.setHoverName(name);*/
-        //?}
+        /*stack.setHoverName(name);
+        *///?}
     }
 
     /**

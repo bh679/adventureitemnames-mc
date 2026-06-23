@@ -2,7 +2,9 @@ package games.brennan.adventureitemnames.internal;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
+//? if >=1.21.1 {
 import net.minecraft.server.packs.PackLocationInfo;
+//?}
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
@@ -97,6 +99,9 @@ public final class BundledPackLoader {
                 continue;
             }
             String displayId = BASE_MOD_PACK.equals(packId) ? "base" : packId;
+            // 1.21 wraps pack identity in a PackLocationInfo; 1.20.1's PathPackResources
+            // takes (packId, root, isBuiltin) directly.
+            //? if >=1.21.1 {
             PackLocationInfo info = new PackLocationInfo(
                 "bundled/adventureitemnames/" + displayId,
                 Component.literal("Adventure Item Names — " + displayId),
@@ -104,6 +109,10 @@ public final class BundledPackLoader {
                 Optional.empty()
             );
             packs.add(new PathPackResources(info, packRoot));
+            //?} else {
+            /*packs.add(new PathPackResources(
+                "bundled/adventureitemnames/" + displayId, packRoot, true));
+            *///?}
         }
         if (packs.isEmpty()) {
             LOGGER.warn("[AdventureItemNames] no bundled packs resolved — title-screen config preview will be empty");

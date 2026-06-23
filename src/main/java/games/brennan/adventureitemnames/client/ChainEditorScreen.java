@@ -169,7 +169,7 @@ public final class ChainEditorScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -238,7 +238,11 @@ public final class ChainEditorScreen extends Screen {
     static final class SegmentList extends ContainerObjectSelectionList<SegmentList.SegEntry> {
 
         SegmentList(Minecraft mc, int width, int height, int top, NameChain chain, ChainEditorScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, ENTRY_H);
+            //?} else {
+            /*super(mc, width, height, top, top + height, ENTRY_H);
+            *///?}
             List<NameSegment> shipped = chain.segments();
             int shippedCount = shipped.size();
             int total = NamingConfig.effectiveSegmentCount(chain.id(), shippedCount)
@@ -365,14 +369,11 @@ public final class ChainEditorScreen extends Screen {
                     host.rerollPreview();
                 });
 
-                this.newlineBox = Checkbox.builder(Component.literal(""), Minecraft.getInstance().font)
-                    .pos(0, 0)
-                    .selected(curNl)
-                    .onValueChange((c, v) -> {
+                this.newlineBox = GuiCompat.checkbox(0, 0, Component.literal(""),
+                    Minecraft.getInstance().font, curNl, v -> {
                         host.buffer().setSegmentNewline(host.chain().id(), segIdx, v);
                         host.rerollPreview();
-                    })
-                    .build();
+                    });
 
                 this.refsButton = Button.builder(
                     Component.literal("Refs"),
@@ -387,13 +388,13 @@ public final class ChainEditorScreen extends Screen {
                 this.upButton = Button.builder(
                     Component.literal("▲"),
                     b -> host.moveSegment(displayPos, -1)
-                ).bounds(0, 0, 16, 18).build();
+                ).bounds(0, 0, 16, 11).build();
                 this.upButton.active = displayPos > 0;
 
                 this.downButton = Button.builder(
                     Component.literal("▼"),
                     b -> host.moveSegment(displayPos, +1)
-                ).bounds(0, 0, 16, 18).build();
+                ).bounds(0, 0, 16, 11).build();
                 this.downButton.active = displayPos < totalCount - 1;
             }
 
@@ -449,14 +450,13 @@ public final class ChainEditorScreen extends Screen {
                 int y = rowTop + (rowHeight - 18) / 2;
                 int textY = rowTop + (rowHeight - 9) / 2;
 
-                // ▲ / ▼ reorder buttons (stack the up/down for compactness).
+                // ▲ / ▼ reorder buttons (stack the up/down for compactness). Height is
+                // fixed at construction (11) — AbstractWidget.setHeight is 1.21-only.
                 upButton.setX(x); upButton.setY(y - 5);
                 upButton.setWidth(16);
-                upButton.setHeight(11);
                 upButton.render(gfx, mouseX, mouseY, partial);
                 downButton.setX(x); downButton.setY(y + 6);
                 downButton.setWidth(16);
-                downButton.setHeight(11);
                 downButton.render(gfx, mouseX, mouseY, partial);
                 x += 20;
 

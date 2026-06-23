@@ -116,7 +116,7 @@ public final class PoolListScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -239,7 +239,11 @@ public final class PoolListScreen extends Screen {
     static final class PoolList extends ContainerObjectSelectionList<PoolList.Entry> {
 
         PoolList(Minecraft mc, int width, int height, int top, PoolListScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, 24);
+            //?} else {
+            /*super(mc, width, height, top, top + height, 24);
+            *///?}
             for (PackGrouping.PoolView pv : host.pack.pools()) {
                 addEntry(new Entry(pv, host));
             }
@@ -283,13 +287,10 @@ public final class PoolListScreen extends Screen {
                 boolean enabledNow = NamingConfig.isPoolEnabled(pv.poolId());
                 Boolean pending = host.buffer().pendingPoolEnabled(pv.poolId());
                 if (pending != null) enabledNow = pending;
-                this.enabledBox = Checkbox.builder(Component.literal(""), Minecraft.getInstance().font)
-                    .pos(0, 0)
-                    .selected(enabledNow)
-                    .onValueChange((c, v) -> {
+                this.enabledBox = GuiCompat.checkbox(0, 0, Component.literal(""),
+                    Minecraft.getInstance().font, enabledNow, v -> {
                         host.buffer().setPoolEnabled(pv.poolId(), v);
-                    })
-                    .build();
+                    });
 
                 this.preview = Button.builder(Component.literal("🎲"),
                     b -> host.rerollPreviewForcedPool(pv.poolId()))

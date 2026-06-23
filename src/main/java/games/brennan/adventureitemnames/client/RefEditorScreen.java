@@ -120,12 +120,12 @@ public final class RefEditorScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
         if (activeRefPicker != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeRefPicker.render(gfx, mouseX, mouseY);
             return;
         }
@@ -287,11 +287,18 @@ public final class RefEditorScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    // MC 1.21 added a horizontal-scroll (scrollX) parameter to mouseScrolled.
     @Override
+    //? if >=1.21.1 {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (activeRefPicker != null && activeRefPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
+    //?} else {
+    /*public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (activeRefPicker != null && activeRefPicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
+    }*///?}
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -334,7 +341,11 @@ public final class RefEditorScreen extends Screen {
         private final RefEditorScreen host;
 
         RefList(Minecraft mc, int width, int height, int top, RefEditorScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, ENTRY_H);
+            //?} else {
+            /*super(mc, width, height, top, top + height, ENTRY_H);
+            *///?}
             this.host = host;
             rebuild();
         }

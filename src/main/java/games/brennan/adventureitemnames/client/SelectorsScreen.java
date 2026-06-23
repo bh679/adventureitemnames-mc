@@ -117,7 +117,7 @@ public final class SelectorsScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -125,7 +125,7 @@ public final class SelectorsScreen extends Screen {
             // Modal picker is open — skip the underlying widget render so item
             // icons + button tooltips don't bleed through the popup. The picker
             // already draws its own dim backdrop.
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activePicker.render(gfx, mouseX, mouseY);
             return;
         }
@@ -154,13 +154,22 @@ public final class SelectorsScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    // MC 1.21 added a horizontal-scroll (scrollX) parameter to mouseScrolled.
     @Override
+    //? if >=1.21.1 {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (activePicker != null) {
             if (activePicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
+    //?} else {
+    /*public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (activePicker != null) {
+            if (activePicker.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
+    }*///?}
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -330,7 +339,11 @@ public final class SelectorsScreen extends Screen {
 
         SelectorList(Minecraft mc, int width, int height, int top,
                      List<NameSelector> selectors, SelectorsScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, ENTRY_H);
+            //?} else {
+            /*super(mc, width, height, top, top + height, ENTRY_H);
+            *///?}
             for (NameSelector sel : selectors) {
                 addEntry(new SelectorEntry(sel, host));
             }
@@ -433,14 +446,11 @@ public final class SelectorsScreen extends Screen {
                 boolean enabledNow = NamingConfig.isSelectorEnabled(sel.id());
                 Boolean pending = host.buffer().pendingSelectorEnabled(sel.id());
                 if (pending != null) enabledNow = pending;
-                this.enabledBox = Checkbox.builder(Component.literal(""), Minecraft.getInstance().font)
-                    .pos(0, 0)
-                    .selected(enabledNow)
-                    .onValueChange((c, v) -> {
+                this.enabledBox = GuiCompat.checkbox(0, 0, Component.literal(""),
+                    Minecraft.getInstance().font, enabledNow, v -> {
                         host.buffer().setSelectorEnabled(sel.id(), v);
                         host.rerollPreview();
-                    })
-                    .build();
+                    });
             }
 
             List<? extends net.minecraft.client.gui.components.AbstractWidget> widgets() {

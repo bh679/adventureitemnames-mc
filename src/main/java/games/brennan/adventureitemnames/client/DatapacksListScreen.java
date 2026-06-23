@@ -107,7 +107,7 @@ public final class DatapacksListScreen extends Screen {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         if (activeConfirm != null) {
-            super.renderBackground(gfx, mouseX, mouseY, partial);
+            GuiCompat.renderBackground(this, gfx, mouseX, mouseY, partial);
             activeConfirm.render(gfx, mouseX, mouseY);
             return;
         }
@@ -172,7 +172,11 @@ public final class DatapacksListScreen extends Screen {
 
         DatapackList(Minecraft mc, int width, int height, int top,
                      List<PackGrouping.PackView> packs, DatapacksListScreen host) {
+            //? if >=1.21.1 {
             super(mc, width, height, top, 24);
+            //?} else {
+            /*super(mc, width, height, top, top + height, 24);
+            *///?}
             this.host = host;
             for (PackGrouping.PackView p : packs) addEntry(new Entry(p, host));
         }

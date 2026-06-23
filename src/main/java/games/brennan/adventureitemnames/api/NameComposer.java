@@ -96,19 +96,28 @@ public final class NameComposer {
     public static final ResourceLocation CHAIN_PURCHASED_ITEM_DESCRIPTION =
         Ids.of("adventureitemnames", "purchased_item_description");
 
-    /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
-    private static final TagKey<Item> TAG_CRAFTABLE_NAMABLE =
-        TagKey.create(Registries.ITEM, Ids.of(
-            "adventureitemnames", "craftable_namable"));
-
     /**
-     * Item-tag <em>exclusion</em> gate for {@link #applyVillagerTradeNaming}. Unlike
-     * {@link #TAG_CRAFTABLE_NAMABLE}, this is a denylist: every traded item receives the
-     * villager-provenance lore <em>except</em> those tagged here (emeralds, raw nature blocks).
+     * Item tags, lazily initialised via the initialization-on-demand holder idiom.
+     * {@code TagKey.create(Registries.ITEM, …)} touches {@code Registries.ITEM}, which on
+     * MC 1.20.1 throws "Not bootstrapped" if read before {@code Bootstrap.bootStrap()} —
+     * fine in production (the game bootstraps first) but it would break bootstrap-free unit
+     * tests that load {@code NameComposer}. Deferring the tags into this holder keeps
+     * {@code NameComposer}'s class-load side-effect-free; the holder initialises on first
+     * use from the crafted/trade description paths, by which point the game is bootstrapped.
      */
-    private static final TagKey<Item> TAG_TRADE_DESCRIPTION_EXCLUDED =
-        TagKey.create(Registries.ITEM, Ids.of(
-            "adventureitemnames", "trade_description_excluded"));
+    private static final class Tags {
+        /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
+        static final TagKey<Item> CRAFTABLE_NAMABLE =
+            TagKey.create(Registries.ITEM, Ids.of("adventureitemnames", "craftable_namable"));
+
+        /**
+         * Item-tag <em>exclusion</em> gate for {@link #applyVillagerTradeNaming}. Unlike
+         * {@code CRAFTABLE_NAMABLE}, this is a denylist: every traded item receives the
+         * villager-provenance lore <em>except</em> those tagged here (emeralds, raw nature blocks).
+         */
+        static final TagKey<Item> TRADE_DESCRIPTION_EXCLUDED =
+            TagKey.create(Registries.ITEM, Ids.of("adventureitemnames", "trade_description_excluded"));
+    }
 
     /** Pool ids that already triggered the user-blanked-pool fallback warning. */
     private static final Set<ResourceLocation> FALLBACK_WARNED = ConcurrentHashMap.newKeySet();
@@ -446,7 +455,7 @@ public final class NameComposer {
     public static void applyCraftedDescription(ItemStack stack, RandomSource rng, Player player) {
         if (player == null) return;
         if (stack == null || stack.isEmpty()) return;
-        if (!stack.is(TAG_CRAFTABLE_NAMABLE)) return;
+        if (!stack.is(Tags.CRAFTABLE_NAMABLE)) return;
         if (!NamingConfig.isItemEnabled(stack)) return;
         if (rng.nextFloat() >= NamingConfig.chanceCraftedDescription()) return;
 
@@ -472,7 +481,7 @@ public final class NameComposer {
      *       selling {@code villagerName}, via {@link #CHAIN_PURCHASED_ITEM_DESCRIPTION}
      *       (a duplicate of the crafted chain that reads {@link #REF_VILLAGER_NAME}).
      *       Gated by {@link NamingConfig#chancePurchasedDescription()} (default 1.0) and the
-     *       {@link #TAG_TRADE_DESCRIPTION_EXCLUDED} denylist (emeralds, raw nature blocks).</li>
+     *       {@code Tags.TRADE_DESCRIPTION_EXCLUDED} denylist (emeralds, raw nature blocks).</li>
      *   <li><b>Procedural name</b> — a generated {@code DataComponents.CUSTOM_NAME} on
      *       selector-matched gear via the shared loot-naming pipeline, gated by
      *       {@link NamingConfig#chanceTradeItem()} (default 0.75). The name path deliberately
@@ -488,7 +497,7 @@ public final class NameComposer {
         if (!NamingConfig.isItemEnabled(result)) return false;
 
         // (1) Villager-provenance lore — every traded item except the exclusion denylist.
-        if (!result.is(TAG_TRADE_DESCRIPTION_EXCLUDED)
+        if (!result.is(Tags.TRADE_DESCRIPTION_EXCLUDED)
                 && rng.nextFloat() < NamingConfig.chancePurchasedDescription()) {
             NamingContext ctx = NamingContext.ofVillager(villagerName);
             String desc = compose(CHAIN_PURCHASED_ITEM_DESCRIPTION, result, null, rng, 0, ctx);
