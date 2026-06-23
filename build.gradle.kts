@@ -51,6 +51,10 @@ stonecutter.replacements {
         replace("MobSpawnType", "EntitySpawnReason")
         replace("GuiGraphics", "GuiGraphicsExtractor")
         replace("setScreen", "setScreenAndShow")
+        // 26.x GuiGraphics drawing-method renames (immediate-mode calls survive, just renamed).
+        replace("drawCenteredString", "centeredText")
+        replace("drawString", "text")
+        replace("renderItem", "item")
         // Package moves (same simple name, new package) — only the import FQN changes.
         replace("net.minecraft.world.entity.animal.WaterAnimal", "net.minecraft.world.entity.animal.fish.WaterAnimal")
         replace("net.minecraft.world.entity.animal.AbstractGolem", "net.minecraft.world.entity.animal.golem.AbstractGolem")
