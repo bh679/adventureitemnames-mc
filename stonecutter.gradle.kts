@@ -4,8 +4,12 @@ plugins {
     // so every Stonecutter version node shares a single Loom classloader. Applying
     // Loom per-node instead triggers a LoomGradleExtension cross-classloader
     // ClassCastException. Mirrors the classic Architectury `apply false` at root.
-    id("dev.architectury.loom") version "1.13-SNAPSHOT" apply false
-    id("architectury-plugin") version "3.4-SNAPSHOT" apply false
+    // Loom 1.17 / architectury-plugin 3.5 are required for MC 26.x support.
+    id("dev.architectury.loom") version "1.17-SNAPSHOT" apply false
+    // Deobfuscated MC 26.x uses the no-remap Loom variant (same jar, no mappings step).
+    // Each node applies whichever matches its version — see the loader/common builds.
+    id("dev.architectury.loom-no-remap") version "1.17-SNAPSHOT" apply false
+    id("architectury-plugin") version "3.5-SNAPSHOT" apply false
     id("com.gradleup.shadow") version "8.3.5" apply false
 }
 

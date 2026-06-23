@@ -25,6 +25,6 @@ config="adventureitemnames.mixins.json"
 [[dependencies.adventureitemnames]]
     modId="minecraft"
     type="required"
-    versionRange="[1.21.1]"
+    versionRange="${minecraft_range}"
     ordering="NONE"
     side="BOTH"
