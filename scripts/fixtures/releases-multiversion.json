@@ -1,0 +1,77 @@
+[
+  {
+    "tag_name": "v0.46.0",
+    "name": "Adventure Item Names v0.46.0",
+    "published_at": "2026-07-01T10:00:00Z",
+    "html_url": "https://github.com/bh679/adventureitemnames-mc/releases/tag/v0.46.0",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {
+        "name": "adventureitemnames-fabric-0.46.0+1.21.1.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.46.0/adventureitemnames-fabric-0.46.0+1.21.1.jar",
+        "size": 2621440
+      },
+      {
+        "name": "adventureitemnames-fabric-0.46.0+1.20.1.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.46.0/adventureitemnames-fabric-0.46.0+1.20.1.jar",
+        "size": 2625536
+      },
+      {
+        "name": "adventureitemnames-forge-0.46.0+1.21.1.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.46.0/adventureitemnames-forge-0.46.0+1.21.1.jar",
+        "size": 2752512
+      },
+      {
+        "name": "adventureitemnames-forge-0.46.0+1.20.1.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.46.0/adventureitemnames-forge-0.46.0+1.20.1.jar",
+        "size": 2756608
+      },
+      {
+        "name": "adventureitemnames-neoforge-0.46.0+1.21.1.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.46.0/adventureitemnames-neoforge-0.46.0+1.21.1.jar",
+        "size": 2719744
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.45.0",
+    "name": "Adventure Item Names v0.45.0",
+    "published_at": "2026-06-23T08:30:00Z",
+    "html_url": "https://github.com/bh679/adventureitemnames-mc/releases/tag/v0.45.0",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {
+        "name": "adventureitemnames-fabric-0.45.0.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.45.0/adventureitemnames-fabric-0.45.0.jar",
+        "size": 2611200
+      },
+      {
+        "name": "adventureitemnames-forge-0.45.0.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.45.0/adventureitemnames-forge-0.45.0.jar",
+        "size": 2742272
+      },
+      {
+        "name": "adventureitemnames-neoforge-0.45.0.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.45.0/adventureitemnames-neoforge-0.45.0.jar",
+        "size": 2709504
+      }
+    ]
+  },
+  {
+    "tag_name": "v0.1.0",
+    "name": "Adventure Item Names v0.1.0",
+    "published_at": "2025-11-02T12:00:00Z",
+    "html_url": "https://github.com/bh679/adventureitemnames-mc/releases/tag/v0.1.0",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {
+        "name": "adventureitemnames-0.1.0.jar",
+        "browser_download_url": "https://github.com/bh679/adventureitemnames-mc/releases/download/v0.1.0/adventureitemnames-0.1.0.jar",
+        "size": 1048576
+      }
+    ]
+  }
+]
