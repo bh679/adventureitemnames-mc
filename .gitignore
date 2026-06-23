@@ -34,6 +34,10 @@ saves/
 # Generated
 src/generated/
 
+# Stonecutter (multi-version) — generated per-version working trees + state
+versions/
+.stonecutter/
+
 # Local Claude state
 .claude/settings.local.json
 .claude/hook-versions.json

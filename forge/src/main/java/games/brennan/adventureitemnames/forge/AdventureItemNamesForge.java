@@ -8,8 +8,10 @@ import games.brennan.adventureitemnames.internal.VanillaRegistryPoolSource;
 import games.brennan.adventureitemnames.item.RandomChestItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+//? if >=1.21.1 {
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackSelectionConfig;
+//?}
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
@@ -137,6 +139,11 @@ public final class AdventureItemNamesForge {
             LOGGER.warn("[AdventureItemNames] built-in pack 'resourcepacks/{}' not found inside mod jar or classpath", packPath);
             return;
         }
+        // Forge's built-in-pack API changed with the 1.20.5 data-component update:
+        // 1.21 (52.x) bundles identity into PackLocationInfo + PackSelectionConfig;
+        // 1.20.1 (47.x) passes id/title/required/position/source to readMetaAndCreate
+        // directly and supplies resources via a (String id -> PackResources) lambda.
+        //? if >=1.21.1 {
         PackLocationInfo location = new PackLocationInfo(
             "mod/adventureitemnames/" + packPath,
             Component.literal(displayName),
@@ -150,6 +157,17 @@ public final class AdventureItemNamesForge {
             /* fixedPosition = */ false
         );
         Pack pack = Pack.readMetaAndCreate(location, supplier, PackType.SERVER_DATA, selectionConfig);
+        //?} else {
+        /*Pack pack = Pack.readMetaAndCreate(
+            "mod/adventureitemnames/" + packPath,
+            Component.literal(displayName),
+            true,
+            id -> new PathPackResources(id, resourcePath, true),
+            PackType.SERVER_DATA,
+            Pack.Position.TOP,
+            PackSource.BUILT_IN
+        );
+        *///?}
         if (pack == null) {
             LOGGER.warn("[AdventureItemNames] Pack.readMetaAndCreate returned null for 'resourcepacks/{}' (path={})", packPath, resourcePath);
             return;

@@ -10,11 +10,11 @@ full human oversight at each stage.
 
 ## Project Overview
 
-- **Project:** Adventure Item Names — a procedural item-naming system for Minecraft 1.21.1
+- **Project:** Adventure Item Names — a procedural item-naming system for Minecraft 1.21.1 and 1.20.1
 - **Origin:** Java port of the naming corpus from Dungeon Train (`bh679/dungeon-train-mc`), extracted as a standalone multi-loader mod
-- **Mod Loader:** Architectury Loom 1.13-SNAPSHOT targeting **Fabric** (`0.16.5`), **Forge** (`1.21.1-52.1.14`), **NeoForge** (`21.1.228`) — all on MC 1.21.1, Java 21
+- **Mod Loader:** Architectury Loom 1.13-SNAPSHOT, **multi-version via Stonecutter** (`dev.kikugie.stonecutter`). Targets **MC 1.21.1** (Fabric `0.103.0`, Forge `1.21.1-52.1.14`, NeoForge `21.1.228`, Java 21) and **MC 1.20.1** (Fabric `0.92.9`, Forge `1.20.1-47.4.20`, Java 17). NeoForge is **1.21.1-only** (no standalone 1.20.1 artifact — the Forge 1.20.1 jar covers that rare user). Per-MC dependency coords live in each loader's `build.gradle.kts` `when (mc)` map.
 - **Key Dependency:** Architectury API (loader abstraction). Sable is NOT a dependency.
-- **Gradle layout:** Architectury subprojects — `common/`, `fabric/`, `forge/`, `neoforge/`. See `build.gradle` + `settings.gradle`.
+- **Gradle layout (Stonecutter, Kotlin DSL):** root `src/` IS the Architectury **common** module; `fabric/`, `forge/`, `neoforge/` are loader **branches**. Stonecutter materialises every (loader, MC) as a node (`:fabric:1.21.1`, `:forge:1.20.1`, …). Version differences in shared source are bridged with `//? if >=1.21.1 { … } else { … }` preprocessor comments (concentrated in `src/main/java/.../compat/`: `Ids`, `ItemNameCompat`, and client `GuiCompat`). See `settings.gradle.kts`, `stonecutter.gradle.kts`, `build.gradle.kts`, `buildSrc/`.
 - **Repo:** `bh679/adventureitemnames-mc`
 - **GitHub Project:** Not yet created — track features as GitHub Issues until a board is set up
 - **Wiki:** github.com/bh679/adventureitemnames-mc/wiki (populated by `scripts/publish-wiki.sh` on release)
@@ -58,10 +58,10 @@ Those gate playbooks reference further playbooks as needed.
 
 Before writing any code:
 1. Enter plan mode (`EnterPlanMode`)
-2. Explore the codebase — read relevant files, understand existing patterns (`common/src/main/java/...`, `fabric/`, `forge/`, `neoforge/`, `build.gradle`, `gradle.properties`)
-   - Current stack baseline: MC 1.21.1, Architectury Loom 1.13-SNAPSHOT, Java 21, `mod_version` in `gradle.properties`. Fabric/Forge/NeoForge versions are pinned in `gradle.properties` too.
+2. Explore the codebase — read relevant files, understand existing patterns (`src/main/java/...` = common, `fabric/`, `forge/`, `neoforge/`, `build.gradle.kts`, `gradle.properties`)
+   - Current stack baseline: MC **1.21.1 + 1.20.1** via Stonecutter, Architectury Loom 1.13-SNAPSHOT, Java 21 (1.20.1 compiles to Java 17), `mod_version` in `gradle.properties`. Per-MC loader coords live in each loader's `build.gradle.kts` `when (mc)` map (NOT `gradle.properties`).
 3. Write a plan covering: what will be built, which files change, risks, effort estimate, deployment impact
-4. **Mod-impact check:** If the change involves new dependencies in `build.gradle`, MC/Architectury/loader version bumps, new common-vs-loader Mixins, new registered blocks/items/entities, new datapack registry types (pools/chains/selectors), new context refs in the `NameComposer` API, world-gen changes, or networking packets — call this out explicitly in the plan
+4. **Mod-impact check:** If the change involves new dependencies in a `build.gradle.kts`, MC/Architectury/loader version bumps, **adding/removing a supported MC version** (Stonecutter `versions(...)` + new `//? if` conditionals), new common-vs-loader Mixins, new registered blocks/items/entities, new datapack registry types (pools/chains/selectors), new context refs in the `NameComposer` API, world-gen changes, or networking packets — call this out explicitly in the plan
 5. Present via `ExitPlanMode` and wait for user approval
 
 ---
@@ -69,18 +69,19 @@ Before writing any code:
 ## Gate 2 — Testing Approval
 
 After implementation is complete:
-1. Build the mod: `./gradlew build` — must pass cleanly for all three loaders (no errors, warnings noted)
-2. Run unit tests if any: `./gradlew test`
-3. Launch in-game test client on Fabric AND NeoForge:
-   - `./gradlew fabric:runClient`
-   - `./gradlew neoforge:runClient`
-   - `./gradlew forge:runClient` is currently blocked by an upstream Architectury Loom 1.13 + Forge 1.21.1 JPMS conflict ([architectury/architectury-loom#284](https://github.com/architectury/architectury-loom/issues/284)). The Forge production jar still builds and is verified via load + creative + loot-roll smoke test in a real Forge install.
+1. Build all jars: `./gradlew chiseledBuild` — builds every (loader, MC) node into `build/libs/<version>/<loader>/`; must pass cleanly (5 jars: Fabric+Forge @1.20.1, Fabric+Forge+NeoForge @1.21.1).
+2. Run unit tests on both versions: `./gradlew :1.21.1:test` and `./gradlew "Set active project to 1.20.1" :1.20.1:test` (then `./gradlew "Reset active project"` to return to 1.21.1 before committing).
+3. Launch in-game test client on Fabric AND NeoForge. The dev client runs the **active** Stonecutter version — switch with `Set active project to <ver>` first:
+   - `./gradlew runActiveClientFabric` (active 1.21.1) / set active 1.20.1, then `runActiveClientFabric`
+   - `./gradlew runActiveClientNeoForge` (NeoForge is 1.21.1-only)
+   - `runActiveClientForge` is currently blocked by an upstream Architectury Loom 1.13 + Forge JPMS conflict ([architectury/architectury-loom#284](https://github.com/architectury/architectury-loom/issues/284)). The Forge production jars still build and are verified via load + creative + loot-roll smoke test in a real Forge install (both 1.21.1 and 1.20.1).
 4. Take screenshots of the feature in-game (F2 in Minecraft → `<loader>/run/screenshots/`)
 5. Enter plan mode and present a **Gate 2 Testing Report**:
-   - Build result: success/fail for each loader, jar size, output paths:
-     - `fabric/build/libs/adventureitemnames-fabric-<version>.jar`
-     - `forge/build/libs/adventureitemnames-forge-<version>.jar`
-     - `neoforge/build/libs/adventureitemnames-neoforge-<version>.jar`
+   - Build result: success/fail for each (loader, MC) jar, jar size, output paths under
+     `build/libs/<version>/<loader>/adventureitemnames-<loader>-<version>+<mc>.jar`, e.g.:
+     - `build/libs/<v>/fabric/adventureitemnames-fabric-<v>+1.21.1.jar` and `…+1.20.1.jar`
+     - `build/libs/<v>/forge/adventureitemnames-forge-<v>+1.21.1.jar` and `…+1.20.1.jar`
+     - `build/libs/<v>/neoforge/adventureitemnames-neoforge-<v>+1.21.1.jar` (1.21.1 only)
    - Unit test summary: total, passed, failed, skipped (if applicable)
    - Screenshot paths
    - Step-by-step in-game testing instructions (what world, what to do, what to look for)
@@ -110,19 +111,26 @@ Read `.claude/gates/gate-3-merge.md` for full procedure. Summary:
 ### Build & Run
 
 ```bash
-./gradlew build                  # Compile and package all three loader jars
-./gradlew fabric:runClient       # Launch dev Fabric client with mod loaded
-./gradlew neoforge:runClient     # Launch dev NeoForge client with mod loaded
-./gradlew forge:runClient        # Currently blocked — JPMS conflict (loom 1.13 + Forge 1.21.1)
-./gradlew :common:test           # Run JUnit tests in the common module (if present)
-./gradlew --stop                 # Stop the gradle daemon if dev client hangs
+./gradlew chiseledBuild               # Build all 5 (loader, MC) jars → build/libs/<version>/<loader>/
+./gradlew "Set active project to 1.20.1"   # Switch the working tree + dev runs to MC 1.20.1
+./gradlew "Reset active project"      # Switch back to 1.21.1 (vcsVersion) — run before committing
+./gradlew runActiveClientFabric       # Launch dev Fabric client for the ACTIVE MC version
+./gradlew runActiveClientNeoForge     # Launch dev NeoForge client (1.21.1 only)
+./gradlew runActiveClientForge        # Currently blocked — JPMS conflict (loom 1.13 + Forge)
+./gradlew :1.21.1:test                # JUnit (common) on 1.21.1; :1.20.1:test for 1.20.1
+./gradlew --stop                      # Stop the gradle daemon if a dev client hangs
 ```
+
+> **Stonecutter note:** the working tree always reflects the **active** version (its `//? if`
+> comments are uncommented for that MC). `chiseledBuild` builds every version regardless; plain
+> `build` / dev clients use the active one. Always `Reset active project` (→ 1.21.1) before
+> committing so the diff stays in the canonical form.
 
 ### In-Game Manual Testing
 
-For Gate 2 verification:
-1. `./gradlew fabric:runClient` (and `neoforge:runClient`) — wait for the dev client to start
-2. Create or open the test world (`fabric/run/saves/`, `neoforge/run/saves/`)
+For Gate 2 verification (run once per active MC version — `Set active project to <ver>` between passes):
+1. `./gradlew runActiveClientFabric` (and `runActiveClientNeoForge`) — wait for the dev client to start
+2. Create or open the test world (`run/fabric/saves/`, `run/neoforge/saves/`)
 3. Reproduce the feature flow — typically: open a chest with naturally generated loot, or kill mobs, and inspect rolled item names
 4. Press **F2** for screenshots → saved to `<loader>/run/screenshots/`
 5. Copy relevant screenshots to `./test-results/gate2-<feature-slug>-<YYYY-MM>.png`
@@ -131,13 +139,14 @@ For Gate 2 verification:
 
 Any change touching naming logic, loot integration, datapack loading, the `NameComposer` API,
 or the shared Mixin MUST be verified on **Fabric AND NeoForge dev clients**. Forge gets a
-production-jar smoke test (drop the built jar into a real Forge 1.21.1 install, load the mod,
-open creative, kill mobs to roll loot, confirm names appear). Document the parity outcome in
-the Gate 2 report.
+production-jar smoke test (drop the built jar into a real Forge install, load the mod,
+open creative, kill mobs to roll loot, confirm names appear). A change touching version-bridged
+code (`compat/`, mixin descriptors, `//? if` blocks) must be verified on **both MC 1.21.1 AND
+1.20.1**. Document the parity outcome in the Gate 2 report.
 
 If a change is loader-local (touches only `fabric/`, only `forge/`, or only `neoforge/` files
-with no `common/` impact), say so explicitly and only test that loader — but call it out so
-the reviewer can sanity-check the scope.
+with no root `src/` (common) impact), say so explicitly and only test that loader — but call it
+out so the reviewer can sanity-check the scope.
 
 ---
 
