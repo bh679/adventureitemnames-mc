@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import games.brennan.adventureitemnames.api.ChanceKind;
@@ -28,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ColorLoaderTest {
 
     private static final ResourceLocation FILE_ID =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "defaults");
+        Ids.of("adventureitemnames", "defaults");
 
     @AfterEach
     void resetDatapackColors() {
@@ -148,9 +149,9 @@ class ColorLoaderTest {
         // (alphabetical map iteration), the later one clobbers the
         // earlier — mirrors ChanceLoader semantics.
         Map<ResourceLocation, JsonElement> objects = new LinkedHashMap<>();
-        objects.put(ResourceLocation.fromNamespaceAndPath("adventureitemnames", "a_first"),
+        objects.put(Ids.of("adventureitemnames", "a_first"),
             JsonParser.parseString("{ \"description_plain\": \"red\", \"mob_villager\": \"gold\" }"));
-        objects.put(ResourceLocation.fromNamespaceAndPath("adventureitemnames", "b_second"),
+        objects.put(Ids.of("adventureitemnames", "b_second"),
             JsonParser.parseString("{ \"description_plain\": \"blue\" }"));
         new ColorLoader().apply(objects, null, null);
 

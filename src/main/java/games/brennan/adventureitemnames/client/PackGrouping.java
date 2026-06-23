@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NameSegment;
@@ -28,7 +29,7 @@ import java.util.Map;
 public final class PackGrouping {
 
     private static final ResourceLocation TITLE_COMBINATIONS =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "title_combinations");
+        Ids.of("adventureitemnames", "title_combinations");
 
     public record PoolView(
         ResourceLocation poolId,

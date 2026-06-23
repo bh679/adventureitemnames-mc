@@ -1,9 +1,10 @@
 package games.brennan.adventureitemnames.api;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.mojang.logging.LogUtils;
+import games.brennan.adventureitemnames.compat.ItemNameCompat;
 import games.brennan.adventureitemnames.internal.NameRegistry;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -23,7 +24,6 @@ import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.ItemLore;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -60,25 +60,25 @@ public final class NameComposer {
 
     /** Virtual ref resolved from the stack's item id rather than a JSON pool. */
     public static final ResourceLocation REF_ITEM_MATERIAL =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/item_material");
+        Ids.of("adventureitemnames", "context/item_material");
 
     /** Virtual ref resolved from the {@link NamingContext}'s player display name. */
     public static final ResourceLocation REF_PLAYER_NAME =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/player_name");
+        Ids.of("adventureitemnames", "context/player_name");
 
     /** Virtual ref resolved from the {@link NamingContext}'s villager display name (trade hook). */
     public static final ResourceLocation REF_VILLAGER_NAME =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "context/villager_name");
+        Ids.of("adventureitemnames", "context/villager_name");
 
     private static final ResourceLocation POOL_TYPE_SYNONYMS =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "type_synonyms");
+        Ids.of("adventureitemnames", "type_synonyms");
 
     private static final ResourceLocation CHAIN_MOB_NAME =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mob_name");
+        Ids.of("adventureitemnames", "mob_name");
 
     /** Chain id used to name PlayerMob mobs — a copy of {@link #CHAIN_MOB_NAME}. */
     private static final ResourceLocation CHAIN_PLAYERMOB_NAME =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "playermob_name");
+        Ids.of("adventureitemnames", "playermob_name");
 
     /**
      * Entity-type id of the PlayerMob mod's mob. Matched by string so AIN has
@@ -86,19 +86,19 @@ public final class NameComposer {
      * never triggers when the mod (and therefore the entity type) is absent.
      */
     private static final ResourceLocation PLAYERMOB_ENTITY_ID =
-        ResourceLocation.fromNamespaceAndPath("playermob", "player_mob");
+        Ids.of("playermob", "player_mob");
 
     /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
     public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "crafted_item_description");
+        Ids.of("adventureitemnames", "crafted_item_description");
 
     /** Chain id used by {@link #applyVillagerTradeNaming} for items bought from a villager. */
     public static final ResourceLocation CHAIN_PURCHASED_ITEM_DESCRIPTION =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "purchased_item_description");
+        Ids.of("adventureitemnames", "purchased_item_description");
 
     /** Item-tag gate for {@link #applyCraftedDescription} — only items in this tag receive crafted lore. */
     private static final TagKey<Item> TAG_CRAFTABLE_NAMABLE =
-        TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
+        TagKey.create(Registries.ITEM, Ids.of(
             "adventureitemnames", "craftable_namable"));
 
     /**
@@ -107,7 +107,7 @@ public final class NameComposer {
      * villager-provenance lore <em>except</em> those tagged here (emeralds, raw nature blocks).
      */
     private static final TagKey<Item> TAG_TRADE_DESCRIPTION_EXCLUDED =
-        TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(
+        TagKey.create(Registries.ITEM, Ids.of(
             "adventureitemnames", "trade_description_excluded"));
 
     /** Pool ids that already triggered the user-blanked-pool fallback warning. */
@@ -135,7 +135,7 @@ public final class NameComposer {
 
     /**
      * Generate a name for {@code stack} and apply it as
-     * {@link DataComponents#CUSTOM_NAME}. No-op when no registered
+     * {@code DataComponents.CUSTOM_NAME}. No-op when no registered
      * selector covers the stack's item tags or the chosen chain is empty /
      * unresolved.
      */
@@ -188,7 +188,7 @@ public final class NameComposer {
         name = applyTypeSynonym(name, stack, sel.appliesTo(), rng);
 
         ChanceKind colorKind = tier == NameTier.ENCHANTED ? ChanceKind.ENCHANTED : ChanceKind.PLAIN;
-        stack.set(DataComponents.CUSTOM_NAME, withColor(Component.literal(name), colorKind));
+        ItemNameCompat.setCustomName(stack, withColor(Component.literal(name), colorKind));
     }
 
     /**
@@ -281,22 +281,19 @@ public final class NameComposer {
 
     /**
      * Split {@code text} on {@code \n} and append the resulting lines to
-     * the stack's existing {@code DataComponents.LORE} component (or an
-     * empty lore if the stack has none). Each line takes its color from
+     * the stack's existing lore (or an empty lore if the stack has none).
+     * Each line takes its color from
      * {@link NamingConfig#colorFor(ChanceKind) colorFor(colorKind)};
      * vanilla's default lore styling (dark purple italic) applies on top
-     * when no color override is set. Clamped to {@link ItemLore#MAX_LINES}
-     * so a misconfigured chain can't blow the vanilla constructor's size
-     * check.
+     * when no color override is set. The component-vs-NBT write and the
+     * vanilla line-count clamp live in {@link ItemNameCompat#appendLore}.
      */
     private static void appendLore(ItemStack stack, String text, ChanceKind colorKind) {
-        ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
-        List<Component> merged = new ArrayList<>(existing.lines());
+        List<Component> lines = new ArrayList<>();
         for (String line : text.split("\n", -1)) {
-            if (merged.size() >= ItemLore.MAX_LINES) break;
-            merged.add(withColor(Component.literal(line), colorKind));
+            lines.add(withColor(Component.literal(line), colorKind));
         }
-        stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
+        ItemNameCompat.appendLore(stack, lines);
     }
 
     /**
@@ -429,7 +426,7 @@ public final class NameComposer {
 
     /**
      * Generate a description line for a freshly-crafted {@link ItemStack}
-     * and append it to {@link DataComponents#LORE}. Intended to be called
+     * and append it to {@code DataComponents.LORE}. Intended to be called
      * from a mixin on {@code ResultSlot#onTake(Player, ItemStack)} so it
      * fires exactly once per craft cycle (never on recipe preview / ghost
      * items).
@@ -471,12 +468,12 @@ public final class NameComposer {
      *
      * <p>Two independent effects:
      * <ul>
-     *   <li><b>Provenance lore</b> — appended {@link DataComponents#LORE} that names the
+     *   <li><b>Provenance lore</b> — appended {@code DataComponents.LORE} that names the
      *       selling {@code villagerName}, via {@link #CHAIN_PURCHASED_ITEM_DESCRIPTION}
      *       (a duplicate of the crafted chain that reads {@link #REF_VILLAGER_NAME}).
      *       Gated by {@link NamingConfig#chancePurchasedDescription()} (default 1.0) and the
      *       {@link #TAG_TRADE_DESCRIPTION_EXCLUDED} denylist (emeralds, raw nature blocks).</li>
-     *   <li><b>Procedural name</b> — a generated {@link DataComponents#CUSTOM_NAME} on
+     *   <li><b>Procedural name</b> — a generated {@code DataComponents.CUSTOM_NAME} on
      *       selector-matched gear via the shared loot-naming pipeline, gated by
      *       {@link NamingConfig#chanceTradeItem()} (default 0.75). The name path deliberately
      *       skips the loot-style description so trades carry only the provenance line above —

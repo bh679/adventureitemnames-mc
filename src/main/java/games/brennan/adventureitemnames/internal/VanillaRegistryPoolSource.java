@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.NamePool;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -57,11 +58,11 @@ public final class VanillaRegistryPoolSource implements SyntheticPoolSource {
 
     /** Pool id for every vanilla block name. */
     public static final ResourceLocation MC_BLOCKS =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mc_blocks");
+        Ids.of("adventureitemnames", "mc_blocks");
 
     /** Pool id for every vanilla item name. */
     public static final ResourceLocation MC_ITEMS =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "mc_items");
+        Ids.of("adventureitemnames", "mc_items");
 
     @Override
     public Map<ResourceLocation, NamePool> produce() {

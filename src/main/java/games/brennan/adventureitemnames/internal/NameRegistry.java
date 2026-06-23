@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.mojang.logging.LogUtils;
@@ -438,7 +439,7 @@ public final class NameRegistry {
      * pack-source bookkeeping was lost during reload teardown.
      */
     private static String resolvePackId(ResourceManager mgr, ResourceLocation fileId, String subpath) {
-        ResourceLocation diskPath = ResourceLocation.fromNamespaceAndPath(
+        ResourceLocation diskPath = Ids.of(
             fileId.getNamespace(), "naming/" + subpath + "/" + fileId.getPath() + ".json");
         return mgr.getResource(diskPath).map(Resource::sourcePackId).orElse(UNKNOWN_PACK);
     }
@@ -452,7 +453,7 @@ public final class NameRegistry {
             Map<ResourceLocation, String> packs = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
                 ResourceLocation fileId = e.getKey();
-                ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
+                ResourceLocation id = Ids.of(
                     fileId.getNamespace(), fileId.getPath());
                 try {
                     NamePool pool = NameCodec.parsePool(e.getValue(), id);
@@ -578,7 +579,7 @@ public final class NameRegistry {
         if (!path.startsWith(prefix) || !path.endsWith(CHAIN_EXT)) return null;
         String chainPath = path.substring(prefix.length(), path.length() - CHAIN_EXT.length());
         if (chainPath.isEmpty()) return null;
-        return ResourceLocation.fromNamespaceAndPath(filePath.getNamespace(), chainPath);
+        return Ids.of(filePath.getNamespace(), chainPath);
     }
 
     /**
@@ -639,7 +640,7 @@ public final class NameRegistry {
             Map<ResourceLocation, String> packs = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> e : objects.entrySet()) {
                 ResourceLocation fileId = e.getKey();
-                ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
+                ResourceLocation id = Ids.of(
                     fileId.getNamespace(), fileId.getPath());
                 try {
                     NameSelector sel = NameCodec.parseSelector(e.getValue(), id);

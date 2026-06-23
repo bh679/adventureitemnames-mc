@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import games.brennan.adventureitemnames.api.NameSelector;
 import games.brennan.adventureitemnames.api.NameTier;
 import games.brennan.adventureitemnames.api.NamingConfig;
@@ -228,7 +229,7 @@ public final class SelectorsScreen extends Screen {
         Map<ResourceLocation, NameSelector> remaining = new LinkedHashMap<>(NameRegistry.allSelectors());
         List<NameSelector> ordered = new ArrayList<>();
         for (String path : SELECTOR_PATH_ORDER) {
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath("adventureitemnames", path);
+            ResourceLocation id = Ids.of("adventureitemnames", path);
             NameSelector sel = remaining.remove(id);
             if (sel != null) ordered.add(sel);
         }
@@ -321,7 +322,7 @@ public final class SelectorsScreen extends Screen {
             default -> path;
         };
         Item item = BuiltInRegistries.ITEM.getOptional(
-            ResourceLocation.fromNamespaceAndPath("minecraft", itemPath)).orElse(Items.PAPER);
+            Ids.of("minecraft", itemPath)).orElse(Items.PAPER);
         return new ItemStack(item);
     }
 

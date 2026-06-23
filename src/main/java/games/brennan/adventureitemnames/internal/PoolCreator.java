@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
@@ -86,7 +87,7 @@ public final class PoolCreator {
             // listener-side POOL_PACKS uses raw source pack ids (e.g.
             // "fabric" on Fabric), and PoolListScreen.pack().packId() is the
             // same raw id, so the grouping must match.
-            ResourceLocation poolId = ResourceLocation.fromNamespaceAndPath(NAMESPACE, poolSlug);
+            ResourceLocation poolId = Ids.of(NAMESPACE, poolSlug);
             NamePool pool = new NamePool(poolId, List.of(NamePool.PoolEntry.universal(entryText)));
             NameRegistry.putPoolInMemory(pool, packId);
             LOGGER.info("[AdventureItemNames] created pool '{}' in pack '{}' at {}", poolSlug, packId, file);

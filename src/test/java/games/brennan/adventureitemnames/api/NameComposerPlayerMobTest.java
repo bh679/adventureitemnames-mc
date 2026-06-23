@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.api;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
@@ -19,18 +20,18 @@ class NameComposerPlayerMobTest {
     @Test
     void matchesPlayerMobEntityId() {
         assertTrue(NameComposer.isPlayerMobId(
-            ResourceLocation.fromNamespaceAndPath("playermob", "player_mob")));
+            Ids.of("playermob", "player_mob")));
     }
 
     @Test
     void rejectsOtherEntityIds() {
         // Different mod, different path, and a vanilla mob all fail to match.
         assertFalse(NameComposer.isPlayerMobId(
-            ResourceLocation.fromNamespaceAndPath("minecraft", "zombie")));
+            Ids.of("minecraft", "zombie")));
         assertFalse(NameComposer.isPlayerMobId(
-            ResourceLocation.fromNamespaceAndPath("playermob", "player_mob_spawn_egg")));
+            Ids.of("playermob", "player_mob_spawn_egg")));
         assertFalse(NameComposer.isPlayerMobId(
-            ResourceLocation.fromNamespaceAndPath("minecraft", "player_mob")));
+            Ids.of("minecraft", "player_mob")));
     }
 
     @Test

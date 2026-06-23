@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -21,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NameCodecSelectorTest {
 
     private static final ResourceLocation FALLBACK =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "test");
+        Ids.of("adventureitemnames", "test");
 
     private static NameSelector parse(String json) throws NameCodec.NameParseException {
         JsonElement el = JsonParser.parseString(json);
@@ -65,10 +66,10 @@ class NameCodecSelectorTest {
         NameSelector sel = parse(json);
         assertEquals(2, sel.descriptionTiers().size());
         assertEquals(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_desc_short"),
+            Ids.of("adventureitemnames", "weapon_desc_short"),
             sel.descriptionTiers().get("plain"));
         assertEquals(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_desc_full"),
+            Ids.of("adventureitemnames", "weapon_desc_full"),
             sel.descriptionTiers().get("enchanted"));
     }
 
@@ -107,16 +108,16 @@ class NameCodecSelectorTest {
         assertEquals(1, sel.descriptionTiers().size(),
             "only the well-formed entry should survive");
         assertEquals(
-            ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_desc_short"),
+            Ids.of("adventureitemnames", "weapon_desc_short"),
             sel.descriptionTiers().get("plain"));
     }
 
     @Test
     void writerRoundTripPreservesDescriptionTiers() throws Exception {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("adventureitemnames", "sword");
-        ResourceLocation appliesTo = ResourceLocation.fromNamespaceAndPath("minecraft", "swords");
-        ResourceLocation nameChain = ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_name_full");
-        ResourceLocation descChain = ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_desc_full");
+        ResourceLocation id = Ids.of("adventureitemnames", "sword");
+        ResourceLocation appliesTo = Ids.of("minecraft", "swords");
+        ResourceLocation nameChain = Ids.of("adventureitemnames", "weapon_name_full");
+        ResourceLocation descChain = Ids.of("adventureitemnames", "weapon_desc_full");
 
         NameSelector original = new NameSelector(id, appliesTo,
             java.util.Map.of("plain", nameChain, "enchanted", nameChain),
@@ -137,9 +138,9 @@ class NameCodecSelectorTest {
     void writerOmitsEmptyDescriptionTiers() {
         // Shipped 11 selector JSONs all have empty descriptionTiers — the writer
         // must not emit the key, so re-saving them stays diff-clean.
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("adventureitemnames", "sword");
-        ResourceLocation appliesTo = ResourceLocation.fromNamespaceAndPath("minecraft", "swords");
-        ResourceLocation nameChain = ResourceLocation.fromNamespaceAndPath("adventureitemnames", "weapon_name_full");
+        ResourceLocation id = Ids.of("adventureitemnames", "sword");
+        ResourceLocation appliesTo = Ids.of("minecraft", "swords");
+        ResourceLocation nameChain = Ids.of("adventureitemnames", "weapon_name_full");
 
         NameSelector noDesc = new NameSelector(id, appliesTo,
             java.util.Map.of("plain", nameChain));

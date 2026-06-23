@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -67,7 +68,7 @@ public final class ItemPicker {
         public Item iconItem() {
             String path = isFixed() ? pathSuffix : "iron_" + pathSuffix;
             return BuiltInRegistries.ITEM.getOptional(
-                ResourceLocation.fromNamespaceAndPath("minecraft", path)).orElse(Items.AIR);
+                Ids.of("minecraft", path)).orElse(Items.AIR);
         }
         public List<Material> materials() {
             if (isFixed()) return List.of();
@@ -102,7 +103,7 @@ public final class ItemPicker {
         if (k.isFixed()) return new ItemStack(k.iconItem());
         String path = m.pathPrefix + k.pathSuffix;
         Item item = BuiltInRegistries.ITEM.getOptional(
-            ResourceLocation.fromNamespaceAndPath("minecraft", path)).orElse(null);
+            Ids.of("minecraft", path)).orElse(null);
         if (item == null || item == Items.AIR) return new ItemStack(k.iconItem());
         return new ItemStack(item);
     }

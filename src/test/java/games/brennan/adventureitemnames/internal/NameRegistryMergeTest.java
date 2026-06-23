@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import games.brennan.adventureitemnames.api.NameChain;
 import games.brennan.adventureitemnames.api.NameSegment;
 import games.brennan.adventureitemnames.api.NameSegment.WeightedRef;
@@ -20,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class NameRegistryMergeTest {
 
-    private static final ResourceLocation TITLE = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation TITLE = Ids.of(
         "adventureitemnames", "title_combinations");
 
     private static NameRegistry.ChainLayer layer(NameChain chain, String packId) {
@@ -32,7 +33,7 @@ class NameRegistryMergeTest {
     }
 
     private static WeightedRef ref(String id, float w) {
-        return new WeightedRef(ResourceLocation.parse(id), w);
+        return new WeightedRef(Ids.parse(id), w);
     }
 
     @Test

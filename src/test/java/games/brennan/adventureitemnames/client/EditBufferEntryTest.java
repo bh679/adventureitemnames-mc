@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import games.brennan.adventureitemnames.api.NamePool;
 import games.brennan.adventureitemnames.api.NamingConfig;
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class EditBufferEntryTest {
 
     private static final ResourceLocation POOL =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "colors");
+        Ids.of("adventureitemnames", "colors");
 
     @AfterEach
     void resetGlobalLayers() {

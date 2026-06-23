@@ -32,6 +32,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Mob.class)
 public abstract class MobSpawnMixin {
 
+    // MC 1.21 dropped finalizeSpawn's trailing @Nullable CompoundTag parameter that
+    // 1.20.1 still carries, so the target descriptor and the injected method's
+    // parameter list differ per version.
+    //? if >=1.21.1 {
     @Inject(
         method = "finalizeSpawn(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/MobSpawnType;Lnet/minecraft/world/entity/SpawnGroupData;)Lnet/minecraft/world/entity/SpawnGroupData;",
         at = @At("RETURN")
@@ -41,4 +45,15 @@ public abstract class MobSpawnMixin {
                                                   CallbackInfoReturnable<SpawnGroupData> cir) {
         NameComposer.applyMobName((Mob) (Object) this, level.getRandom());
     }
+    //?} else {
+    /*@Inject(
+        method = "finalizeSpawn(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/MobSpawnType;Lnet/minecraft/world/entity/SpawnGroupData;Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/world/entity/SpawnGroupData;",
+        at = @At("RETURN")
+    )
+    private void adventureitemnames$applyMobName(ServerLevelAccessor level, DifficultyInstance difficulty,
+                                                  MobSpawnType reason, SpawnGroupData data,
+                                                  net.minecraft.nbt.CompoundTag dataTag,
+                                                  CallbackInfoReturnable<SpawnGroupData> cir) {
+        NameComposer.applyMobName((Mob) (Object) this, level.getRandom());
+    }*///?}
 }

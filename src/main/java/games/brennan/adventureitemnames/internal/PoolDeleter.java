@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
@@ -59,7 +60,7 @@ public final class PoolDeleter {
             // resource manager's cached classpath view doesn't re-add the
             // pool on the next reload (source-tree deletions aren't visible
             // mid-session until the next launch).
-            ResourceLocation poolId = ResourceLocation.fromNamespaceAndPath(NAMESPACE, poolPath);
+            ResourceLocation poolId = Ids.of(NAMESPACE, poolPath);
             NameRegistry.removePoolFromMemory(poolId);
             return true;
         } catch (IOException ex) {

@@ -152,7 +152,13 @@ public final class RandomChestItem extends Item {
             case DEFAULT -> NameComposer.applyName(stack, rng);
             case ALWAYS_NAMED -> NameComposer.applyNameAlways(stack, rng);
             case ENCHANTED -> {
+                // 1.21's enchantItem takes a RegistryAccess + optional enchantment set;
+                // 1.20.1's takes a boolean allowTreasure.
+                //? if >=1.21.1 {
                 EnchantmentHelper.enchantItem(rng, stack, ENCHANT_LEVEL, level.registryAccess(), Optional.empty());
+                //?} else {
+                /*EnchantmentHelper.enchantItem(rng, stack, ENCHANT_LEVEL, true);*/
+                //?}
                 NameComposer.applyNameAlways(stack, rng);
             }
         }

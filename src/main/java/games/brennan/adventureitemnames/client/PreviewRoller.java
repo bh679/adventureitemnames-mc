@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.client;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import com.mojang.logging.LogUtils;
 import games.brennan.adventureitemnames.api.ChanceKind;
 import games.brennan.adventureitemnames.api.NameComposer;
@@ -156,7 +157,7 @@ public final class PreviewRoller {
         }
 
         if (forcePoolForSegment1 != null) {
-            ResourceLocation chain = ResourceLocation.fromNamespaceAndPath(
+            ResourceLocation chain = Ids.of(
                 "adventureitemnames", "title_combinations");
             var ch = NameRegistry.chain(chain).orElse(null);
             if (ch != null && ch.segments().size() > 1) {

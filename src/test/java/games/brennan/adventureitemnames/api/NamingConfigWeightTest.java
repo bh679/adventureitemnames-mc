@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.api;
 
+import games.brennan.adventureitemnames.compat.Ids;
 import games.brennan.adventureitemnames.internal.ChanceOverrides;
 import games.brennan.adventureitemnames.internal.DisableSet;
 import games.brennan.adventureitemnames.internal.EntryOverrides;
@@ -24,9 +25,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class NamingConfigWeightTest {
 
     private static final ResourceLocation CHAIN =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "title_combinations");
+        Ids.of("adventureitemnames", "title_combinations");
     private static final ResourceLocation REF =
-        ResourceLocation.fromNamespaceAndPath("adventureitemnames", "food");
+        Ids.of("adventureitemnames", "food");
 
     @AfterEach
     void resetLayers() {
