@@ -39,13 +39,24 @@ import java.util.Map;
  * underscore-key skip convention, same merge semantics — only the value
  * type differs (string color name instead of float).
  */
+// MC 26.x made SimpleJsonResourceReloadListener generic over the decoded type and takes a
+// Codec + FileToIdConverter instead of a Gson + directory string. We still want raw JsonElement
+// per file, so parameterise on JsonElement and pass ExtraCodecs.JSON (a Codec<JsonElement>).
+//? if >=26 {
+/*public final class ColorLoader extends SimpleJsonResourceReloadListener<com.google.gson.JsonElement> {
+*///?} else {
 public final class ColorLoader extends SimpleJsonResourceReloadListener {
+//?}
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
 
     public ColorLoader() {
+        //? if >=26 {
+        /*super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("colors"));
+        *///?} else {
         super(GSON, "colors");
+        //?}
     }
 
     @Override

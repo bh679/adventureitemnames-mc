@@ -444,8 +444,13 @@ public final class NameRegistry {
         return mgr.getResource(diskPath).map(Resource::sourcePackId).orElse(UNKNOWN_PACK);
     }
 
+    //? if >=26 {
+    /*private static final class PoolListener extends SimpleJsonResourceReloadListener<com.google.gson.JsonElement> {
+        PoolListener() { super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("naming/pools")); }
+    *///?} else {
     private static final class PoolListener extends SimpleJsonResourceReloadListener {
         PoolListener() { super(GSON, "naming/pools"); }
+    //?}
 
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {
@@ -631,8 +636,13 @@ public final class NameRegistry {
         return new NameChain(base.id(), List.copyOf(merged), base.replace());
     }
 
+    //? if >=26 {
+    /*private static final class SelectorListener extends SimpleJsonResourceReloadListener<com.google.gson.JsonElement> {
+        SelectorListener() { super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("naming/selectors")); }
+    *///?} else {
     private static final class SelectorListener extends SimpleJsonResourceReloadListener {
         SelectorListener() { super(GSON, "naming/selectors"); }
+    //?}
 
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager mgr, ProfilerFiller profiler) {

@@ -33,13 +33,22 @@ import java.util.Map;
  * → later files clobber earlier ones for matching keys. Files with no
  * recognised keys are silent no-ops.
  */
+// MC 26.x: SimpleJsonResourceReloadListener is generic + Codec-based (see ColorLoader).
+//? if >=26 {
+/*public final class ChanceLoader extends SimpleJsonResourceReloadListener<com.google.gson.JsonElement> {
+*///?} else {
 public final class ChanceLoader extends SimpleJsonResourceReloadListener {
+//?}
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
 
     public ChanceLoader() {
+        //? if >=26 {
+        /*super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("chances"));
+        *///?} else {
         super(GSON, "chances");
+        //?}
     }
 
     @Override

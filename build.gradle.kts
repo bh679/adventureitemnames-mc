@@ -50,6 +50,7 @@ stonecutter.replacements {
         replace("ResourceLocation", "Identifier")
         replace("MobSpawnType", "EntitySpawnReason")
         replace("GuiGraphics", "GuiGraphicsExtractor")
+        replace("setScreen", "setScreenAndShow")
         // Package moves (same simple name, new package) — only the import FQN changes.
         replace("net.minecraft.world.entity.animal.WaterAnimal", "net.minecraft.world.entity.animal.fish.WaterAnimal")
         replace("net.minecraft.world.entity.animal.AbstractGolem", "net.minecraft.world.entity.animal.golem.AbstractGolem")

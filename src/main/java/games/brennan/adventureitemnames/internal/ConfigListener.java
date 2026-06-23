@@ -27,13 +27,22 @@ import java.util.Map;
  * {@code <configDir>/adventureitemnames.json} and pick up the change
  * with a single {@code /reload}.
  */
+// MC 26.x: SimpleJsonResourceReloadListener is generic + Codec-based (see ColorLoader).
+//? if >=26 {
+/*public final class ConfigListener extends SimpleJsonResourceReloadListener<com.google.gson.JsonElement> {
+*///?} else {
 public final class ConfigListener extends SimpleJsonResourceReloadListener {
+//?}
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
 
     public ConfigListener() {
+        //? if >=26 {
+        /*super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("disabled"));
+        *///?} else {
         super(GSON, "disabled");
+        //?}
     }
 
     @Override
