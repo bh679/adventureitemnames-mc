@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Colors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -318,8 +319,8 @@ public final class ConfigCodec {
                 continue;
             }
             String name = vEl.getAsString();
-            ChatFormatting color = ChatFormatting.getByName(name);
-            if (color == null || !color.isColor()) {
+            ChatFormatting color = Colors.byName(name);
+            if (color == null || !Colors.isColor(color)) {
                 LOGGER.warn("[AdventureItemNames] config '{}' colors['{}'] '{}' is not a valid color — ignoring",
                     sourceLabel, entry.getKey(), name);
                 continue;

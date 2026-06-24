@@ -171,7 +171,7 @@ public final class PreviewRoller {
 
     private static List<Result> doBatchRolls(List<ItemStack> stacks, List<Boolean> enchanted, boolean gateByChance) {
         Minecraft mc = Minecraft.getInstance();
-        RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        RandomSource rng = mc.level != null ? mc.level.getRandom() : RandomSource.create();
         List<Result> out = new ArrayList<>(stacks.size());
         for (int i = 0; i < stacks.size(); i++) {
             ItemStack stack = stacks.get(i).copy();
@@ -183,7 +183,7 @@ public final class PreviewRoller {
 
     private static List<String> doChainRolls(ResourceLocation chainId, int count) {
         Minecraft mc = Minecraft.getInstance();
-        RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        RandomSource rng = mc.level != null ? mc.level.getRandom() : RandomSource.create();
         NamingContext ctx = previewContext(mc);
         List<String> out = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -195,7 +195,7 @@ public final class PreviewRoller {
 
     private static Result doSingleRoll(ItemStack stack, boolean enchanted, boolean gateByChance) {
         Minecraft mc = Minecraft.getInstance();
-        RandomSource rng = mc.level != null ? mc.level.random : RandomSource.create();
+        RandomSource rng = mc.level != null ? mc.level.getRandom() : RandomSource.create();
         return rollOne(stack.copy(), enchanted, rng, gateByChance);
     }
 

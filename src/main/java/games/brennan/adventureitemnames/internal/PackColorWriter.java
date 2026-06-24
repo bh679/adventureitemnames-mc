@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Colors;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -72,7 +73,7 @@ public final class PackColorWriter {
                 }
                 continue;
             }
-            if (!color.isColor()) {
+            if (!Colors.isColor(color)) {
                 LOGGER.warn("[AdventureItemNames] refusing to write non-color formatting '{}' for key '{}'",
                     color.getName(), key);
                 continue;

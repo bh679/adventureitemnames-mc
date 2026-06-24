@@ -1,5 +1,6 @@
 package games.brennan.adventureitemnames.internal;
 
+import games.brennan.adventureitemnames.compat.Colors;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.mojang.logging.LogUtils;
@@ -84,8 +85,8 @@ public final class ColorLoader extends SimpleJsonResourceReloadListener {
                     continue;
                 }
                 String name = v.getAsString();
-                ChatFormatting color = ChatFormatting.getByName(name);
-                if (color == null || !color.isColor()) {
+                ChatFormatting color = Colors.byName(name);
+                if (color == null || !Colors.isColor(color)) {
                     LOGGER.warn("[AdventureItemNames] color file '{}' '{}' = '{}' is not a valid color — skipping",
                         entry.getKey(), e.getKey(), name);
                     continue;

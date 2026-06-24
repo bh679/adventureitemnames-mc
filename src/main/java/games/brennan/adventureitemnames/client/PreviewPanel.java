@@ -210,7 +210,7 @@ public final class PreviewPanel {
 
     private RandomSource pickRng() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.level != null ? mc.level.random : RandomSource.create();
+        return mc.level != null ? mc.level.getRandom() : RandomSource.create();
     }
 
     private boolean isSlotEnchanted(int slot) { return slot % 2 == 0; }
