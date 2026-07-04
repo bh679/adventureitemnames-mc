@@ -44,6 +44,23 @@
       "released": true,
       "released_in": "v0.46.0",
       "released_at": "2026-06-23T09:42:52Z"
+    },
+    {
+      "id": "mc-1201-naming-compat",
+      "version": "0.47.0",
+      "type": "fix",
+      "title": "Item naming restored on Minecraft 1.20.1",
+      "summary": "Several naming paths silently stopped working on Minecraft 1.20.1 after multi-version support landed. Armor from villagers, crafting, and loot now gets named and described on 1.20.1 just like on 1.21.1, and custom or hand-authored datapacks now load correctly instead of being rejected as incompatible.",
+      "highlights": [
+        "Armor (helmets, chestplates, leggings, boots) now gets procedural names on 1.20.1",
+        "Custom & hand-authored datapacks now load on 1.20.1 (correct pack format)",
+        "Crafted-item descriptions, bow and shield naming now work on 1.20.1"
+      ],
+      "pr": 83,
+      "date": "2026-07-04",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }

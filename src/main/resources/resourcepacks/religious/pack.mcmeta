@@ -1,6 +1,6 @@
 {
   "pack": {
-    "pack_format": 48,
+    "pack_format": ${data_pack_format},
     "description": "Adventure Item Names — Religious Pack"
   }
 }

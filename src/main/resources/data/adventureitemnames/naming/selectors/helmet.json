@@ -1,6 +1,6 @@
 {
   "id": "adventureitemnames:helmet",
-  "applies_to": "minecraft:head_armor",
+  "applies_to": "adventureitemnames:head_armor",
   "tiers": {
     "plain": "adventureitemnames:weapon_name_short",
     "enchanted": "adventureitemnames:weapon_name_full"

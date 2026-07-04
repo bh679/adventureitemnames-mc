@@ -7,6 +7,14 @@ plugins {
 val mc = stonecutter.current.version
 val java17 = stonecutter.eval(mc, "<1.20.5") // 1.20.1 → Java 17, 1.21.1 → Java 21
 
+// pack.mcmeta format numbers are MC-version-specific. The shipped themed packs
+// (resourcepacks/*/) load as *world* data packs, so a mismatched pack_format makes
+// Minecraft flag them incompatible and silently drop them — the "your own datapack
+// doesn't load on 1.20.1" regression. Data: 1.20.1 → 15, 1.21.1 → 48. Resource (mod
+// root, which is primarily the assets pack): 1.20.1 → 15, 1.21.1 → 34.
+val dataPackFormat = if (java17) 15 else 48
+val resourcePackFormat = if (java17) 15 else 34
+
 version = "${mod.version}+$mc"
 group = mod.group
 base {
@@ -65,6 +73,30 @@ tasks.processResources {
     expandProps(listOf("adventureitemnames.mixins.json"),
         "mixin_compat" to if (java17) "JAVA_17" else "JAVA_21",
     )
+    // Version-correct pack_format for the shipped themed data packs so they load as
+    // world data packs on both 1.20.1 and 1.21.1 (see dataPackFormat above).
+    expandProps(listOf("resourcepacks/*/pack.mcmeta"),
+        "data_pack_format" to dataPackFormat,
+    )
+    // Mod's own combined pack — force-loaded, but kept version-correct (resource
+    // format) and resolves the ${mod_name} placeholder it already carries.
+    expandProps(listOf("pack.mcmeta"),
+        "resource_pack_format" to resourcePackFormat,
+        "mod_name" to mod.name,
+    )
+    // 1.20.1 renamed the item-tag registry directory: 1.21 reads data/<ns>/tags/item/
+    // (singular), 1.20.1 reads tags/items/ (plural). The repo stores tags under the
+    // 1.21 singular path, so mirror them into the plural path on the 1.20.1 build only.
+    // Both dirs then ship in the 1.20.1 jar; each MC version reads the one it knows.
+    if (java17) {
+        // Read from the source set's resource dirs (Stonecutter feeds processResources
+        // from a generated dir, not the raw src/main/resources tree).
+        from(sourceSets["main"].resources.srcDirs) {
+            include("data/*/tags/item/**")
+            eachFile { path = path.replaceFirst("/tags/item/", "/tags/items/") }
+            includeEmptyDirs = false
+        }
+    }
 }
 
 tasks.build {
