@@ -37,8 +37,16 @@ public final class PackCreator {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String NAMESPACE = "adventureitemnames";
-    /** Minecraft 1.21.1 datapack format. Matches the value used by the shipped themed packs. */
+    /**
+     * Datapack format for the running MC version — must match the game or the
+     * scaffolded pack is flagged incompatible and never enabled. 1.21.1 → 48,
+     * 1.20.1 → 15. Version-bridged the same way as {@link games.brennan.adventureitemnames.compat.Ids}.
+     */
+    //? if >=1.21.1 {
     private static final int PACK_FORMAT = 48;
+    //?} else {
+    /*private static final int PACK_FORMAT = 15;
+    *///?}
 
     public record CreateResult(boolean ok, String packId, Path worldRoot, Path srcRoot, String error) {
         public static CreateResult fail(String why) {

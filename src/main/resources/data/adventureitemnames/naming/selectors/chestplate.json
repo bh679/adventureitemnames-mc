@@ -1,6 +1,6 @@
 {
   "id": "adventureitemnames:chestplate",
-  "applies_to": "minecraft:chest_armor",
+  "applies_to": "adventureitemnames:chest_armor",
   "tiers": {
     "plain": "adventureitemnames:weapon_name_short",
     "enchanted": "adventureitemnames:weapon_name_full"

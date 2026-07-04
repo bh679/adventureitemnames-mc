@@ -6,12 +6,12 @@
     "#minecraft:pickaxes",
     "#minecraft:shovels",
     "#minecraft:hoes",
-    "#minecraft:head_armor",
-    "#minecraft:chest_armor",
-    "#minecraft:leg_armor",
-    "#minecraft:foot_armor",
+    "#adventureitemnames:head_armor",
+    "#adventureitemnames:chest_armor",
+    "#adventureitemnames:leg_armor",
+    "#adventureitemnames:foot_armor",
     "#adventureitemnames:bows",
     "#adventureitemnames:shields",
-    "minecraft:mace"
+    { "id": "minecraft:mace", "required": false }
   ]
 }

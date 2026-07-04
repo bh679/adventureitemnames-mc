@@ -1,6 +1,6 @@
 {
   "pack": {
     "description": "Rick and Morty names for Adventure Item Names",
-    "pack_format": 48
+    "pack_format": ${data_pack_format}
   }
 }
