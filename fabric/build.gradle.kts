@@ -43,7 +43,7 @@ loom {
 }
 
 repositories {
-    maven("https://maven.terraformersmc.com/") { name = "Terraformers" }
+    maven("https://maven.terraformersmc.com/releases") { name = "Terraformers" }
 }
 
 val commonBundle: Configuration by configurations.creating {
