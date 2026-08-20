@@ -74,9 +74,9 @@
         "New title prefixes: Archivist and Detective."
       ],
       "date": "2026-08-20",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.48.0",
+      "released_at": "2026-08-20T13:03:37Z"
     }
   ]
 }
