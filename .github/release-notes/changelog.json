@@ -89,6 +89,20 @@
       "released": true,
       "released_in": "v0.49.0",
       "released_at": "2026-08-21T11:00:09Z"
+    },
+    {
+      "id": "testificate-mc-lore",
+      "version": "0.50.0",
+      "type": "content",
+      "title": "Testificate joins the Minecraft lore names",
+      "summary": "Added \"Testificate\" to the Minecraft lore name pool \u2014 the name Notch accidentally left on villagers in the Beta 1.9 pre-releases. It can now show up anywhere the mc_lore pool feeds in: mob names, \"forged by\", weapon titles and more.",
+      "highlights": [
+        "New mc_lore entry: Testificate"
+      ],
+      "date": "2026-08-21",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
