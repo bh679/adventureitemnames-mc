@@ -86,9 +86,9 @@
       "summary": "Three more community members from the Discord join the name pool: mel, banguela, and morpheus the 3 feeted cat.",
       "highlights": [],
       "date": "2026-08-21",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.49.0",
+      "released_at": "2026-08-21T11:00:09Z"
     }
   ]
 }
