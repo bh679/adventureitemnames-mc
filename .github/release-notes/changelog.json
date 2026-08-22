@@ -103,6 +103,20 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "tjyongheng-spelling-fix",
+      "version": "0.51.0",
+      "type": "fix",
+      "title": "Supporter name spelling fix: TJYongHeng",
+      "summary": "Corrected a Discord supporter's name in the community name pool \u2014 TJYoungHeng is now spelled TJYongHeng. Generated names that credit them (forged by, mob names, weapon titles) now get it right.",
+      "highlights": [
+        "discord_people pool: TJYoungHeng renamed to TJYongHeng"
+      ],
+      "date": "2026-08-22",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
