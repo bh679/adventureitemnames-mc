@@ -117,6 +117,18 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "discord-supporters-stas",
+      "version": "0.52.0",
+      "type": "content",
+      "title": "New Discord supporter name",
+      "summary": "Another community member from the Discord joins the name pool, in five forms: sstasske, Staske, Stas, Stanislav, and Stanislav The Russian.",
+      "highlights": [],
+      "date": "2026-08-29",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
