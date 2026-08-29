@@ -100,9 +100,9 @@
         "New mc_lore entry: Testificate"
       ],
       "date": "2026-08-21",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.52.0",
+      "released_at": "2026-08-29T11:21:30Z"
     },
     {
       "id": "tjyongheng-spelling-fix",
@@ -114,9 +114,9 @@
         "discord_people pool: TJYoungHeng renamed to TJYongHeng"
       ],
       "date": "2026-08-22",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.52.0",
+      "released_at": "2026-08-29T11:21:30Z"
     },
     {
       "id": "discord-supporters-stas",
@@ -126,9 +126,9 @@
       "summary": "Another community member from the Discord joins the name pool, in five forms: sstasske, Staske, Stas, Stanislav, and Stanislav The Russian.",
       "highlights": [],
       "date": "2026-08-29",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.52.0",
+      "released_at": "2026-08-29T11:21:30Z"
     }
   ]
 }
