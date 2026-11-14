@@ -159,9 +159,9 @@
       ],
       "pr": 97,
       "date": "2026-11-14",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.54.0",
+      "released_at": "2026-11-14T09:28:26Z"
     }
   ]
 }
