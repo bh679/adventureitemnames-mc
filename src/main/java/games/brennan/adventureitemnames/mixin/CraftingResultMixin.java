@@ -4,11 +4,19 @@ import games.brennan.adventureitemnames.api.NameComposer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ResultSlot;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RepairItemRecipe;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//? if >=1.21.1 {
+import net.minecraft.world.inventory.RecipeCraftingHolder;
+//?} else {
+/*import net.minecraft.world.inventory.RecipeHolder;
+*///?}
 
 /**
  * Inject into vanilla {@link ResultSlot#onTake(Player, ItemStack)} so every
@@ -19,6 +27,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>{@code ResultSlot} is the canonical crafting-result slot for vanilla
  * recipes — smithing, anvil, brewing, and furnace results use different
  * slot classes and are intentionally <em>not</em> covered by this mixin.</p>
+ *
+ * <p>A crafting-grid repair ({@link RepairItemRecipe}) is skipped: the result is
+ * the same item, mended, and keeps its own name and lore via
+ * {@code RepairItemRecipeMixin}, so it gets no new "crafted by" line.</p>
  *
  * <p>Server-side only — gated by {@code instanceof ServerPlayer} so the
  * client never mutates the stack (client mutations get overwritten by the
@@ -32,6 +44,19 @@ public abstract class CraftingResultMixin {
     @Inject(method = "onTake", at = @At("HEAD"))
     private void adventureitemnames$describeCrafted(Player player, ItemStack stack, CallbackInfo ci) {
         if (!(player instanceof ServerPlayer)) return;
+        if (adventureitemnames$isRepair()) return;
         NameComposer.applyCraftedDescription(stack, player.level().getRandom(), player);
+    }
+
+    @Unique
+    private boolean adventureitemnames$isRepair() {
+        //? if >=1.21.1 {
+        if (!(((Slot) (Object) this).container instanceof RecipeCraftingHolder holder)) return false;
+        var used = holder.getRecipeUsed();
+        return used != null && used.value() instanceof RepairItemRecipe;
+        //?} else {
+        /*if (!(((Slot) (Object) this).container instanceof RecipeHolder holder)) return false;
+        return holder.getRecipeUsed() instanceof RepairItemRecipe;
+        *///?}
     }
 }

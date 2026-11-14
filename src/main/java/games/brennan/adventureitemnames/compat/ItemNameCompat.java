@@ -65,4 +65,24 @@ public final class ItemNameCompat {
         }
         display.put("Lore", loreTag);*///?}
     }
+
+    /**
+     * Copy {@code from}'s custom name and lore (when present) onto {@code to}, replacing
+     * whatever {@code to} had. 1.21.1 copies the CUSTOM_NAME / LORE components; 1.20.1
+     * the {@code display.Name} / {@code display.Lore} NBT.
+     */
+    public static void copyNameAndLore(ItemStack from, ItemStack to) {
+        //? if >=1.21.1 {
+        Component name = from.get(DataComponents.CUSTOM_NAME);
+        if (name != null) to.set(DataComponents.CUSTOM_NAME, name);
+        ItemLore lore = from.get(DataComponents.LORE);
+        if (lore != null && !lore.lines().isEmpty()) to.set(DataComponents.LORE, lore);
+        //?} else {
+        /*if (from.hasCustomHoverName()) to.setHoverName(from.getHoverName());
+        CompoundTag fromDisplay = from.getTagElement("display");
+        if (fromDisplay != null && fromDisplay.contains("Lore", Tag.TAG_LIST)) {
+            ListTag lore = fromDisplay.getList("Lore", Tag.TAG_STRING);
+            if (!lore.isEmpty()) to.getOrCreateTagElement("display").put("Lore", lore.copy());
+        }*///?}
+    }
 }
