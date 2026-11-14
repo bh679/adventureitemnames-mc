@@ -149,7 +149,7 @@
     },
     {
       "id": "repair-keeps-name",
-      "version": "0.53.0",
+      "version": "0.54.0",
       "type": "feat",
       "title": "Repaired items keep their name",
       "summary": "Combining two worn items in a crafting grid now keeps the name and description of the left item (or the top one, if they share a column), the same item whose stats are kept. A repair no longer adds a new crafted by line.",
