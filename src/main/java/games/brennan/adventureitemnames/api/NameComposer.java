@@ -92,6 +92,13 @@ public final class NameComposer {
     public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
         Ids.of("adventureitemnames", "crafted_item_description");
 
+    /** Chain id used by {@link #applyDyedDescription} for armour taken from a dye recipe. */
+    public static final ResourceLocation CHAIN_DYED_ITEM_DESCRIPTION =
+        Ids.of("adventureitemnames", "dyed_item_description");
+
+    /** Custom-data key holding the text of the stack's current "dyed by" lore entry. */
+    private static final String DYED_LINE_KEY = "adventureitemnames:dyed_line";
+
     /** Chain id used by {@link #applyVillagerTradeNaming} for items bought from a villager. */
     public static final ResourceLocation CHAIN_PURCHASED_ITEM_DESCRIPTION =
         Ids.of("adventureitemnames", "purchased_item_description");
@@ -465,6 +472,33 @@ public final class NameComposer {
         if (desc == null || desc.isBlank()) return;
 
         appendLore(stack, desc, ChanceKind.CRAFTED_DESCRIPTION);
+    }
+
+    /**
+     * The dye-recipe counterpart of {@link #applyCraftedDescription}: armour taken from an
+     * {@code ArmorDyeRecipe} result gets a "Dyed by &lt;player&gt;" line from
+     * {@link #CHAIN_DYED_ITEM_DESCRIPTION} rather than a "Crafted by" one, since the dyer
+     * didn't make it. Re-dyeing replaces the previous "Dyed by" line instead of adding
+     * another; the original "Crafted by" line stays. Same gates and colour as the crafted
+     * path ({@link ChanceKind#CRAFTED_DESCRIPTION}).
+     */
+    public static void applyDyedDescription(ItemStack stack, RandomSource rng, Player player) {
+        if (player == null) return;
+        if (stack == null || stack.isEmpty()) return;
+        if (!stack.is(Tags.CRAFTABLE_NAMABLE)) return;
+        if (!NamingConfig.isItemEnabled(stack)) return;
+        if (rng.nextFloat() >= NamingConfig.chanceCraftedDescription()) return;
+
+        NamingContext ctx = NamingContext.ofPlayer(player.getName().getString());
+
+        String desc = compose(CHAIN_DYED_ITEM_DESCRIPTION, stack, null, rng, 0, ctx);
+        if (desc == null || desc.isBlank()) return;
+
+        List<Component> lines = new ArrayList<>();
+        for (String line : desc.split("\n", -1)) {
+            lines.add(withColor(Component.literal(line), ChanceKind.CRAFTED_DESCRIPTION));
+        }
+        ItemNameCompat.replaceTrackedLore(stack, DYED_LINE_KEY, lines, desc);
     }
 
     /**

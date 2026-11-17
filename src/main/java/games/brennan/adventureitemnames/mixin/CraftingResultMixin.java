@@ -6,6 +6,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ResultSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.ArmorDyeRecipe;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RepairItemRecipe;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -44,19 +46,25 @@ public abstract class CraftingResultMixin {
     @Inject(method = "onTake", at = @At("HEAD"))
     private void adventureitemnames$describeCrafted(Player player, ItemStack stack, CallbackInfo ci) {
         if (!(player instanceof ServerPlayer)) return;
-        if (adventureitemnames$isRepair()) return;
+        Recipe<?> used = adventureitemnames$recipeUsed();
+        if (used instanceof RepairItemRecipe) return;
+        if (used instanceof ArmorDyeRecipe) {
+            NameComposer.applyDyedDescription(stack, player.level().getRandom(), player);
+            return;
+        }
         NameComposer.applyCraftedDescription(stack, player.level().getRandom(), player);
     }
 
+    /** The recipe behind the result slot's current output, or null when the container doesn't track one. */
     @Unique
-    private boolean adventureitemnames$isRepair() {
+    private Recipe<?> adventureitemnames$recipeUsed() {
         //? if >=1.21.1 {
-        if (!(((Slot) (Object) this).container instanceof RecipeCraftingHolder holder)) return false;
+        if (!(((Slot) (Object) this).container instanceof RecipeCraftingHolder holder)) return null;
         var used = holder.getRecipeUsed();
-        return used != null && used.value() instanceof RepairItemRecipe;
+        return used == null ? null : used.value();
         //?} else {
-        /*if (!(((Slot) (Object) this).container instanceof RecipeHolder holder)) return false;
-        return holder.getRecipeUsed() instanceof RepairItemRecipe;
+        /*if (!(((Slot) (Object) this).container instanceof RecipeHolder holder)) return null;
+        return holder.getRecipeUsed();
         *///?}
     }
 }
