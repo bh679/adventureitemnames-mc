@@ -175,6 +175,25 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "procedural-formula-names",
+      "version": "0.56.0",
+      "type": "feat",
+      "title": "Procedurally generated mob names",
+      "summary": "Mobs can now get freshly invented names built from syllables, like Dongik, Miggkle, Kinkleberry and Zimworth, with over 500,000 possible combinations. These names also show up as last names and in item descriptions such as 'Forged by \u2026'. Mob names are now more often a single word.",
+      "highlights": [
+        "New name formula: consonant + vowel (or vowel pair) + optional n/m/s/ng/ff/t/b/d/g/p/ss/gg/bb + an ending like -kle, -worth, -smith, -berry, -sniff or a generated vowel+consonant",
+        "About half of mob first names now come from the formula; the hand-written name list still appears",
+        "Mob last names now actually appear (4% of mobs), drawing from the formula and the name list",
+        "Titles on mob names are rarer (prefix 10% to 4%), so about 90% of mobs get a single-word name",
+        "Themed name packs (Wholesome, Minecraft Names, ATLA, etc.) are unchanged"
+      ],
+      "pr": 101,
+      "date": "2026-11-17",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }

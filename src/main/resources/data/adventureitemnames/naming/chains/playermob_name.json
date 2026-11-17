@@ -3,7 +3,7 @@
   "replace": true,
   "segments": [
     {
-      "chance": 0.10047965,
+      "chance": 0.04,
       "connection": " ",
       "newline": false,
       "label": "Title",
@@ -39,15 +39,28 @@
         {
           "ref": "adventureitemnames:colors",
           "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:formula_name",
+          "weight": 350.0
         }
       ]
     },
     {
-      "chance": 0.052698065,
+      "chance": 0.04,
       "connection": " ",
       "newline": false,
       "label": "Last Name",
-      "refs": []
+      "refs": [
+        {
+          "ref": "adventureitemnames:formula_name",
+          "weight": 70.0
+        },
+        {
+          "ref": "adventureitemnames:names",
+          "weight": 30.0
+        }
+      ]
     },
     {
       "chance": 0.2,

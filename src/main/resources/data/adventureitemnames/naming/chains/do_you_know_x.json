@@ -42,6 +42,10 @@
         {
           "ref": "adventureitemnames:the_something",
           "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:formula_name",
+          "weight": 10.0
         }
       ]
     },

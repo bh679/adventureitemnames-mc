@@ -1,0 +1,62 @@
+{
+  "id": "adventureitemnames:formula_name",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Consonant",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_consonant",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Vowel",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_vowel",
+          "weight": 70.0
+        },
+        {
+          "ref": "adventureitemnames:name_vowel_pair",
+          "weight": 30.0
+        }
+      ]
+    },
+    {
+      "chance": 0.5,
+      "connection": "",
+      "newline": false,
+      "label": "Coda",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_coda",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Ending",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 75.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
+        }
+      ]
+    }
+  ]
+}
