@@ -162,6 +162,19 @@
       "released": true,
       "released_in": "v0.54.0",
       "released_at": "2026-11-14T09:28:26Z"
+    },
+    {
+      "id": "dyed-by-lore",
+      "version": "0.55.0",
+      "type": "fix",
+      "title": "Dyed armour credits the dyer",
+      "summary": "Dyeing leather armour now adds a \"Dyed by\" line instead of claiming you crafted it. Dyeing it again updates that line rather than adding another, and the original maker's line stays.",
+      "highlights": [],
+      "pr": 99,
+      "date": "2026-11-17",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
