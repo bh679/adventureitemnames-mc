@@ -2,6 +2,7 @@ package games.brennan.adventureitemnames.compat;
 
 //? if >=1.21.1 {
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
 //?}
 //? if <1.21.1 {
@@ -11,6 +12,7 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 *///?}
 
+import games.brennan.adventureitemnames.internal.LoreReplace;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -85,4 +87,48 @@ public final class ItemNameCompat {
             if (!lore.isEmpty()) to.getOrCreateTagElement("display").put("Lore", lore.copy());
         }*///?}
     }
+
+    /**
+     * Append {@code lines} as a replaceable lore entry tracked under {@code markerKey}: the
+     * entry this stack last got under that key (its text kept in custom data) is removed
+     * first, so re-applying swaps the line instead of stacking another. Other lore stays.
+     * 1.21.1 uses the LORE + CUSTOM_DATA components; 1.20.1 the {@code display.Lore} NBT
+     * and a root string tag.
+     */
+    public static void replaceTrackedLore(ItemStack stack, String markerKey, List<Component> lines, String text) {
+        //? if >=1.21.1 {
+        String previous = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getString(markerKey);
+        ItemLore existing = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
+        List<Component> merged = LoreReplace.replaceLast(existing.lines(), previous, lines, Component::getString);
+        if (merged.size() > MAX_LORE_LINES) merged = merged.subList(0, MAX_LORE_LINES);
+        stack.set(DataComponents.LORE, new ItemLore(List.copyOf(merged)));
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(markerKey, text));
+        //?} else {
+        /*CompoundTag root = stack.getTag();
+        String previous = root == null ? "" : root.getString(markerKey);
+        CompoundTag display = stack.getOrCreateTagElement("display");
+        ListTag loreTag = display.getList("Lore", Tag.TAG_STRING);
+        List<String> existing = new ArrayList<>();
+        for (int i = 0; i < loreTag.size(); i++) existing.add(loreTag.getString(i));
+        List<String> added = new ArrayList<>();
+        for (Component line : lines) added.add(Component.Serializer.toJson(line));
+        List<String> merged = LoreReplace.replaceLast(existing, previous, added, ItemNameCompat::loreJsonText);
+        ListTag out = new ListTag();
+        for (String json : merged) {
+            if (out.size() >= MAX_LORE_LINES) break;
+            out.add(StringTag.valueOf(json));
+        }
+        display.put("Lore", out);
+        stack.getOrCreateTag().putString(markerKey, text);*///?}
+    }
+
+    //? if <1.21.1 {
+    /*private static String loreJsonText(String json) {
+        try {
+            Component parsed = Component.Serializer.fromJson(json);
+            return parsed == null ? "" : parsed.getString();
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }*///?}
 }

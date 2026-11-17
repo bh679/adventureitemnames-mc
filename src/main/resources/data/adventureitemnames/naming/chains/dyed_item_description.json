@@ -1,0 +1,25 @@
+{
+  "id": "adventureitemnames:dyed_item_description",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "Dyed",
+      "newline": false,
+      "label": "Dyed",
+      "refs": []
+    },
+    {
+      "chance": 1.0,
+      "connection": " by ",
+      "newline": false,
+      "label": "Player",
+      "refs": [
+        {
+          "ref": "adventureitemnames:context/player_name",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}
