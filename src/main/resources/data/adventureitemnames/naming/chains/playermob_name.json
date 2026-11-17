@@ -42,7 +42,7 @@
         },
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 350.0
+          "weight": 80.0
         }
       ]
     },
@@ -54,7 +54,7 @@
       "refs": [
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 70.0
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:names",
