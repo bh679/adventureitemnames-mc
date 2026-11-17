@@ -43,6 +43,10 @@
         {
           "ref": "adventureitemnames:title_combinations",
           "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:formula_name",
+          "weight": 100.0
         }
       ]
     },

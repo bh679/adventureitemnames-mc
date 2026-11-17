@@ -87,6 +87,10 @@
         {
           "ref": "adventureitemnames:the_place",
           "weight": 50.0
+        },
+        {
+          "ref": "adventureitemnames:formula_name",
+          "weight": 10.0
         }
       ]
     }
