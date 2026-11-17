@@ -194,6 +194,24 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "playermob-formula-weight-and-endings",
+      "version": "0.57.0",
+      "type": "content",
+      "title": "More name endings; PlayerMobs keep more player-like names",
+      "summary": "Generated names get 37 new endings, from -smack and -wink to -wright, -rump and -schmeckle, for about 670,000 possible names. PlayerMobs now use generated names much less often, so they read more like real players, while villagers and other mobs are unchanged.",
+      "highlights": [
+        "37 new name endings, bringing the list to 65",
+        "PlayerMob first names: generated names drop from about half to about 1 in 5",
+        "PlayerMob last names: generated names drop from 70% to about 25%",
+        "Weights remain adjustable in the in-game chain editor"
+      ],
+      "pr": 103,
+      "date": "2026-11-17",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
