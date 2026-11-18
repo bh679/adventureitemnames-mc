@@ -270,6 +270,21 @@
       "released": true,
       "released_in": "v0.61.0",
       "released_at": "2026-11-18T11:06:50Z"
+    },
+    {
+      "id": "pairs-ur-or-coda-lt",
+      "version": "0.62.0",
+      "type": "feat",
+      "title": "New name sounds",
+      "summary": "Generated names get the ur and or sounds and a new lt in the middle, as in Kurdock, Jorfoot and Joltsmith.",
+      "highlights": [
+        "New vowel sounds: ur, or (16 in all)",
+        "New middle sound: lt (14 in all)"
+      ],
+      "date": "2026-11-18",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
