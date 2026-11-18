@@ -285,6 +285,20 @@
       "released": true,
       "released_in": "v0.62.0",
       "released_at": "2026-11-18T12:04:27Z"
+    },
+    {
+      "id": "coda-ks",
+      "version": "0.63.0",
+      "type": "feat",
+      "title": "New name sound: ks",
+      "summary": "Generated names can now have a ks in the middle, as in Hakswit, Roksoh and Gaksboard.",
+      "highlights": [
+        "New middle sound: ks (15 in all)"
+      ],
+      "date": "2026-11-18",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
