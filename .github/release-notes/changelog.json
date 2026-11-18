@@ -172,9 +172,9 @@
       "highlights": [],
       "pr": 99,
       "date": "2026-11-17",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.57.0",
+      "released_at": "2026-11-18T03:04:06Z"
     },
     {
       "id": "procedural-formula-names",
@@ -191,9 +191,9 @@
       ],
       "pr": 101,
       "date": "2026-11-17",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.57.0",
+      "released_at": "2026-11-18T03:04:06Z"
     },
     {
       "id": "playermob-formula-weight-and-endings",
@@ -209,9 +209,9 @@
       ],
       "pr": 103,
       "date": "2026-11-17",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.57.0",
+      "released_at": "2026-11-18T03:04:06Z"
     }
   ]
 }
