@@ -296,9 +296,9 @@
         "New middle sound: ks (15 in all)"
       ],
       "date": "2026-11-18",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.63.0",
+      "released_at": "2026-11-18T13:30:20Z"
     }
   ]
 }
