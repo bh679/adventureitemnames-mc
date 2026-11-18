@@ -212,6 +212,21 @@
       "released": true,
       "released_in": "v0.57.0",
       "released_at": "2026-11-18T03:04:06Z"
+    },
+    {
+      "id": "more-name-sounds",
+      "version": "0.57.0",
+      "type": "feat",
+      "title": "More name sounds",
+      "summary": "Generated names get 8 new endings, like -athon, -seph, -thrine, -board and -age, and three new vowel sounds (oe, eu, ui), as in Moewitle and Zuiwit.",
+      "highlights": [
+        "New endings: -athon, -seph, -oeseph, -ie, -thrine, -board, -ako, -age (73 in all)",
+        "New vowel pairs: oe, eu, ui (14 in all)"
+      ],
+      "date": "2026-11-18",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
