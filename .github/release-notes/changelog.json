@@ -251,9 +251,9 @@
         "New endings: -nica, -leighly (75 in all)"
       ],
       "date": "2026-11-18",
-      "released": false,
-      "released_in": null,
-      "released_at": null,
+      "released": true,
+      "released_in": "v0.60.0",
+      "released_at": "2026-11-18T07:02:25Z",
       "pr": 109
     }
   ]
