@@ -246,9 +246,9 @@
       "version": "0.59.0",
       "type": "feat",
       "title": "Two more name endings",
-      "summary": "Generated names can now end in -ica or -eighly, as in Bonica and Dameighly.",
+      "summary": "Generated names can now end in -nica or -leighly, as in Hinica and Doleighly.",
       "highlights": [
-        "New endings: -ica, -eighly (75 in all)"
+        "New endings: -nica, -leighly (75 in all)"
       ],
       "date": "2026-11-18",
       "released": false,
