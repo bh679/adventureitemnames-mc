@@ -1,0 +1,38 @@
+{
+  "id": "adventureitemnames:name_tail_coda",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Coda",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_coda",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Ending",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 66.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vowel",
+          "weight": 9.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
+        }
+      ]
+    }
+  ]
+}

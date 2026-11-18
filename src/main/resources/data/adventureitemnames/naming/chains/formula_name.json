@@ -31,30 +31,18 @@
       ]
     },
     {
-      "chance": 0.5,
-      "connection": "",
-      "newline": false,
-      "label": "Coda",
-      "refs": [
-        {
-          "ref": "adventureitemnames:name_coda",
-          "weight": 1.0
-        }
-      ]
-    },
-    {
       "chance": 1.0,
       "connection": "",
       "newline": false,
-      "label": "Ending",
+      "label": "Tail",
       "refs": [
         {
-          "ref": "adventureitemnames:name_ending",
-          "weight": 75.0
+          "ref": "adventureitemnames:name_tail_coda",
+          "weight": 50.0
         },
         {
-          "ref": "adventureitemnames:name_ending_vc",
-          "weight": 25.0
+          "ref": "adventureitemnames:name_tail_plain",
+          "weight": 50.0
         }
       ]
     }

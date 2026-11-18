@@ -255,6 +255,21 @@
       "released_in": "v0.60.0",
       "released_at": "2026-11-18T07:02:25Z",
       "pr": 109
+    },
+    {
+      "id": "no-vowel-pileups",
+      "version": "0.61.0",
+      "type": "feat",
+      "title": "Smoother generated names",
+      "summary": "Generated names no longer pile up vowels where the pieces join, so you won't see names like Zeaik or Bouoeseph any more. Endings that start with a vowel now always follow a consonant, as in Lunom and Zuegitle.",
+      "highlights": [
+        "Vowel-start endings (-ik, -itle, -ock, -om, -athon, -oeseph, -ie, -ako, -age and the generated vowel + consonant endings) only follow a consonant",
+        "Names with 3 or more vowels in a row drop from about 6% to none"
+      ],
+      "date": "2026-11-18",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
