@@ -50,12 +50,14 @@ public final class AdventureItemNamesFabricClient implements ClientModInitialize
 
     private void registerCommand(CommandDispatcher<FabricClientCommandSource> dispatcher,
                                  CommandBuildContext ctx) {
-        dispatcher.register(
-            ClientCommandManager.literal("adventureitemnames")
-                .then(ClientCommandManager.literal("config").executes(c -> {
-                    ClientInit.openConfigScreen();
-                    return 1;
-                }))
-        );
+        for (String root : ClientInit.COMMAND_ROOTS) {
+            dispatcher.register(
+                ClientCommandManager.literal(root)
+                    .then(ClientCommandManager.literal("config").executes(c -> {
+                        ClientInit.openConfigScreen();
+                        return 1;
+                    }))
+            );
+        }
     }
 }
