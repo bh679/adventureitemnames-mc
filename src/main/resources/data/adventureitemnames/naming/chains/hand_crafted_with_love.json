@@ -20,13 +20,6 @@
           "weight": 5.0
         }
       ]
-    },
-    {
-      "chance": 0.29920536,
-      "connection": " with ",
-      "newline": false,
-      "label": "With Love",
-      "refs": []
     }
   ]
 }

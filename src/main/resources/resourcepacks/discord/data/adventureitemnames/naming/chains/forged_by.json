@@ -37,7 +37,7 @@
     },
     {
       "chance": 0.1,
-      "connection": " for",
+      "connection": " for ",
       "newline": false,
       "label": "Just for",
       "refs": [
