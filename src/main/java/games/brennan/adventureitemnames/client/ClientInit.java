@@ -22,6 +22,12 @@ public final class ClientInit {
     public static final String KEY_CATEGORY = "key.categories.adventureitemnames";
     public static final String KEY_OPEN_CONFIG = "key.adventureitemnames.open_config";
 
+    /**
+     * The client command roots that open the editor with {@code <root> config}. {@code adventuretimenames}
+     * is the short, friendlier spelling the Dungeon Train blog tells players to type.
+     */
+    public static final java.util.List<String> COMMAND_ROOTS = java.util.List.of("adventureitemnames", "adventuretimenames");
+
     private ClientInit() {}
 
     public static KeyMapping createKeyMapping() {

@@ -59,12 +59,14 @@ public final class AdventureItemNamesForgeClient {
     }
 
     public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
-        event.getDispatcher().register(
-            Commands.literal("adventureitemnames")
-                .then(Commands.literal("config").executes(c -> {
-                    ClientInit.openConfigScreen();
-                    return 1;
-                }))
-        );
+        for (String root : ClientInit.COMMAND_ROOTS) {
+            event.getDispatcher().register(
+                Commands.literal(root)
+                    .then(Commands.literal("config").executes(c -> {
+                        ClientInit.openConfigScreen();
+                        return 1;
+                    }))
+            );
+        }
     }
 }
