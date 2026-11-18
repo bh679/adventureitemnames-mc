@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name Preview</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --line:#e2e0da; --accent:#2f6f4f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --card:#21211f; --ink:#ecebe7; --muted:#9a9993; --line:#33332f; --accent:#7cc39c; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 system-ui, sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { margin:0 0 18px; color:var(--muted); }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+  select, button { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  @media (prefers-color-scheme: dark) { button.primary { color:#10201a; } }
+  label { color:var(--muted); font-size:13px; display:flex; gap:6px; align-items:center; }
+  ol { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px; }
+  li { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  li .name { font-size:17px; font-weight:600; word-break:break-word; }
+  li .parts { margin-top:4px; font-size:12px; color:var(--muted); font-family:ui-monospace, monospace; word-break:break-word; }
+  .hide-parts .parts { display:none; }
+  .err { color:#b3261e; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Name Preview</h1>
+  <p class="sub">20 names from the shipped chains and pools, with the same weights and chances the game uses. Press Regenerate (or Space) for more.</p>
+  <div class="bar">
+    <select id="chain" aria-label="Chain"></select>
+    <button class="primary" id="regen">Regenerate</button>
+    <label><input type="checkbox" id="showParts" checked> Show pieces</label>
+  </div>
+  <ol id="list"></ol>
+</main>
+<script>
+const COUNT = 20;
+const MAX_DEPTH = 12;
+const DEFAULT_CHAINS = ["adventureitemnames:formula_name", "adventureitemnames:mob_name", "adventureitemnames:playermob_name"];
+let data = null;
+
+function pickWeighted(items, weightOf) {
+  const total = items.reduce((sum, it) => sum + Math.max(0, weightOf(it)), 0);
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const it of items) {
+    roll -= Math.max(0, weightOf(it));
+    if (roll < 0) return it;
+  }
+  return items[items.length - 1];
+}
+
+// Returns { text, parts } where parts lists the leaf pool picks.
+function resolveRef(id, depth) {
+  if (depth > MAX_DEPTH) return { text: "", parts: [] };
+  if (data.chains[id]) return composeChain(data.chains[id], depth + 1);
+  const pool = data.pools[id];
+  if (!pool || !pool.entries.length) return { text: "", parts: [] }; // context refs (player name, item material) resolve empty here
+  const entry = pickWeighted(pool.entries, e => e.weight ?? 1);
+  return { text: entry.text, parts: [entry.text] };
+}
+
+// Mirrors NameComposer: chance roll, weighted ref, connection always prepends, then stripLeading.
+function composeChain(chain, depth) {
+  let out = "";
+  const parts = [];
+  for (const seg of chain.segments) {
+    if (seg.chance < 1 && Math.random() >= seg.chance) continue;
+    let fragment = "";
+    if (!seg.refs.length) {
+      if (!seg.connection) continue;
+    } else {
+      const ref = pickWeighted(seg.refs, r => r.weight);
+      if (!ref) continue;
+      const res = resolveRef(ref.ref, depth);
+      if (!res.text) continue;
+      fragment = res.text;
+      parts.push(...res.parts);
+    }
+    if (out.length && seg.newline) out += "\n";
+    out += seg.connection + fragment;
+  }
+  return { text: out.replace(/^\s+/, ""), parts };
+}
+
+function render() {
+  const id = document.getElementById("chain").value;
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  for (let i = 0; i < COUNT; i++) {
+    const { text, parts } = composeChain(data.chains[id], 0);
+    const li = document.createElement("li");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = text || "(empty)";
+    const pieces = document.createElement("div");
+    pieces.className = "parts";
+    pieces.textContent = parts.join(" + ");
+    li.append(name, pieces);
+    list.append(li);
+  }
+}
+
+async function init() {
+  try {
+    const res = await fetch("data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`data.json: HTTP ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    document.getElementById("list").innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "err";
+    p.textContent = `Could not load the naming data (${err.message}). Run scripts/name-preview/serve.py.`;
+    document.querySelector("main").append(p);
+    return;
+  }
+  const select = document.getElementById("chain");
+  const ids = Object.keys(data.chains).sort((a, b) => {
+    const ia = DEFAULT_CHAINS.indexOf(a), ib = DEFAULT_CHAINS.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+  for (const id of ids) {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = id.replace("adventureitemnames:", "");
+    select.append(opt);
+  }
+  select.addEventListener("change", render);
+  document.getElementById("regen").addEventListener("click", render);
+  document.getElementById("showParts").addEventListener("change", e =>
+    document.body.classList.toggle("hide-parts", !e.target.checked));
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space" && e.target.tagName !== "SELECT") { e.preventDefault(); render(); }
+  });
+  render();
+}
+init();
+</script>
+</body>
+</html>
