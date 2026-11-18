@@ -267,9 +267,9 @@
         "Names with 3 or more vowels in a row drop from about 6% to none"
       ],
       "date": "2026-11-18",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.61.0",
+      "released_at": "2026-11-18T11:06:50Z"
     }
   ]
 }
