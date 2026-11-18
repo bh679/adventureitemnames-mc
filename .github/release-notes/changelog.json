@@ -243,7 +243,7 @@
     },
     {
       "id": "endings-ica-eighly",
-      "version": "0.59.0",
+      "version": "0.60.0",
       "type": "feat",
       "title": "Two more name endings",
       "summary": "Generated names can now end in -nica or -leighly, as in Hinica and Doleighly.",
