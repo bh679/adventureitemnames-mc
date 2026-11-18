@@ -1,0 +1,18 @@
+{
+  "id": "adventureitemnames:name_tail_plain",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Ending",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}
