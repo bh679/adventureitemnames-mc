@@ -38,11 +38,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:name_tail_coda",
-          "weight": 50.0
+          "weight": 60.0
         },
         {
           "ref": "adventureitemnames:name_tail_plain",
-          "weight": 50.0
+          "weight": 40.0
         }
       ]
     },
