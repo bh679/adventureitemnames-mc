@@ -38,11 +38,51 @@
       "refs": [
         {
           "ref": "adventureitemnames:name_tail_coda",
-          "weight": 50.0
+          "weight": 60.0
         },
         {
           "ref": "adventureitemnames:name_tail_plain",
-          "weight": 50.0
+          "weight": 40.0
+        }
+      ]
+    },
+    {
+      "chance": 0.09,
+      "connection": "",
+      "newline": false,
+      "label": "Ending 2",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 75.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vowel",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
+        }
+      ]
+    },
+    {
+      "chance": 0.01,
+      "connection": "",
+      "newline": false,
+      "label": "Ending 3",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 75.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vowel",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
         }
       ]
     }

@@ -313,6 +313,22 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "name-extra-endings",
+      "version": "0.64.0",
+      "type": "feat",
+      "title": "Longer, more varied made-up names",
+      "summary": "Generated names sometimes gain a second ending, and very rarely a third. A few now stop short with no ending at all, and names can end in -ly and -ate.",
+      "highlights": [
+        "Second ending on about 1 in 11 names, third on about 1 in 100",
+        "New endings: -ly, -ate"
+      ],
+      "pr": 119,
+      "date": "2026-11-19",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
