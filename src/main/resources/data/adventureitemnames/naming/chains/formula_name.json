@@ -45,6 +45,26 @@
           "weight": 50.0
         }
       ]
+    },
+    {
+      "chance": 0.15,
+      "connection": "",
+      "newline": false,
+      "label": "Ending 2",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 75.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vowel",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
+        }
+      ]
     }
   ]
 }
