@@ -22,11 +22,11 @@
       "refs": [
         {
           "ref": "adventureitemnames:name_ending",
-          "weight": 66.0
+          "weight": 75.0
         },
         {
           "ref": "adventureitemnames:name_ending_vowel",
-          "weight": 9.0
+          "weight": 10.0
         },
         {
           "ref": "adventureitemnames:name_ending_vc",
