@@ -3,7 +3,7 @@
   "replace": true,
   "segments": [
     {
-      "chance": 1.0,
+      "chance": 0.95,
       "connection": "",
       "newline": false,
       "label": "Ending",
