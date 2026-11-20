@@ -345,6 +345,18 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "name-ending-slav",
+      "version": "0.64.0",
+      "type": "feat",
+      "title": "New name ending: -slav",
+      "summary": "Made-up names can now end in -slav.",
+      "highlights": [],
+      "date": "2026-11-20",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
