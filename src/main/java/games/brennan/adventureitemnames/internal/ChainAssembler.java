@@ -62,7 +62,7 @@ public final class ChainAssembler {
             }
             String label = NamingConfig.effectiveSegmentLabel(chainId, origIdx, base.label());
 
-            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label));
+            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label, base.link()));
         }
         return new NameChain(shipped.id(), List.copyOf(out), true);
     }

@@ -620,7 +620,7 @@ public final class NameRegistry {
                 mergedRefs.addAll(b.refs());
                 mergedRefs.addAll(a.refs());
                 // Label always carried from base — themed packs don't author labels.
-                merged.add(new NameSegment(List.copyOf(mergedRefs), b.chance(), b.connection(), b.newline(), b.label()));
+                merged.add(new NameSegment(List.copyOf(mergedRefs), b.chance(), b.connection(), b.newline(), b.label(), b.link()));
             } else {
                 merged.add(b);
             }

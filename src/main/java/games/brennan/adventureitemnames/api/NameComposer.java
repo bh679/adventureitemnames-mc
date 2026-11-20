@@ -645,6 +645,9 @@ public final class NameComposer {
         List<NameSegment> shippedSegments = maybeChain.get().segments();
         int totalSegments = NamingConfig.effectiveSegmentCount(chainId, shippedSegments.size());
         List<Integer> order = NamingConfig.effectiveSegmentOrder(chainId, totalSegments);
+        // A fired link segment's fragment waits here until the next segment
+        // fires; see NameSegment#link and NameLink#joins.
+        String pendingLink = null;
         for (int segIdx : order) {
             if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
             NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
@@ -673,6 +676,17 @@ public final class NameComposer {
                 // context/item_material on an item with no material prefix)
                 // stays a skip — the connection assumes a fragment follows.
                 if (fragment == null || fragment.isEmpty()) continue;
+            }
+
+            if (seg.link()) {
+                pendingLink = fragment;
+                continue;
+            }
+            if (pendingLink != null) {
+                // Links join word parts, so a newline or connection between them drops it.
+                boolean breaksWord = (out.length() > 0 && newline) || !connection.isEmpty();
+                if (!breaksWord && NameLink.joins(out, fragment)) out.append(pendingLink);
+                pendingLink = null;
             }
 
             // Newline emits BEFORE the connection so the connection can read
