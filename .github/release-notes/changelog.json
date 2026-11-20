@@ -367,9 +367,9 @@
       "highlights": [],
       "pr": 122,
       "date": "2026-11-20",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.65.0",
+      "released_at": "2026-11-20T07:48:48Z"
     }
   ]
 }
