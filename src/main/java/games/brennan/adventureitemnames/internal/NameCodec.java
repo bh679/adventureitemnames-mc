@@ -118,7 +118,8 @@ public final class NameCodec {
             boolean newline = obj.has("newline") && obj.get("newline").getAsBoolean();
             String label = obj.has("label") && obj.get("label").isJsonPrimitive() && obj.get("label").getAsJsonPrimitive().isString()
                 ? obj.get("label").getAsString() : "";
-            segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline, label));
+            boolean link = obj.has("link") && obj.get("link").isJsonPrimitive() && obj.get("link").getAsBoolean();
+            segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline, label, link));
         }
         return new NameChain(id, List.copyOf(segments), replace);
     }
@@ -142,6 +143,7 @@ public final class NameCodec {
             sObj.add("chance", new JsonPrimitive(seg.chance()));
             if (seg.connection() != null) sObj.add("connection", new JsonPrimitive(seg.connection()));
             sObj.add("newline", new JsonPrimitive(seg.newline()));
+            if (seg.link()) sObj.add("link", new JsonPrimitive(true));
             if (seg.label() != null && !seg.label().isEmpty()) {
                 sObj.add("label", new JsonPrimitive(seg.label()));
             }
