@@ -329,6 +329,22 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "name-link-vowel",
+      "version": "0.64.0",
+      "type": "feat",
+      "title": "Smoother made-up names",
+      "summary": "When a name gets a second or third ending, a vowel sometimes joins the two so it reads more easily, never making a double vowel. Second endings are rarer, and names can now use -nkle- and end in -umph.",
+      "highlights": [
+        "Joining vowel between endings, only between two consonants",
+        "New name parts: -nkle-, -umph"
+      ],
+      "pr": 120,
+      "date": "2026-11-20",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
