@@ -33,7 +33,7 @@
       "version": "0.46.0",
       "type": "feat",
       "title": "Now available for Minecraft 1.20.1",
-      "summary": "Adventure Item Names now runs on Minecraft 1.20.1 as well as 1.21.1 \u2014 the same procedural item names, provenance lore, themed packs, and in-game naming editor, just on the older version. Fabric and Forge are supported on 1.20.1; NeoForge remains 1.21.1.",
+      "summary": "Adventure Item Names now runs on Minecraft 1.20.1 as well as 1.21.1 — the same procedural item names, provenance lore, themed packs, and in-game naming editor, just on the older version. Fabric and Forge are supported on 1.20.1; NeoForge remains 1.21.1.",
       "highlights": [
         "New: Fabric and Forge builds for Minecraft 1.20.1",
         "Same naming engine, lore, bundled themed packs, and in-game editor on both 1.21.1 and 1.20.1",
@@ -95,7 +95,7 @@
       "version": "0.50.0",
       "type": "content",
       "title": "Testificate joins the Minecraft lore names",
-      "summary": "Added \"Testificate\" to the Minecraft lore name pool \u2014 the name Notch accidentally left on villagers in the Beta 1.9 pre-releases. It can now show up anywhere the mc_lore pool feeds in: mob names, \"forged by\", weapon titles and more.",
+      "summary": "Added \"Testificate\" to the Minecraft lore name pool — the name Notch accidentally left on villagers in the Beta 1.9 pre-releases. It can now show up anywhere the mc_lore pool feeds in: mob names, \"forged by\", weapon titles and more.",
       "highlights": [
         "New mc_lore entry: Testificate"
       ],
@@ -109,7 +109,7 @@
       "version": "0.51.0",
       "type": "fix",
       "title": "Supporter name spelling fix: TJYongHeng",
-      "summary": "Corrected a Discord supporter's name in the community name pool \u2014 TJYoungHeng is now spelled TJYongHeng. Generated names that credit them (forged by, mob names, weapon titles) now get it right.",
+      "summary": "Corrected a Discord supporter's name in the community name pool — TJYoungHeng is now spelled TJYongHeng. Generated names that credit them (forged by, mob names, weapon titles) now get it right.",
       "highlights": [
         "discord_people pool: TJYoungHeng renamed to TJYongHeng"
       ],
@@ -181,7 +181,7 @@
       "version": "0.56.0",
       "type": "feat",
       "title": "Procedurally generated mob names",
-      "summary": "Mobs can now get freshly invented names built from syllables, like Dongik, Miggkle, Kinkleberry and Zimworth, with over 500,000 possible combinations. These names also show up as last names and in item descriptions such as 'Forged by \u2026'. Mob names are now more often a single word.",
+      "summary": "Mobs can now get freshly invented names built from syllables, like Dongik, Miggkle, Kinkleberry and Zimworth, with over 500,000 possible combinations. These names also show up as last names and in item descriptions such as 'Forged by …'. Mob names are now more often a single word.",
       "highlights": [
         "New name formula: consonant + vowel (or vowel pair) + optional n/m/s/ng/ff/t/b/d/g/p/ss/gg/bb + an ending like -kle, -worth, -smith, -berry, -sniff or a generated vowel+consonant",
         "About half of mob first names now come from the formula; the hand-written name list still appears",
@@ -321,7 +321,7 @@
       "title": "Longer, more varied made-up names",
       "summary": "Generated names sometimes gain a second ending, and very rarely a third. A few now stop short with no ending at all, and names can end in -ly and -ate.",
       "highlights": [
-        "Second ending on about 1 in 11 names, third on about 1 in 100",
+        "Second ending on about 1 in 25 names, third on about 1 in 100",
         "New endings: -ly, -ate"
       ],
       "pr": 119,
@@ -335,7 +335,7 @@
       "version": "0.64.0",
       "type": "feat",
       "title": "Smoother made-up names",
-      "summary": "When a name gets a second or third ending, a vowel sometimes joins the two so it reads more easily, never making a double vowel. Second endings are rarer, and names can now use -nkle- and end in -umph.",
+      "summary": "When a name gets a second or third ending, a vowel sometimes joins the two so it reads more easily, never making a double vowel. Names can now also use -nkle- and end in -umph.",
       "highlights": [
         "Joining vowel between endings, only between two consonants",
         "New name parts: -nkle-, -umph"
