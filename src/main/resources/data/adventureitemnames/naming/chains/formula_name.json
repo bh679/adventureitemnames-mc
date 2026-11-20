@@ -6,11 +6,15 @@
       "chance": 1.0,
       "connection": "",
       "newline": false,
-      "label": "Consonant",
+      "label": "Start",
       "refs": [
         {
           "ref": "adventureitemnames:name_consonant",
-          "weight": 1.0
+          "weight": 98.0
+        },
+        {
+          "ref": "adventureitemnames:name_vowel_start",
+          "weight": 2.0
         }
       ]
     },

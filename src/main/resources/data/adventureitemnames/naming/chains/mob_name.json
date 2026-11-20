@@ -30,19 +30,19 @@
       "refs": [
         {
           "ref": "adventureitemnames:names",
-          "weight": 250.0
+          "weight": 185.0
         },
         {
           "ref": "adventureitemnames:type_synonyms",
-          "weight": 30.0
+          "weight": 36.5
         },
         {
           "ref": "adventureitemnames:colors",
-          "weight": 20.0
+          "weight": 26.5
         },
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 350.0
+          "weight": 402.0
         }
       ]
     },

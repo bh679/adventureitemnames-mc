@@ -1,0 +1,30 @@
+{
+  "id": "adventureitemnames:name_vowel_start",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Vowel",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_vowel_upper",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Consonant",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_consonant_lower",
+          "weight": 1.0
+        }
+      ]
+    }
+  ]
+}
