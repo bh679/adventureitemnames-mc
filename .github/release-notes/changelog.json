@@ -357,6 +357,19 @@
       "released": true,
       "released_in": "v0.64.0",
       "released_at": "2026-11-20T03:07:50Z"
+    },
+    {
+      "id": "mob-names-formula-vowel-start",
+      "version": "0.65.0",
+      "type": "feat",
+      "title": "More varied mob names",
+      "summary": "Mobs and villagers get more invented names, and a few more named after their type or colour. Now and then an invented name starts with a vowel.",
+      "highlights": [],
+      "pr": 122,
+      "date": "2026-11-20",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
