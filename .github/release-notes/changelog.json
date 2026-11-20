@@ -310,9 +310,9 @@
         "Name endings: 75 consonant-start, 10 vowel-start"
       ],
       "date": "2026-11-19",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.64.0",
+      "released_at": "2026-11-20T03:07:50Z"
     },
     {
       "id": "name-extra-endings",
@@ -326,9 +326,9 @@
       ],
       "pr": 119,
       "date": "2026-11-19",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.64.0",
+      "released_at": "2026-11-20T03:07:50Z"
     },
     {
       "id": "name-link-vowel",
@@ -342,9 +342,9 @@
       ],
       "pr": 120,
       "date": "2026-11-20",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.64.0",
+      "released_at": "2026-11-20T03:07:50Z"
     },
     {
       "id": "name-ending-slav",
@@ -354,9 +354,9 @@
       "summary": "Made-up names can now end in -slav.",
       "highlights": [],
       "date": "2026-11-20",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.64.0",
+      "released_at": "2026-11-20T03:07:50Z"
     }
   ]
 }
