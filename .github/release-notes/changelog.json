@@ -377,10 +377,7 @@
       "type": "feat",
       "title": "Hostile mobs can have names",
       "summary": "Hostile mobs now have a small chance to spawn with a name, shown above their head.",
-      "highlights": [
-        "3% of hostile mobs get a name (bosses never do)",
-        "New Hostile mob naming slider in Spawn Chances"
-      ],
+      "highlights": [],
       "pr": 123,
       "date": "2026-11-21",
       "released": false,
