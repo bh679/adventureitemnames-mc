@@ -589,6 +589,7 @@ public final class NamingConfig {
     public static float chanceMobPassive()           { return chanceFor(ChanceKind.MOB_PASSIVE); }
     public static float chanceMobVillager()          { return chanceFor(ChanceKind.MOB_VILLAGER); }
     public static float chanceMobPlayer()            { return chanceFor(ChanceKind.MOB_PLAYER); }
+    public static float chanceMobHostile()           { return chanceFor(ChanceKind.MOB_HOSTILE); }
     public static float chanceCraftedDescription()   { return chanceFor(ChanceKind.CRAFTED_DESCRIPTION); }
     public static float chancePurchasedDescription() { return chanceFor(ChanceKind.PURCHASED_DESCRIPTION); }
     public static float chanceTradeItem()            { return chanceFor(ChanceKind.TRADE_ITEM); }

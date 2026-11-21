@@ -29,6 +29,7 @@
   "screen.adventureitemnames.spawn_chances.mob_passive": "Passive mob naming",
   "screen.adventureitemnames.spawn_chances.mob_villager": "Villager naming",
   "screen.adventureitemnames.spawn_chances.mob_player": "Player mob naming",
+  "screen.adventureitemnames.spawn_chances.mob_hostile": "Hostile mob naming",
   "screen.adventureitemnames.spawn_chances.crafted_description": "Crafted item description",
   "screen.adventureitemnames.spawn_chances.purchased_description": "Purchased item description",
   "screen.adventureitemnames.spawn_chances.trade_item": "Villager trade naming",

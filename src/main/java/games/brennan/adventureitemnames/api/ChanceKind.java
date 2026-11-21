@@ -26,6 +26,8 @@ public enum ChanceKind {
     MOB_VILLAGER("mob_villager", 1.00f),
     /** PlayerMob ({@code playermob:player_mob}) spawns — named like a player. */
     MOB_PLAYER("mob_player", 1.00f),
+    /** Hostile mob ({@code Enemy}, not a boss) spawns — rare, so the name is always visible. */
+    MOB_HOSTILE("mob_hostile", 0.03f),
     /** Player takes a freshly-crafted item from a crafting result slot — gates the appended description (lore). */
     CRAFTED_DESCRIPTION("crafted_description", 1.00f),
     /** Player buys an item from a villager — gates the appended villager-provenance description (lore). */

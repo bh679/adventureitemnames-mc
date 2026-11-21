@@ -103,7 +103,7 @@ class ConfigCodecTest {
     @Test
     void unknownMobCategoryIgnored() {
         DisableSet ds = parse("""
-            { "mobs": { "categories": ["villager", "boss", "hostile"] } }
+            { "mobs": { "categories": ["villager", "boss", "undead"] } }
             """);
         assertTrue(ds.mobCategories.contains(MobCategory.VILLAGER));
         assertEquals(1, ds.mobCategories.size(), "unknown categories should be dropped, not added");

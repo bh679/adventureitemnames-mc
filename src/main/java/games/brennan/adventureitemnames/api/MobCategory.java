@@ -16,7 +16,12 @@ public enum MobCategory {
      * detected by entity-type id in {@link NameComposer} rather than by the
      * {@code !Enemy} passive gate. Named via the {@code playermob_name} chain.
      */
-    PLAYER_MOB;
+    PLAYER_MOB,
+    /**
+     * Hostile mobs ({@code Enemy}) that are not PlayerMobs or bosses. Rolled once per mob:
+     * {@link NameComposer#applyMobName} tags the mob after its roll, so later calls no-op.
+     */
+    HOSTILE;
 
     /** Lowercase key used in config JSON files. */
     public String key() {

@@ -19,6 +19,8 @@ import net.minecraft.world.entity.animal.AbstractGolem;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
@@ -87,6 +89,25 @@ public final class NameComposer {
      */
     private static final ResourceLocation PLAYERMOB_ENTITY_ID =
         Ids.of("playermob", "player_mob");
+
+    /**
+     * Entity tag a hostile mob gets once it has had its naming roll, named or not. Hostile
+     * naming can be reached from more than one place (the spawn mixin, a host mod's own spawn
+     * bridge, a chunk reload), so without it a mob could roll again and its chance would creep up.
+     */
+    public static final String HOSTILE_NAME_ROLLED_TAG = "adventureitemnames_name_rolled";
+
+    /**
+     * Shared {@code c:bosses} / {@code forge:bosses} entity tags: bosses keep their boss-bar name.
+     * In a holder class so loading {@link NameComposer} (e.g. in unit tests) doesn't touch
+     * {@code Registries} before the game has bootstrapped it.
+     */
+    private static final class BossTags {
+        static final TagKey<EntityType<?>> C_BOSSES =
+            TagKey.create(Registries.ENTITY_TYPE, Ids.of("c", "bosses"));
+        static final TagKey<EntityType<?>> FORGE_BOSSES =
+            TagKey.create(Registries.ENTITY_TYPE, Ids.of("forge", "bosses"));
+    }
 
     /** Chain id used by {@link #applyCraftedDescription} for items taken from a crafting result slot. */
     public static final ResourceLocation CHAIN_CRAFTED_ITEM_DESCRIPTION =
@@ -395,6 +416,8 @@ public final class NameComposer {
      *       100%, name <em>always visible</em> like a player nameplate — also
      *       carries into the vanilla death message. Uses the
      *       {@code playermob_name} chain.</li>
+     *   <li>Hostile ({@link Enemy}) mobs that are not PlayerMobs or bosses: 3%, name
+     *       <em>always visible</em>. Rolled once per mob ({@link #HOSTILE_NAME_ROLLED_TAG}).</li>
      *   <li>All other mobs: no-op.</li>
      * </ul>
      *
@@ -407,13 +430,12 @@ public final class NameComposer {
         MobCategory cat = categorize(mob);
         if (cat == null) return;
 
-        // Ambient naming (villagers + passive animals) can be vetoed by a
+        // Ambient naming (villagers, passive animals, hostiles) can be vetoed by a
         // host-registered gate — e.g. Dungeon Train restricts it to mobs on the
         // train. PlayerMob is an explicit always-on nameplate and is never
         // gated. With no gate registered, isMobNameAllowed is always true, so
         // standalone behavior is unchanged.
-        if ((cat == MobCategory.VILLAGER || cat == MobCategory.PASSIVE)
-                && !NamingConfig.isMobNameAllowed(mob)) return;
+        if (cat != MobCategory.PLAYER_MOB && !NamingConfig.isMobNameAllowed(mob)) return;
 
         if (!NamingConfig.isMobCategoryEnabled(cat)) return;
         if (!NamingConfig.isEntityEnabled(mob.getType())) return;
@@ -427,7 +449,14 @@ public final class NameComposer {
             // PlayerMob: named like a real player — always-visible nameplate, which
             // also surfaces the generated name in the vanilla death message.
             case PLAYER_MOB -> { chance = NamingConfig.chanceMobPlayer();   nameVisible = true;  colorKind = ChanceKind.MOB_PLAYER; }
+            case HOSTILE    -> { chance = NamingConfig.chanceMobHostile();  nameVisible = true;  colorKind = ChanceKind.MOB_HOSTILE; }
             default -> { return; }
+        }
+
+        // Hostiles roll once, ever. The tag goes on before the roll so a miss is remembered too.
+        if (cat == MobCategory.HOSTILE) {
+            if (mob.getTags().contains(HOSTILE_NAME_ROLLED_TAG)) return;
+            mob.addTag(HOSTILE_NAME_ROLLED_TAG);
         }
 
         if (rng.nextFloat() >= chance) return;
@@ -553,18 +582,29 @@ public final class NameComposer {
      * mob isn't a naming target (hostile, generic, ender dragon, etc.).
      */
     private static MobCategory categorize(Mob mob) {
-        // PlayerMob first: it's a hostile Monster, so it must be caught before
-        // the !Enemy passive gate below would reject it.
-        if (isPlayerMob(mob.getType())) return MobCategory.PLAYER_MOB;
-        if (mob instanceof AbstractVillager) return MobCategory.VILLAGER;
-        if ((mob instanceof Animal
-              || mob instanceof WaterAnimal
-              || mob instanceof AmbientCreature
-              || mob instanceof AbstractGolem
-              || mob instanceof Allay)
-             && !(mob instanceof Enemy)) {
-            return MobCategory.PASSIVE;
-        }
+        EntityType<?> type = mob.getType();
+        boolean passiveKind = mob instanceof Animal
+            || mob instanceof WaterAnimal
+            || mob instanceof AmbientCreature
+            || mob instanceof AbstractGolem
+            || mob instanceof Allay;
+        boolean boss = mob instanceof EnderDragon || mob instanceof WitherBoss
+            || type.is(BossTags.C_BOSSES) || type.is(BossTags.FORGE_BOSSES);
+        return classify(isPlayerMob(type), mob instanceof AbstractVillager, passiveKind,
+            mob instanceof Enemy, boss);
+    }
+
+    /**
+     * The pure decision behind {@link #categorize}, split out so it is unit testable without
+     * a bootstrapped registry. PlayerMob is checked first: it is a hostile Monster, so it must
+     * be caught before the hostile branch.
+     */
+    static MobCategory classify(boolean playerMob, boolean villager, boolean passiveKind,
+                                boolean enemy, boolean boss) {
+        if (playerMob) return MobCategory.PLAYER_MOB;
+        if (villager) return MobCategory.VILLAGER;
+        if (passiveKind && !enemy) return MobCategory.PASSIVE;
+        if (enemy && !boss) return MobCategory.HOSTILE;
         return null;
     }
 
