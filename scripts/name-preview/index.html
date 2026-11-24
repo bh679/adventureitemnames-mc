@@ -65,26 +65,48 @@ function resolveRef(id, depth) {
   return { text: entry.text, parts: [entry.text] };
 }
 
+const VOWELS = "aeiouy";
+const isConsonant = c => /\p{L}/u.test(c) && !VOWELS.includes(c.toLowerCase());
+const linkJoins = (before, after) =>
+  before.length > 0 && after.length > 0 && isConsonant(before.at(-1)) && isConsonant(after[0]);
+
 // Mirrors NameComposer: chance roll, weighted ref, connection always prepends, then stripLeading.
+// A chain with any skip_if rule rolls every chance first, so a segment can see one after it.
+// Link segments hold their fragment and emit it only between two consonants.
 function composeChain(chain, depth) {
   let out = "";
+  let pendingLink = null;
   const parts = [];
-  for (const seg of chain.segments) {
-    if (seg.chance < 1 && Math.random() >= seg.chance) continue;
+  const segs = chain.segments;
+  const ruled = segs.some(s => (s.skip_if || []).length);
+  const fired = ruled ? segs.map(s => s.chance >= 1 || Math.random() < s.chance) : null;
+  segs.forEach((seg, i) => {
+    if (fired) {
+      if (!fired[i]) return;
+      if ((seg.skip_if || []).some(j => j !== i && fired[j])) return;
+    } else if (seg.chance < 1 && Math.random() >= seg.chance) {
+      return;
+    }
     let fragment = "";
     if (!seg.refs.length) {
-      if (!seg.connection) continue;
+      if (!seg.connection) return;
     } else {
       const ref = pickWeighted(seg.refs, r => r.weight);
-      if (!ref) continue;
+      if (!ref) return;
       const res = resolveRef(ref.ref, depth);
-      if (!res.text) continue;
+      if (!res.text) return;
       fragment = res.text;
+      if (seg.link) { pendingLink = fragment; return; }
       parts.push(...res.parts);
+    }
+    if (pendingLink !== null) {
+      const breaks = (out.length && seg.newline) || seg.connection;
+      if (!breaks && linkJoins(out, fragment)) out += pendingLink;
+      pendingLink = null;
     }
     if (out.length && seg.newline) out += "\n";
     out += seg.connection + fragment;
-  }
+  });
   return { text: out.replace(/^\s+/, ""), parts };
 }
 

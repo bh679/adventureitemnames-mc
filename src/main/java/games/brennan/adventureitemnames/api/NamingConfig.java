@@ -321,6 +321,22 @@ public final class NamingConfig {
         }
     }
 
+    /**
+     * Set only the skip-if rule of a segment's API-layer override, keeping any other API-layer
+     * fields already there (e.g. refs another mod added). The editor preview uses this to show a
+     * pending rule live; {@code snapshotApiLayer}/{@code restoreApiLayer} undo it afterwards.
+     */
+    public static void overrideSegmentSkipIf(ResourceLocation chainId, int segmentIndex, List<Integer> skipIf) {
+        if (chainId == null) return;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit cur = API_SEGMENTS.edits.getOrDefault(key, SegmentOverrides.SegmentEdit.empty());
+            SegmentOverrides.SegmentEdit next = cur.withSkipIf(skipIf);
+            if (next.isNoOp()) API_SEGMENTS.edits.remove(key);
+            else API_SEGMENTS.edits.put(key, next);
+        }
+    }
+
     public static void clearSegmentOverride(ResourceLocation chainId, int segmentIndex) {
         if (chainId == null) return;
         synchronized (LOCK) { API_SEGMENTS.edits.remove(SegmentOverrides.key(chainId, segmentIndex)); }
@@ -703,6 +719,24 @@ public final class NamingConfig {
             if (user != null && user.newline() != null) return user.newline();
         }
         return shipped;
+    }
+
+    /**
+     * Effective per-segment skip-if rule (indices of segments whose firing skips this one), with
+     * precedence API → user → shipped. A non-null override replaces the shipped list wholesale;
+     * an empty override clears it. Returned list is unmodifiable.
+     */
+    public static List<Integer> effectiveSegmentSkipIf(ResourceLocation chainId, int segmentIndex, List<Integer> shipped) {
+        List<Integer> base = shipped == null ? List.of() : shipped;
+        if (chainId == null) return base;
+        String key = SegmentOverrides.key(chainId, segmentIndex);
+        synchronized (LOCK) {
+            SegmentOverrides.SegmentEdit api = API_SEGMENTS.edits.get(key);
+            if (api != null && api.skipIf() != null) return List.copyOf(api.skipIf());
+            SegmentOverrides.SegmentEdit user = USER_SEGMENTS.edits.get(key);
+            if (user != null && user.skipIf() != null) return List.copyOf(user.skipIf());
+        }
+        return base;
     }
 
     /**

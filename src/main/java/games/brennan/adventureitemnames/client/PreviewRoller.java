@@ -148,6 +148,21 @@ public final class PreviewRoller {
             NamingConfig.enableSelector(selectorId);
         }
 
+        // Pending skip-if rules, so toggling one in the chain editor shows in the preview at once.
+        for (var e : buffer.snapshotSegmentEdits().entrySet()) {
+            if (e.getValue() == null || e.getValue().skipIf() == null) continue;
+            int hash = e.getKey().lastIndexOf('#');
+            if (hash < 0) continue;
+            ResourceLocation chainId = ResourceLocation.tryParse(e.getKey().substring(0, hash));
+            if (chainId == null) continue;
+            try {
+                int segIdx = Integer.parseInt(e.getKey().substring(hash + 1));
+                NamingConfig.overrideSegmentSkipIf(chainId, segIdx, e.getValue().skipIf());
+            } catch (NumberFormatException ignored) {
+                // Malformed key: leave that rule out of the preview.
+            }
+        }
+
         var pendingEntries = buffer.snapshotEntryOverrides();
         for (var e : pendingEntries.removed.entrySet()) {
             for (String text : e.getValue()) NamingConfig.removeEntry(e.getKey(), text);

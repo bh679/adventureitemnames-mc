@@ -529,7 +529,19 @@ public final class ConfigCodec {
                 }
             }
 
-            SegmentOverrides.SegmentEdit edit = new SegmentOverrides.SegmentEdit(chance, connection, newline, refs, removed, label);
+            List<Integer> skipIf = null;
+            JsonElement skipIfEl = obj.get("skip_if");
+            if (skipIfEl != null && !skipIfEl.isJsonNull()) {
+                if (skipIfEl.isJsonArray()) {
+                    skipIf = NameCodec.parseSkipIf(skipIfEl);
+                } else {
+                    LOGGER.warn("[AdventureItemNames] config '{}' segment_overrides['{}'].skip_if is not an array — ignoring",
+                        sourceLabel, key);
+                }
+            }
+
+            SegmentOverrides.SegmentEdit edit =
+                new SegmentOverrides.SegmentEdit(chance, connection, newline, refs, removed, label, skipIf);
             if (!edit.isNoOp()) dest.edits.put(key, edit);
         }
 

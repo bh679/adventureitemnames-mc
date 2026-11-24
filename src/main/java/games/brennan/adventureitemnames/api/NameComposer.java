@@ -29,6 +29,7 @@ import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -688,13 +689,22 @@ public final class NameComposer {
         // A fired link segment's fragment waits here until the next segment
         // fires; see NameSegment#link and NameLink#joins.
         String pendingLink = null;
+        // Non-null only when a segment carries a skip_if rule: then every chance is rolled up
+        // front so a segment can see one that fires after it. Chains without rules keep the
+        // original interleaved roll order, so their names are unchanged for a given seed.
+        Set<Integer> fired = preRollIfRuled(chainId, order, shippedSegments, rng);
         for (int segIdx : order) {
             if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
             NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
             if (seg == null) continue;
 
-            float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
-            if (chance < 1f && rng.nextFloat() >= chance) continue;
+            if (fired != null) {
+                if (!fired.contains(segIdx)) continue;
+                if (skippedByRule(chainId, segIdx, seg, fired)) continue;
+            } else {
+                float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
+                if (chance < 1f && rng.nextFloat() >= chance) continue;
+            }
 
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
             String connection = NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection());
@@ -748,6 +758,42 @@ public final class NameComposer {
             out.append(fragment);
         }
         return out.toString().stripLeading();
+    }
+
+    /**
+     * When any live segment of {@code chainId} has a skip_if rule, roll every live segment's
+     * chance in {@code order} and return the indices that fired; otherwise return {@code null}
+     * and roll nothing (the composer then rolls inline, exactly as before rules existed).
+     */
+    static Set<Integer> preRollIfRuled(ResourceLocation chainId, List<Integer> order,
+                                       List<NameSegment> shippedSegments, RandomSource rng) {
+        boolean anyRule = false;
+        for (int segIdx : order) {
+            if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
+            NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
+            if (seg != null && !NamingConfig.effectiveSegmentSkipIf(chainId, segIdx, seg.skipIf()).isEmpty()) {
+                anyRule = true;
+                break;
+            }
+        }
+        if (!anyRule) return null;
+        Set<Integer> fired = new HashSet<>();
+        for (int segIdx : order) {
+            if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
+            NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
+            if (seg == null) continue;
+            float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
+            if (chance >= 1f || rng.nextFloat() < chance) fired.add(segIdx);
+        }
+        return fired;
+    }
+
+    /** True when one of the segments this segment's skip_if names fired in this roll. */
+    static boolean skippedByRule(ResourceLocation chainId, int segIdx, NameSegment seg, Set<Integer> fired) {
+        for (int other : NamingConfig.effectiveSegmentSkipIf(chainId, segIdx, seg.skipIf())) {
+            if (other != segIdx && fired.contains(other)) return true;
+        }
+        return false;
     }
 
     private static String resolveRef(ResourceLocation refId, ItemStack stack,

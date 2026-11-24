@@ -75,6 +75,11 @@
       "connection": " ",
       "newline": false,
       "label": "Fan",
+      "skip_if": [
+        0,
+        2,
+        5
+      ],
       "refs": []
     },
     {
@@ -82,6 +87,11 @@
       "connection": "",
       "newline": false,
       "label": "Suffix",
+      "skip_if": [
+        0,
+        2,
+        5
+      ],
       "refs": [
         {
           "ref": "adventureitemnames:playernamesuffix",

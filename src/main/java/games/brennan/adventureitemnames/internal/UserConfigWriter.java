@@ -656,6 +656,7 @@ public final class UserConfigWriter {
                 if (edit.connection() != null) perSeg.add("connection", new JsonPrimitive(edit.connection()));
                 if (edit.newline() != null)    perSeg.add("newline", new JsonPrimitive(edit.newline()));
                 if (edit.label() != null)      perSeg.add("label", new JsonPrimitive(edit.label()));
+                if (edit.skipIf() != null)     perSeg.add("skip_if", NameCodec.writeSkipIf(edit.skipIf()));
                 if (Boolean.TRUE.equals(edit.removed())) {
                     perSeg.add("removed", new JsonPrimitive(true));
                 }

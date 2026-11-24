@@ -67,6 +67,13 @@
   "screen.adventureitemnames.action.delete_mode_tooltip": "Toggle delete mode — when on, each row shows a ✕ button.",
 
   "screen.adventureitemnames.delete.title": "Delete %s?",
+  "screen.adventureitemnames.skip_if.button": "If…",
+  "screen.adventureitemnames.skip_if.button_count": "If (%s)",
+  "screen.adventureitemnames.skip_if.tooltip_none": "Always rolls. Click to skip this part when other parts appear.",
+  "screen.adventureitemnames.skip_if.tooltip": "Skipped when any of these appear: %s",
+  "screen.adventureitemnames.skip_if.title": "%s: only when these don't appear",
+  "screen.adventureitemnames.skip_if.hint": "Skipped if any ticked part appears in the same name, before or after it.",
+  "screen.adventureitemnames.skip_if.reset": "Reset",
   "screen.adventureitemnames.delete.confirm": "Delete",
   "screen.adventureitemnames.delete.read_only": "This pack is read-only in this environment.",
   "screen.adventureitemnames.delete.pack.body": "This will permanently delete the pack folder and all its files from disk. This cannot be undone.",

@@ -41,6 +41,15 @@ public final class ChainAssembler {
         int totalCount = NamingConfig.effectiveSegmentCount(chainId, shippedSegs.size());
         List<Integer> order = NamingConfig.effectiveSegmentOrder(chainId, totalCount);
 
+        // The saved chain is written in display order with removed segments dropped, so a
+        // skip_if rule (original indices) is remapped to each target's new position.
+        java.util.Map<Integer, Integer> newPos = new java.util.HashMap<>();
+        for (int origIdx : order) {
+            if (NamingConfig.isSegmentRemoved(chainId, origIdx)) continue;
+            if (NamingConfig.effectiveSegmentAt(chainId, origIdx, shippedSegs) == null) continue;
+            newPos.put(origIdx, newPos.size());
+        }
+
         List<NameSegment> out = new ArrayList<>(order.size());
         for (int origIdx : order) {
             if (NamingConfig.isSegmentRemoved(chainId, origIdx)) continue;
@@ -62,7 +71,13 @@ public final class ChainAssembler {
             }
             String label = NamingConfig.effectiveSegmentLabel(chainId, origIdx, base.label());
 
-            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label, base.link()));
+            List<Integer> skipIf = new ArrayList<>();
+            for (int target : NamingConfig.effectiveSegmentSkipIf(chainId, origIdx, base.skipIf())) {
+                Integer mapped = newPos.get(target);
+                if (mapped != null && target != origIdx) skipIf.add(mapped);
+            }
+
+            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label, base.link(), skipIf));
         }
         return new NameChain(shipped.id(), List.copyOf(out), true);
     }
