@@ -212,6 +212,30 @@ public final class ChainEditorScreen extends Screen {
             () -> activeConfirm = null);
     }
 
+    /** One live (not removed) segment as the "If…" screen lists it. */
+    record SegmentInfo(int index, String label, float chance) {}
+
+    /** Live segments in display order, with pending edits applied (labels, chances, removals). */
+    List<SegmentInfo> liveSegments() {
+        List<NameSegment> shipped = chain.segments();
+        int shippedCount = shipped.size();
+        int total = NamingConfig.effectiveSegmentCount(chain.id(), shippedCount)
+            + buffer.pendingAppendedSegments(chain.id()).size();
+        List<SegmentInfo> out = new java.util.ArrayList<>();
+        for (int origIdx : buffer.effectiveSegmentOrder(chain.id(), total)) {
+            if (buffer.isSegmentRemovedPending(chain.id(), origIdx)) continue;
+            NameSegment base = origIdx < shippedCount
+                ? shipped.get(origIdx)
+                : SegmentList.segmentAtEffective(this, chain, origIdx, shippedCount);
+            if (base == null) continue;
+            String label = buffer.effectiveSegmentLabel(chain.id(), origIdx, base.label());
+            if (label == null || label.isEmpty()) label = "Seg " + origIdx;
+            out.add(new SegmentInfo(origIdx, label,
+                buffer.effectiveSegmentChance(chain.id(), origIdx, base.chance())));
+        }
+        return out;
+    }
+
     NameChain chain() { return chain; }
 
     EditBuffer buffer() { return buffer; }
@@ -266,7 +290,7 @@ public final class ChainEditorScreen extends Screen {
          * pending → user-config → API. Mirrors the composer's view but
          * inclues the unsaved buffer so brand-new segments appear in the UI.
          */
-        private static NameSegment segmentAtEffective(ChainEditorScreen host, NameChain chain, int effIdx, int shippedCount) {
+        static NameSegment segmentAtEffective(ChainEditorScreen host, NameChain chain, int effIdx, int shippedCount) {
             int rel = effIdx - shippedCount;
             // First: anything appended in this session via the buffer.
             // The buffer's list is the FULL pending list — it doesn't overlay
@@ -299,6 +323,7 @@ public final class ChainEditorScreen extends Screen {
             private final EditBox connectionBox;
             private final Checkbox newlineBox;
             private final Button refsButton;
+            private final Button ifButton;
             private final Button deleteButton;
             private final Button upButton;
             private final Button downButton;
@@ -380,6 +405,12 @@ public final class ChainEditorScreen extends Screen {
                     b -> Minecraft.getInstance().setScreen(new RefEditorScreen(host, host.buffer(), host.chain(), segIdx, shipped))
                 ).bounds(0, 0, 44, 18).build();
 
+                this.ifButton = Button.builder(
+                    ifLabel(host.buffer().effectiveSegmentSkipIf(host.chain().id(), segIdx, shipped.skipIf())),
+                    b -> Minecraft.getInstance().setScreen(new SkipIfScreen(host, segIdx, shipped, rowLabel()))
+                ).bounds(0, 0, IF_W, 18).build();
+                this.ifButton.setTooltip(ifTooltip());
+
                 this.deleteButton = Button.builder(
                     Component.translatable("screen.adventureitemnames.action.delete"),
                     b -> host.removeSegment(segIdx)
@@ -408,7 +439,39 @@ public final class ChainEditorScreen extends Screen {
                 setConnectionBox(shipped.connection());
                 setLabelBox("");
                 if (newlineBox.selected() != shipped.newline()) newlineBox.onPress();
+                ifButton.setMessage(ifLabel(shipped.skipIf()));
                 host.rerollPreview();
+            }
+
+            static final int IF_W = 34;
+
+            private String rowLabel() {
+                String l = host.buffer().effectiveSegmentLabel(host.chain().id(), segIdx, shipped.label());
+                return l == null || l.isEmpty() ? "Seg " + segIdx : l;
+            }
+
+            private static Component ifLabel(List<Integer> rule) {
+                return rule.isEmpty()
+                    ? Component.translatable("screen.adventureitemnames.skip_if.button")
+                    : Component.translatable("screen.adventureitemnames.skip_if.button_count", rule.size());
+            }
+
+            private net.minecraft.client.gui.components.Tooltip ifTooltip() {
+                List<Integer> rule = host.buffer().effectiveSegmentSkipIf(host.chain().id(), segIdx, shipped.skipIf());
+                net.minecraft.network.chat.MutableComponent text;
+                if (rule.isEmpty()) {
+                    text = Component.translatable("screen.adventureitemnames.skip_if.tooltip_none");
+                } else {
+                    List<String> names = new java.util.ArrayList<>();
+                    for (SegmentInfo info : host.liveSegments()) {
+                        if (rule.contains(info.index())) names.add(info.label());
+                    }
+                    text = Component.translatable("screen.adventureitemnames.skip_if.tooltip", String.join(", ", names));
+                }
+                if (!shipped.chanceIf().isEmpty()) {
+                    text = text.append(" ").append(Component.translatable("screen.adventureitemnames.chance_if.tooltip"));
+                }
+                return net.minecraft.client.gui.components.Tooltip.create(text);
             }
 
             private void setLabelBox(String text) {
@@ -429,17 +492,17 @@ public final class ChainEditorScreen extends Screen {
             @Override
             public List<? extends NarratableEntry> narratables() {
                 if (host.deleteMode()) {
-                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, ifButton, deleteButton);
                 }
-                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, ifButton);
             }
 
             @Override
             public List<? extends GuiEventListener> children() {
                 if (host.deleteMode()) {
-                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, deleteButton);
+                    return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, ifButton, deleteButton);
                 }
-                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton);
+                return List.of(upButton, downButton, labelBox, slider, chanceBox, resetButton, connectionBox, newlineBox, refsButton, ifButton);
             }
 
             @Override
@@ -469,13 +532,15 @@ public final class ChainEditorScreen extends Screen {
                 setW(resetButton, 18); resetButton.setX(x); resetButton.setY(y); resetButton.render(gfx, mouseX, mouseY, partial); x += 22;
 
                 int deleteWidgetW = host.deleteMode() ? (4 + 22) : 0;
-                int trailingWidgets = 18 + 4 + 44 + deleteWidgetW; // newlineBox + refsButton + (optional deleteButton) + spacing
+                int trailingWidgets = 18 + 4 + 44 + 4 + IF_W + deleteWidgetW; // newlineBox + refsButton + ifButton + (optional deleteButton) + spacing
                 int connAvail = Math.max(40, rowLeft + rowWidth - x - 4 - trailingWidgets);
                 setW(connectionBox, connAvail); connectionBox.setX(x); connectionBox.setY(y); connectionBox.render(gfx, mouseX, mouseY, partial); x += connAvail + 4;
 
                 newlineBox.setX(x); newlineBox.setY(y); newlineBox.render(gfx, mouseX, mouseY, partial); x += 18 + 4;
 
                 refsButton.setX(x); refsButton.setY(y); refsButton.render(gfx, mouseX, mouseY, partial); x += 44 + 4;
+
+                ifButton.setX(x); ifButton.setY(y); ifButton.render(gfx, mouseX, mouseY, partial); x += IF_W + 4;
 
                 if (host.deleteMode()) {
                     deleteButton.setX(x); deleteButton.setY(y); deleteButton.render(gfx, mouseX, mouseY, partial);

@@ -510,6 +510,18 @@ public final class EditBuffer {
         return NamingConfig.effectiveSegmentRefs(chainId, segIdx, shipped);
     }
 
+    /** Pass {@code null} to clear the pending rule edit; an empty list clears the shipped rule. */
+    public void setSegmentSkipIf(ResourceLocation chainId, int segIdx, List<Integer> skipIf) {
+        mutateSegment(chainId, segIdx, edit -> edit.withSkipIf(skipIf));
+    }
+
+    /** Effective skip-if rule for the UI: pending → API/user layer → shipped. */
+    public List<Integer> effectiveSegmentSkipIf(ResourceLocation chainId, int segIdx, List<Integer> shipped) {
+        SegmentOverrides.SegmentEdit pending = pendingSegmentEdits.get(SegmentOverrides.key(chainId, segIdx));
+        if (pending != null && pending.skipIf() != null) return List.copyOf(pending.skipIf());
+        return NamingConfig.effectiveSegmentSkipIf(chainId, segIdx, shipped);
+    }
+
     public Map<String, SegmentOverrides.SegmentEdit> snapshotSegmentEdits() {
         return new LinkedHashMap<>(pendingSegmentEdits);
     }

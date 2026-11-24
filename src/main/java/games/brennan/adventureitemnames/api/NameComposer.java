@@ -688,13 +688,20 @@ public final class NameComposer {
         // A fired link segment's fragment waits here until the next segment
         // fires; see NameSegment#link and NameLink#joins.
         String pendingLink = null;
+        // Non-null only when a segment carries a skip_if or chance_if rule (see RuleRoll). Chains
+        // without rules keep the original interleaved roll order, so their names are unchanged.
+        RuleRoll ruled = RuleRoll.begin(chainId, order, shippedSegments, rng);
         for (int segIdx : order) {
             if (NamingConfig.isSegmentRemoved(chainId, segIdx)) continue;
             NameSegment seg = NamingConfig.effectiveSegmentAt(chainId, segIdx, shippedSegments);
             if (seg == null) continue;
 
-            float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
-            if (chance < 1f && rng.nextFloat() >= chance) continue;
+            if (ruled != null) {
+                if (!ruled.settle(segIdx, seg)) continue;
+            } else {
+                float chance = NamingConfig.effectiveSegmentChance(chainId, segIdx, seg.chance());
+                if (chance < 1f && rng.nextFloat() >= chance) continue;
+            }
 
             List<NameSegment.WeightedRef> refs = NamingConfig.effectiveSegmentRefs(chainId, segIdx, seg.refs());
             String connection = NamingConfig.effectiveSegmentConnection(chainId, segIdx, seg.connection());
@@ -711,6 +718,7 @@ public final class NameComposer {
             } else {
                 NameSegment.WeightedRef picked = pickWeighted(chainId, segIdx, refs, rng);
                 if (picked == null) continue;
+                if (ruled != null) ruled.recordPick(segIdx, picked.ref());
                 fragment = resolveRef(picked.ref(), stack, targetTagId, rng, depth + 1, ctx);
                 // A non-empty refs list that resolves to empty (e.g.
                 // context/item_material on an item with no material prefix)

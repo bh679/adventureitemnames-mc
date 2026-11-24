@@ -119,9 +119,35 @@ public final class NameCodec {
             String label = obj.has("label") && obj.get("label").isJsonPrimitive() && obj.get("label").getAsJsonPrimitive().isString()
                 ? obj.get("label").getAsString() : "";
             boolean link = obj.has("link") && obj.get("link").isJsonPrimitive() && obj.get("link").getAsBoolean();
-            segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline, label, link));
+            segments.add(new NameSegment(List.copyOf(refs), chance, connection, newline, label, link,
+                parseSkipIf(obj.get("skip_if")), ChanceRuleCodec.parse(obj.get("chance_if"))));
         }
         return new NameChain(id, List.copyOf(segments), replace);
+    }
+
+    /**
+     * Read a {@code skip_if} array of segment indices. Anything that isn't a
+     * non-negative whole number is ignored, so a malformed entry drops that
+     * one rule rather than the whole chain. Duplicates collapse, order kept.
+     */
+    public static List<Integer> parseSkipIf(JsonElement el) {
+        if (el == null || !el.isJsonArray()) return List.of();
+        List<Integer> out = new ArrayList<>();
+        for (JsonElement e : el.getAsJsonArray()) {
+            if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) continue;
+            double d = e.getAsDouble();
+            if (d < 0 || d != Math.floor(d) || d > Integer.MAX_VALUE) continue;
+            int idx = (int) d;
+            if (!out.contains(idx)) out.add(idx);
+        }
+        return List.copyOf(out);
+    }
+
+    /** Inverse of {@link #parseSkipIf}. */
+    public static JsonArray writeSkipIf(List<Integer> skipIf) {
+        JsonArray arr = new JsonArray();
+        for (Integer i : skipIf) arr.add(new JsonPrimitive(i));
+        return arr;
     }
 
     /**
@@ -144,6 +170,8 @@ public final class NameCodec {
             if (seg.connection() != null) sObj.add("connection", new JsonPrimitive(seg.connection()));
             sObj.add("newline", new JsonPrimitive(seg.newline()));
             if (seg.link()) sObj.add("link", new JsonPrimitive(true));
+            if (!seg.skipIf().isEmpty()) sObj.add("skip_if", writeSkipIf(seg.skipIf()));
+            if (!seg.chanceIf().isEmpty()) sObj.add("chance_if", ChanceRuleCodec.write(seg.chanceIf()));
             if (seg.label() != null && !seg.label().isEmpty()) {
                 sObj.add("label", new JsonPrimitive(seg.label()));
             }

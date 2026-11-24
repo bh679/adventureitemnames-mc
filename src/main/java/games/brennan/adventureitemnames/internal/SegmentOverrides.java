@@ -53,6 +53,8 @@ public final class SegmentOverrides {
      * to leave that aspect unchanged. {@code refs} {@code null} means the
      * shipped ref list is used; a non-null (possibly empty) list replaces
      * it entirely. {@code removed=true} drops the segment from the chain.
+     * {@code skipIf} {@code null} keeps the shipped rule; a non-null (possibly
+     * empty) list replaces it, so an empty list clears a shipped rule.
      */
     public record SegmentEdit(
         Float chance,
@@ -60,23 +62,33 @@ public final class SegmentOverrides {
         Boolean newline,
         List<NameSegment.WeightedRef> refs,
         Boolean removed,
-        String label
+        String label,
+        List<Integer> skipIf
     ) {
+        /** Pre-skip-if constructor, kept for callers built against older AIN (e.g. Dungeon Train). */
+        public SegmentEdit(Float chance, String connection, Boolean newline,
+                           List<NameSegment.WeightedRef> refs, Boolean removed, String label) {
+            this(chance, connection, newline, refs, removed, label, null);
+        }
+
         public boolean isNoOp() {
             return chance == null && connection == null && newline == null
-                && refs == null && (removed == null || !removed) && label == null;
+                && refs == null && (removed == null || !removed) && label == null && skipIf == null;
         }
 
-        public SegmentEdit withChance(Float v)             { return new SegmentEdit(v, connection, newline, refs, removed, label); }
-        public SegmentEdit withConnection(String v)        { return new SegmentEdit(chance, v, newline, refs, removed, label); }
-        public SegmentEdit withNewline(Boolean v)          { return new SegmentEdit(chance, connection, v, refs, removed, label); }
+        public SegmentEdit withChance(Float v)             { return new SegmentEdit(v, connection, newline, refs, removed, label, skipIf); }
+        public SegmentEdit withConnection(String v)        { return new SegmentEdit(chance, v, newline, refs, removed, label, skipIf); }
+        public SegmentEdit withNewline(Boolean v)          { return new SegmentEdit(chance, connection, v, refs, removed, label, skipIf); }
         public SegmentEdit withRefs(List<NameSegment.WeightedRef> v) {
-            return new SegmentEdit(chance, connection, newline, v, removed, label);
+            return new SegmentEdit(chance, connection, newline, v, removed, label, skipIf);
         }
-        public SegmentEdit withRemoved(Boolean v)          { return new SegmentEdit(chance, connection, newline, refs, v, label); }
-        public SegmentEdit withLabel(String v)             { return new SegmentEdit(chance, connection, newline, refs, removed, v); }
+        public SegmentEdit withRemoved(Boolean v)          { return new SegmentEdit(chance, connection, newline, refs, v, label, skipIf); }
+        public SegmentEdit withLabel(String v)             { return new SegmentEdit(chance, connection, newline, refs, removed, v, skipIf); }
+        public SegmentEdit withSkipIf(List<Integer> v) {
+            return new SegmentEdit(chance, connection, newline, refs, removed, label, v == null ? null : List.copyOf(v));
+        }
 
-        public static SegmentEdit empty() { return new SegmentEdit(null, null, null, null, null, null); }
+        public static SegmentEdit empty() { return new SegmentEdit(null, null, null, null, null, null, null); }
     }
 
     public static String key(ResourceLocation chainId, int segmentIndex) {
