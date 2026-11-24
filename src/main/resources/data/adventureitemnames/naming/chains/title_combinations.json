@@ -83,6 +83,10 @@
           "weight": 10.0
         },
         {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 5.0
+        },
+        {
           "ref": "adventureitemnames:technology",
           "weight": 2.0
         },

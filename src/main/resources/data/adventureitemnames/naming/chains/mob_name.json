@@ -30,19 +30,23 @@
       "refs": [
         {
           "ref": "adventureitemnames:names",
-          "weight": 185.0
+          "weight": 100.0
+        },
+        {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:type_synonyms",
-          "weight": 36.5
+          "weight": 35.0
         },
         {
           "ref": "adventureitemnames:colors",
-          "weight": 26.5
+          "weight": 25.0
         },
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 402.0
+          "weight": 450.0
         }
       ]
     },
@@ -54,11 +58,15 @@
       "refs": [
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 70.0
+          "weight": 100.0
         },
         {
           "ref": "adventureitemnames:names",
           "weight": 30.0
+        },
+        {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 60.0
         }
       ]
     },

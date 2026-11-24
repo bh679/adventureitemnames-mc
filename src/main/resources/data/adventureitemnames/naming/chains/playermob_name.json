@@ -33,6 +33,10 @@
           "weight": 250.0
         },
         {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 100.0
+        },
+        {
           "ref": "adventureitemnames:type_synonyms",
           "weight": 30.0
         },
@@ -42,7 +46,7 @@
         },
         {
           "ref": "adventureitemnames:formula_name",
-          "weight": 80.0
+          "weight": 100.0
         }
       ]
     },
@@ -58,7 +62,11 @@
         },
         {
           "ref": "adventureitemnames:names",
-          "weight": 30.0
+          "weight": 20.0
+        },
+        {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 21.0
         }
       ]
     },

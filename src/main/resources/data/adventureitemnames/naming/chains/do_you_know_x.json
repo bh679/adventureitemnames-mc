@@ -24,6 +24,10 @@
           "weight": 20.0
         },
         {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 10.0
+        },
+        {
           "ref": "adventureitemnames:people",
           "weight": 20.0
         },

@@ -41,6 +41,10 @@
           "weight": 25.0
         },
         {
+          "ref": "adventureitemnames:name_plus_ending",
+          "weight": 13.0
+        },
+        {
           "ref": "adventureitemnames:animals",
           "weight": 23.0
         },
