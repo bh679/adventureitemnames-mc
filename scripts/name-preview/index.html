@@ -78,12 +78,23 @@ function composeChain(chain, depth) {
   let pendingLink = null;
   const parts = [];
   const segs = chain.segments;
-  const ruled = segs.some(s => (s.skip_if || []).length);
-  const fired = ruled ? segs.map(s => s.chance >= 1 || Math.random() < s.chance) : null;
+  const ruled = segs.some(s => (s.skip_if || []).length || (s.chance_if || []).length);
+  // Mirrors RuleRoll: one draw per segment that could miss, a plain-chance guess until each
+  // segment's turn, then chance_if (first matching rule, earlier segments only) and skip_if.
+  const draws = ruled ? segs.map(s => (s.chance < 1 || (s.chance_if || []).length) ? Math.random() : 0) : null;
+  const fired = ruled ? segs.map((s, i) => s.chance >= 1 || draws[i] < s.chance) : null;
+  const settled = new Set();
+  const picks = {};
+  const holds = rule => rule.when.every(c => settled.has(c.segment) && fired[c.segment]
+    && (!c.refs || !c.refs.length || c.refs.includes(picks[c.segment])));
   segs.forEach((seg, i) => {
-    if (fired) {
+    if (ruled) {
+      const rule = (seg.chance_if || []).find(holds);
+      const chance = rule ? rule.chance : seg.chance;
+      const skipped = (seg.skip_if || []).some(j => j !== i && fired[j]);
+      fired[i] = (chance >= 1 || draws[i] < chance) && !skipped;
+      settled.add(i);
       if (!fired[i]) return;
-      if ((seg.skip_if || []).some(j => j !== i && fired[j])) return;
     } else if (seg.chance < 1 && Math.random() >= seg.chance) {
       return;
     }
@@ -93,6 +104,7 @@ function composeChain(chain, depth) {
     } else {
       const ref = pickWeighted(seg.refs, r => r.weight);
       if (!ref) return;
+      picks[i] = ref.ref;
       const res = resolveRef(ref.ref, depth);
       if (!res.text) return;
       fragment = res.text;

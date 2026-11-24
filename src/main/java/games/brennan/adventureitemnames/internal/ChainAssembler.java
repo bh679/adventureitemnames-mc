@@ -77,7 +77,8 @@ public final class ChainAssembler {
                 if (mapped != null && target != origIdx) skipIf.add(mapped);
             }
 
-            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label, base.link(), skipIf));
+            out.add(new NameSegment(List.copyOf(weighted), chance, connection, newline, label, base.link(), skipIf,
+                ChanceRuleCodec.remap(base.chanceIf(), newPos)));
         }
         return new NameChain(shipped.id(), List.copyOf(out), true);
     }

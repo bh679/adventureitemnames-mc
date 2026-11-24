@@ -85,7 +85,8 @@ public final class PerPackSplitter {
                     baseSeg.newline(),
                     baseSeg.label(),
                     baseSeg.link(),
-                    baseSeg.skipIf()
+                    baseSeg.skipIf(),
+                    baseSeg.chanceIf()
                 ));
             }
             boolean isBase = packId.equals(basePackId);

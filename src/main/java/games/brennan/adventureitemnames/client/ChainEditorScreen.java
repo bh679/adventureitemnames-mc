@@ -458,16 +458,20 @@ public final class ChainEditorScreen extends Screen {
 
             private net.minecraft.client.gui.components.Tooltip ifTooltip() {
                 List<Integer> rule = host.buffer().effectiveSegmentSkipIf(host.chain().id(), segIdx, shipped.skipIf());
+                net.minecraft.network.chat.MutableComponent text;
                 if (rule.isEmpty()) {
-                    return net.minecraft.client.gui.components.Tooltip.create(
-                        Component.translatable("screen.adventureitemnames.skip_if.tooltip_none"));
+                    text = Component.translatable("screen.adventureitemnames.skip_if.tooltip_none");
+                } else {
+                    List<String> names = new java.util.ArrayList<>();
+                    for (SegmentInfo info : host.liveSegments()) {
+                        if (rule.contains(info.index())) names.add(info.label());
+                    }
+                    text = Component.translatable("screen.adventureitemnames.skip_if.tooltip", String.join(", ", names));
                 }
-                List<String> names = new java.util.ArrayList<>();
-                for (SegmentInfo info : host.liveSegments()) {
-                    if (rule.contains(info.index())) names.add(info.label());
+                if (!shipped.chanceIf().isEmpty()) {
+                    text = text.append(" ").append(Component.translatable("screen.adventureitemnames.chance_if.tooltip"));
                 }
-                return net.minecraft.client.gui.components.Tooltip.create(
-                    Component.translatable("screen.adventureitemnames.skip_if.tooltip", String.join(", ", names)));
+                return net.minecraft.client.gui.components.Tooltip.create(text);
             }
 
             private void setLabelBox(String text) {

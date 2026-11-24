@@ -66,6 +66,42 @@ class NameCodecSkipIfTest {
     }
 
     @Test
+    void chanceRulesParseRoundTripAndDropBadRules() throws Exception {
+        String json = """
+            {"id":"adventureitemnames:skip_if_test","replace":true,"segments":[
+              {"chance":1.0,"label":"Name","refs":[{"ref":"adventureitemnames:names","weight":1.0}]},
+              {"chance":0.2,"label":"Fan","refs":[{"ref":"adventureitemnames:fan_suffix","weight":1.0}],
+               "chance_if":[
+                 {"when":[{"segment":0,"refs":["adventureitemnames:discord_people","dungeontrain:backers"]}],"chance":0.5},
+                 {"when":[{"segment":0}],"chance":7},
+                 {"when":[{"segment":-1}],"chance":0.3},
+                 {"when":[],"chance":0.3},
+                 {"when":[{"segment":0}]},
+                 {"when":[{"segment":0,"refs":"nope"}],"chance":0.3}
+               ]}
+            ]}""";
+        NameChain chain = NameCodec.parseChain(JsonParser.parseString(json), ID);
+        var rules = chain.segments().get(1).chanceIf();
+        assertEquals(2, rules.size());
+        assertEquals(0.5f, rules.get(0).chance());
+        assertEquals(2, rules.get(0).when().get(0).refs().size());
+        assertEquals(1f, rules.get(1).chance(), "chance is clamped to 1");
+        assertTrue(chain.segments().get(0).chanceIf().isEmpty());
+        JsonObject written = NameCodec.writeChain(chain, true);
+        assertFalse(written.getAsJsonArray("segments").get(0).getAsJsonObject().has("chance_if"));
+        assertEquals(chain, NameCodec.parseChain(written, ID));
+    }
+
+    @Test
+    void chanceRulesRemapAndDropRulesOnRemovedSegments() {
+        var keep = new NameSegment.ChanceRule(List.of(new NameSegment.Condition(2, List.of())), 0.5f);
+        var gone = new NameSegment.ChanceRule(List.of(new NameSegment.Condition(1, List.of())), 0.5f);
+        var out = ChanceRuleCodec.remap(List.of(keep, gone), java.util.Map.of(0, 0, 2, 1));
+        assertEquals(1, out.size());
+        assertEquals(1, out.get(0).when().get(0).segment());
+    }
+
+    @Test
     void segmentEditNoOpAndLegacyConstructor() {
         var legacy = new SegmentOverrides.SegmentEdit(null, null, null, null, null, null);
         assertTrue(legacy.isNoOp());

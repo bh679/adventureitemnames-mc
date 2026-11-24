@@ -24,6 +24,7 @@ public final class SkipIfScreen extends Screen {
     private static final int ROW_H = 22;
     private static final int COL_W = 200;
     private static final int TOP = 52;
+    private static final int LINE_H = 11;
 
     private final ChainEditorScreen parent;
     private final int segIdx;
@@ -45,7 +46,8 @@ public final class SkipIfScreen extends Screen {
             if (info.index() != segIdx) others.add(info);
         }
         int footerY = height - 28;
-        int perCol = Math.max(1, (footerY - 8 - TOP) / ROW_H);
+        int rulesH = shipped.chanceIf().isEmpty() ? 0 : (shipped.chanceIf().size() + 1) * LINE_H + 6;
+        int perCol = Math.max(1, (footerY - 8 - rulesH - TOP) / ROW_H);
         int cols = Math.max(1, (others.size() + perCol - 1) / perCol);
         int left = width / 2 - (cols * COL_W) / 2;
         for (int i = 0; i < others.size(); i++) {
@@ -63,6 +65,32 @@ public final class SkipIfScreen extends Screen {
             Component.translatable("gui.done"),
             b -> onClose()
         ).bounds(width / 2 + 4, footerY, 100, 20).build());
+    }
+
+    /**
+     * A chance rule in words, e.g. "50% when First Name picks discord_people or backers".
+     * Read-only here: chance rules live in the chain file.
+     */
+    static Component describeRule(NameSegment.ChanceRule rule, List<ChainEditorScreen.SegmentInfo> segs) {
+        List<String> conds = new ArrayList<>();
+        for (NameSegment.Condition c : rule.when()) {
+            String label = "Seg " + c.segment();
+            for (ChainEditorScreen.SegmentInfo info : segs) {
+                if (info.index() == c.segment()) label = info.label();
+            }
+            if (c.refs().isEmpty()) {
+                conds.add(Component.translatable("screen.adventureitemnames.chance_if.appears", label).getString());
+            } else {
+                List<String> names = new ArrayList<>();
+                for (var id : c.refs()) names.add(id.getPath());
+                String or = Component.translatable("screen.adventureitemnames.chance_if.or").getString();
+                conds.add(Component.translatable("screen.adventureitemnames.chance_if.picks",
+                    label, String.join(or, names)).getString());
+            }
+        }
+        String and = Component.translatable("screen.adventureitemnames.chance_if.and").getString();
+        String pct = Math.round(rule.chance() * 1000f) / 10f + "%";
+        return Component.translatable("screen.adventureitemnames.chance_if.rule", pct, String.join(and, conds));
     }
 
     static String describe(ChainEditorScreen.SegmentInfo info) {
@@ -92,6 +120,16 @@ public final class SkipIfScreen extends Screen {
         gfx.drawCenteredString(font, title, width / 2, 16, 0xFFFFFFFF);
         gfx.drawCenteredString(font, Component.translatable("screen.adventureitemnames.skip_if.hint"),
             width / 2, 32, 0xFFA0A0A0);
+        List<NameSegment.ChanceRule> rules = shipped.chanceIf();
+        if (rules.isEmpty()) return;
+        int y = height - 28 - 6 - (rules.size() + 1) * LINE_H;
+        gfx.drawCenteredString(font, Component.translatable("screen.adventureitemnames.chance_if.header"),
+            width / 2, y, 0xFFFFFFFF);
+        List<ChainEditorScreen.SegmentInfo> segs = parent.liveSegments();
+        for (NameSegment.ChanceRule rule : rules) {
+            y += LINE_H;
+            gfx.drawCenteredString(font, describeRule(rule, segs), width / 2, y, 0xFFA0A0A0);
+        }
     }
 
     @Override
