@@ -383,6 +383,19 @@
       "released": true,
       "released_in": "v0.66.0",
       "released_at": "2026-11-21T04:59:33Z"
+    },
+    {
+      "id": "real-names-with-endings",
+      "version": "0.67.0",
+      "type": "feat",
+      "title": "Real names with made-up endings",
+      "summary": "Some names now start from a familiar first name and grow a made-up ending, like Thomasilag or Rosalynly.",
+      "highlights": [],
+      "pr": 124,
+      "date": "2026-11-24",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }

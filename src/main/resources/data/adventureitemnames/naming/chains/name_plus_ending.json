@@ -1,0 +1,76 @@
+{
+  "id": "adventureitemnames:name_plus_ending",
+  "replace": true,
+  "segments": [
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Name",
+      "refs": [
+        {
+          "ref": "adventureitemnames:names",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.5,
+      "connection": "",
+      "newline": false,
+      "label": "Link vowel",
+      "link": true,
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_vowel",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 1.0,
+      "connection": "",
+      "newline": false,
+      "label": "Ending",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.5,
+      "connection": "",
+      "newline": false,
+      "label": "Link vowel 2",
+      "link": true,
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_vowel",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "chance": 0.1,
+      "connection": "",
+      "newline": false,
+      "label": "Ending 2",
+      "refs": [
+        {
+          "ref": "adventureitemnames:name_ending",
+          "weight": 15.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vowel",
+          "weight": 10.0
+        },
+        {
+          "ref": "adventureitemnames:name_ending_vc",
+          "weight": 25.0
+        }
+      ]
+    }
+  ]
+}
