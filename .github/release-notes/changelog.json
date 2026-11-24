@@ -393,9 +393,9 @@
       "highlights": [],
       "pr": 124,
       "date": "2026-11-24",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.68.0",
+      "released_at": "2026-11-24T06:51:45Z"
     },
     {
       "id": "name-part-if-rules",
@@ -406,9 +406,9 @@
       "highlights": [],
       "pr": 125,
       "date": "2026-11-24",
-      "released": false,
-      "released_in": null,
-      "released_at": null
+      "released": true,
+      "released_in": "v0.68.0",
+      "released_at": "2026-11-24T06:51:45Z"
     }
   ]
 }
