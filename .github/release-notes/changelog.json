@@ -386,7 +386,7 @@
     },
     {
       "id": "real-names-with-endings",
-      "version": "0.66.0",
+      "version": "0.67.0",
       "type": "feat",
       "title": "Real names with made-up endings",
       "summary": "Some names now start from a familiar first name and grow a made-up ending, like Thomasilag or Rosalynly.",
