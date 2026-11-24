@@ -396,6 +396,19 @@
       "released": false,
       "released_in": null,
       "released_at": null
+    },
+    {
+      "id": "name-part-if-rules",
+      "version": "0.68.0",
+      "type": "feat",
+      "title": "Tidier player-like names",
+      "summary": "Fan tags and number suffixes now only appear on plain player-like names, not on names that already carry a title. Name editors can set any name part to skip when other parts appear.",
+      "highlights": [],
+      "pr": 125,
+      "date": "2026-11-24",
+      "released": false,
+      "released_in": null,
+      "released_at": null
     }
   ]
 }
